@@ -260,17 +260,6 @@ export default function AdminPage() {
                                           <span>
                                               {batch.name} ({batch.registrations.length} registrations)
                                           </span>
-                                           <Button 
-                                              variant="ghost" 
-                                              size="icon" 
-                                              className="h-6 w-6"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEditBatchName(batch)
-                                              }}
-                                          >
-                                              <Pencil className="h-4 w-4 text-muted-foreground" />
-                                          </Button>
                                           {batch.id === activeBatchId && <span className="ml-2 text-xs font-semibold text-primary py-0.5 px-2 bg-primary/10 rounded-full">Active</span>}
                                         </div>
                                         <span className="text-sm text-muted-foreground">
@@ -279,6 +268,18 @@ export default function AdminPage() {
                                       </div>
                                   </AccordionTrigger>
                                   <AccordionContent>
+                                      <div className="flex items-center justify-end p-2 border-b">
+                                          <Button 
+                                              variant="ghost" 
+                                              size="sm"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditBatchName(batch)
+                                              }}
+                                          >
+                                              <Pencil className="mr-2 h-4 w-4" /> Edit Batch Name
+                                          </Button>
+                                      </div>
                                       <RegistrationsTable 
                                           registrations={batch.registrations}
                                           batchName={batch.name}
