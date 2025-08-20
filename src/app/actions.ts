@@ -12,17 +12,37 @@ const registrationSchema = z.object({
   }),
 });
 
+const actionSchema = z.object({
+  form: registrationSchema,
+  existingRegistrations: z.array(z.object({
+    name: z.string(),
+    iitpNo: z.string(),
+    organization: z.string(),
+    meetingLink: z.string(),
+    submissionTime: z.string().or(z.date()),
+  })),
+});
+
+
 export async function registerForMeeting(
-  data: z.infer<typeof registrationSchema>
+  data: z.infer<typeof actionSchema>
 ): Promise<{ success: true; registration: Registration } | { success: false; error: string }> {
-  const validatedFields = registrationSchema.safeParse(data);
+  const validatedFields = registrationSchema.safeParse(data.form);
 
   if (!validatedFields.success) {
     return { success: false, error: "Invalid form data." };
   }
+  
+  const serializableRegistrations = data.existingRegistrations.map(reg => ({
+    ...reg,
+    submissionTime: new Date(reg.submissionTime).toISOString(),
+  }));
 
   try {
-    const result = await intelligentLinkTool(validatedFields.data);
+    const result = await intelligentLinkTool({
+        ...validatedFields.data,
+        existingRegistrations: serializableRegistrations
+    });
     const newRegistration: Registration = {
       ...validatedFields.data,
       meetingLink: result.meetingLink,

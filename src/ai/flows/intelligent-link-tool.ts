@@ -15,6 +15,13 @@ const IntelligentLinkToolInputSchema = z.object({
   name: z.string().describe('The name of the user.'),
   iitpNo: z.string().describe("The user's IITP Number."),
   organization: z.string().describe('The organization the user belongs to.'),
+  existingRegistrations: z.array(z.object({
+    name: z.string(),
+    iitpNo: z.string(),
+    organization: z.string(),
+    meetingLink: z.string(),
+    submissionTime: z.string(),
+  })).describe('An array of existing registrations to check for a custom meeting link.')
 });
 export type IntelligentLinkToolInput = z.infer<typeof IntelligentLinkToolInputSchema>;
 
@@ -33,22 +40,30 @@ const prompt = ai.definePrompt({
   output: {schema: IntelligentLinkToolOutputSchema},
   prompt: `You are an AI assistant designed to determine the most appropriate meeting link for a user based on their registration data.
 
-  Analyze the following information to select the best meeting link:
+  You will be given the new user's registration data and a list of existing registrations.
+  Your primary goal is to check if a custom meeting link has already been set for the user's organization in the existing registrations. A custom link is any link that is not 'https://meet.google.com/default'.
 
+  1. Find the most recent registration from the 'existingRegistrations' list that matches the new user's 'organization'.
+  2. If a matching registration is found and its 'meetingLink' is not the default link ('https://meet.google.com/default'), use that meeting link.
+  3. If no registration for that organization exists, or if all existing registrations for that organization use the default link, then determine the link based on the organization name.
+
+  - If the organization is "TE Connectivity, Shirwal", provide the link https://meet.google.com/shirwal.
+  - If the organization is "BSA Plant, Chakan", provide the link https://meet.google.com/chakan.
+  - If the organization is "Belden India", provide the link https://meet.google.com/belden.
+  - Otherwise, provide the default meeting link: https://meet.google.com/default.
+
+  New User Information:
   Name: {{{name}}}
   IITP No: {{{iitpNo}}}
   Organization: {{{organization}}}
 
-  Based on this information, provide the most relevant meeting link. Return only the link, and ensure it is a valid URL.
-  If the organization is "TE Connectivity, Shirwal", provide the link https://meet.google.com/shirwal.
-  If the organization is "BSA Plant, Chakan", provide the link https://meet.google.com/chakan.
-  If the organization is "Belden India", provide the link https://meet.google.com/belden.
-  Otherwise, provide the default meeting link: https://meet.google.com/default.
+  Existing Registrations:
+  {{#each existingRegistrations}}
+  - Name: {{this.name}}, Organization: {{this.organization}}, Link: {{this.meetingLink}}, Time: {{this.submissionTime}}
+  {{/each}}
 
-  Output the meeting link in the following format:
-  {
-    "meetingLink": "https://example.com/meeting"
-  }`,
+  Analyze the information and provide only the final, most appropriate meeting link in the specified JSON format.
+  `,
 });
 
 const intelligentLinkToolFlow = ai.defineFlow(

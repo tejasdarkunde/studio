@@ -38,6 +38,7 @@ const formSchema = z.object({
 
 type RegistrationFormProps = {
   onSuccess: (registration: Registration) => void;
+  registrations: Registration[];
 };
 
 const organizations = [
@@ -46,7 +47,7 @@ const organizations = [
   "Belden India",
 ];
 
-export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
+export function RegistrationForm({ onSuccess, registrations }: RegistrationFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -61,7 +62,11 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      const result = await registerForMeeting(values);
+      const result = await registerForMeeting({
+        form: values,
+        existingRegistrations: registrations,
+      });
+
       if (result.success) {
         toast({
           title: "Registration Successful!",
@@ -71,7 +76,9 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         form.reset();
         // Redirect after a short delay to allow toast to be seen
         setTimeout(() => {
-          window.location.href = result.registration.meetingLink;
+          if (result.registration.meetingLink) {
+            window.location.href = result.registration.meetingLink;
+          }
         }, 1500);
       } else {
         throw new Error(result.error);
@@ -140,6 +147,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                       {org}
                     </SelectItem>
                   ))}
+                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

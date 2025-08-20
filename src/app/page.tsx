@@ -68,7 +68,10 @@ export default function Home() {
               <CardDescription>Fill out the form below to get your meeting link.</CardDescription>
             </CardHeader>
             <CardContent>
-              <RegistrationForm onSuccess={handleRegistrationSuccess} />
+              <RegistrationForm 
+                onSuccess={handleRegistrationSuccess}
+                registrations={registrations} 
+              />
             </CardContent>
           </Card>
         </div>
