@@ -1,15 +1,17 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
+import { EditBatchNameDialog } from '@/components/features/edit-batch-name-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Save, PlusCircle } from 'lucide-react';
+import { Save, PlusCircle, Pencil } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function AdminPage() {
@@ -21,6 +23,7 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -106,6 +109,36 @@ export default function AdminPage() {
     }
   };
 
+  const handleEditBatchName = (batch: Batch) => {
+    setEditingBatch(batch);
+  };
+  
+  const handleSaveBatchName = (newName: string) => {
+    if (!editingBatch) return;
+
+    const updatedBatches = batches.map(b => 
+      b.id === editingBatch.id ? { ...b, name: newName } : b
+    );
+    setBatches(updatedBatches);
+
+    try {
+        const dataToStore = { batches: updatedBatches, activeBatchId };
+        localStorage.setItem('eventlink-data', JSON.stringify(dataToStore));
+        toast({
+            title: "Batch Name Updated",
+            description: `Batch "${editingBatch.name}" was renamed to "${newName}".`,
+        });
+    } catch (error) {
+        console.error("Failed to save updated batch name to localStorage", error);
+        toast({
+            variant: "destructive",
+            title: "Storage Error",
+            description: "Could not save the updated batch name.",
+        });
+    }
+    setEditingBatch(null);
+  };
+
   if (!isClient) {
     return null;
   }
@@ -149,97 +182,120 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="container mx-auto p-4 md:p-8">
-       <div className="flex justify-between items-center mb-8 md:mb-12">
-        <div className="flex flex-col">
-            <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-                Admin Access
-            </h1>
-            <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-                Manage event registrations and settings.
-            </p>
+    <>
+      {editingBatch && (
+        <EditBatchNameDialog
+            isOpen={!!editingBatch}
+            onClose={() => setEditingBatch(null)}
+            onSave={handleSaveBatchName}
+            currentName={editingBatch.name}
+        />
+      )}
+      <main className="container mx-auto p-4 md:p-8">
+        <div className="flex justify-between items-center mb-8 md:mb-12">
+          <div className="flex flex-col">
+              <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
+                  Admin Access
+              </h1>
+              <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
+                  Manage event registrations and settings.
+              </p>
+          </div>
+          <Link href="/" passHref>
+              <Button variant="outline">Back to Home</Button>
+          </Link>
         </div>
-        <Link href="/" passHref>
-            <Button variant="outline">Back to Home</Button>
-        </Link>
-      </div>
 
-      <div className="grid grid-cols-1 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Event &amp; Meeting Settings</CardTitle>
-            <CardDescription>Manage event batches and Zoom links.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-                <Button onClick={handleStartNewBatch} className="w-full sm:w-auto">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Start New Event Batch
-                </Button>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="diploma-link">Diploma Zoom Link</Label>
-              <Input 
-                id="diploma-link"
-                placeholder="Enter Diploma Zoom link"
-                value={diplomaLink}
-                onChange={(e) => setDiplomaLink(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="advance-diploma-link">Advance Diploma Zoom Link</Label>
-              <Input 
-                id="advance-diploma-link"
-                placeholder="Enter Advance Diploma Zoom link"
-                value={advanceDiplomaLink}
-                onChange={(e) => setAdvanceDiplomaLink(e.target.value)}
-              />
-            </div>
-             <Button onClick={handleSaveLinks}>
-              <Save className="mr-2 h-4 w-4" />
-              Save Links
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
+        <div className="grid grid-cols-1 gap-8">
+          <Card>
             <CardHeader>
-                <CardTitle>Registrations by Batch</CardTitle>
-                <CardDescription>View and export registrations for each event batch.</CardDescription>
+              <CardTitle>Event &amp; Meeting Settings</CardTitle>
+              <CardDescription>Manage event batches and Zoom links.</CardDescription>
             </CardHeader>
-            <CardContent>
-                {batches.length > 0 ? (
-                    <Accordion type="multiple" defaultValue={getDefaultAccordionOpenValue()}>
-                        {batches.map(batch => (
-                            <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
-                                <AccordionTrigger>
-                                    <div className="flex justify-between items-center w-full pr-4">
-                                      <span>
-                                          {batch.name} ({batch.registrations.length} registrations)
-                                          {batch.id === activeBatchId && <span className="ml-2 text-xs font-semibold text-primary py-0.5 px-2 bg-primary/10 rounded-full">Active</span>}
-                                      </span>
-                                      <span className="text-sm text-muted-foreground">
-                                          Created: {new Date(batch.createdAt).toLocaleDateString()}
-                                      </span>
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                    <RegistrationsTable 
-                                        registrations={batch.registrations}
-                                        batchName={batch.name}
-                                    />
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
-                    </Accordion>
-                ) : (
-                    <div className="text-center text-muted-foreground p-8">
-                        No registration batches found. Start a new batch to begin collecting registrations.
-                    </div>
-                )}
+            <CardContent className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                  <Button onClick={handleStartNewBatch} className="w-full sm:w-auto">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Start New Event Batch
+                  </Button>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="diploma-link">Diploma Zoom Link</Label>
+                <Input 
+                  id="diploma-link"
+                  placeholder="Enter Diploma Zoom link"
+                  value={diplomaLink}
+                  onChange={(e) => setDiplomaLink(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="advance-diploma-link">Advance Diploma Zoom Link</Label>
+                <Input 
+                  id="advance-diploma-link"
+                  placeholder="Enter Advance Diploma Zoom link"
+                  value={advanceDiplomaLink}
+                  onChange={(e) => setAdvanceDiplomaLink(e.target.value)}
+                />
+              </div>
+              <Button onClick={handleSaveLinks}>
+                <Save className="mr-2 h-4 w-4" />
+                Save Links
+              </Button>
             </CardContent>
-        </Card>
-      </div>
-    </main>
+          </Card>
+
+          <Card>
+              <CardHeader>
+                  <CardTitle>Registrations by Batch</CardTitle>
+                  <CardDescription>View and export registrations for each event batch.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  {batches.length > 0 ? (
+                      <Accordion type="multiple" defaultValue={getDefaultAccordionOpenValue()}>
+                          {batches.map(batch => (
+                              <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
+                                  <AccordionTrigger>
+                                      <div className="flex justify-between items-center w-full pr-4">
+                                        <div className="flex items-center gap-2">
+                                          <span>
+                                              {batch.name} ({batch.registrations.length} registrations)
+                                          </span>
+                                           <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              className="h-6 w-6"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditBatchName(batch)
+                                              }}
+                                          >
+                                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                                          </Button>
+                                          {batch.id === activeBatchId && <span className="ml-2 text-xs font-semibold text-primary py-0.5 px-2 bg-primary/10 rounded-full">Active</span>}
+                                        </div>
+                                        <span className="text-sm text-muted-foreground">
+                                            Created: {new Date(batch.createdAt).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                      <RegistrationsTable 
+                                          registrations={batch.registrations}
+                                          batchName={batch.name}
+                                      />
+                                  </AccordionContent>
+                              </AccordionItem>
+                          ))}
+                      </Accordion>
+                  ) : (
+                      <div className="text-center text-muted-foreground p-8">
+                          No registration batches found. Start a new batch to begin collecting registrations.
+                      </div>
+                  )}
+              </CardContent>
+          </Card>
+        </div>
+      </main>
+    </>
   );
 }
