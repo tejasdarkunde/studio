@@ -3,4 +3,5 @@ export type Registration = {
   iitpNo: string;
   organization: string;
   meetingLink: string;
+  submissionTime: Date;
 };

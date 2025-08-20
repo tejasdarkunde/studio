@@ -26,6 +26,7 @@ export async function registerForMeeting(
     const newRegistration: Registration = {
       ...validatedFields.data,
       meetingLink: result.meetingLink,
+      submissionTime: new Date(),
     };
     return { success: true, registration: newRegistration };
   } catch (error) {

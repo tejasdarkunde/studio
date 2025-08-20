@@ -67,6 +67,7 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                 <TableHead>Name</TableHead>
                 <TableHead>IITP No</TableHead>
                 <TableHead>Organization</TableHead>
+                <TableHead>Submission Time</TableHead>
                 <TableHead className="hidden md:table-cell">Meeting Link</TableHead>
               </TableRow>
             </TableHeader>
@@ -77,6 +78,9 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                     <TableCell className="font-medium">{reg.name}</TableCell>
                     <TableCell>{reg.iitpNo}</TableCell>
                     <TableCell>{reg.organization}</TableCell>
+                    <TableCell>
+                      {reg.submissionTime ? new Date(reg.submissionTime).toLocaleString() : 'N/A'}
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <a 
                         href={reg.meetingLink} 
@@ -91,7 +95,7 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     No registrations yet.
                   </TableCell>
                 </TableRow>

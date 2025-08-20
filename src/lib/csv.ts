@@ -36,6 +36,7 @@ const keyToHeaderMap = {
   name: "Name",
   iitpNo: "IITP No",
   organization: "Organization",
+  submissionTime: "Submission Time",
   meetingLink: "Meeting Link"
 }
 
@@ -50,8 +51,11 @@ export function exportToCsvV2(registrations: Registration[], fileName: string = 
 
   const csvRows = registrations.map(registration => {
     return keys.map(key => {
-      const value = registration[key] || '';
-      const stringValue = String(value);
+      let value = registration[key];
+      if (key === 'submissionTime' && value) {
+        value = new Date(value).toLocaleString();
+      }
+      const stringValue = String(value || '');
       // Handle values that contain commas, quotes, or newlines
       if (/[",\n\r]/.test(stringValue)) {
         return `"${stringValue.replace(/"/g, '""')}"`;
