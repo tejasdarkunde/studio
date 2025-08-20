@@ -252,7 +252,7 @@ export default function AdminPage() {
               <CardContent>
                   {batches.length > 0 ? (
                       <Accordion type="multiple" defaultValue={getDefaultAccordionOpenValue()}>
-                          {batches.map(batch => (
+                          {[...batches].reverse().map(batch => (
                               <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
                                   <AccordionTrigger>
                                       <div className="flex justify-between items-center w-full pr-4">
