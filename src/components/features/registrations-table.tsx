@@ -68,7 +68,6 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                 <TableHead>IITP No</TableHead>
                 <TableHead>Organization</TableHead>
                 <TableHead>Submission Time</TableHead>
-                <TableHead className="hidden md:table-cell">Meeting Link</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -81,21 +80,11 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                     <TableCell>
                       {reg.submissionTime ? new Date(reg.submissionTime).toLocaleString() : 'N/A'}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <a 
-                        href={reg.meetingLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline truncate"
-                      >
-                        {reg.meetingLink}
-                      </a>
-                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     No registrations yet.
                   </TableCell>
                 </TableRow>
