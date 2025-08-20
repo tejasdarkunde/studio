@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Save, PlusCircle, Pencil } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { startNewBatch, updateBatchName, getBatches } from '@/app/actions';
+import { startNewBatch, updateBatchName, getBatches, getMeetingLinks, saveMeetingLinks } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -31,37 +31,33 @@ export default function AdminPage() {
     setBatches(fetchedBatches);
   };
   
+  const fetchLinks = async () => {
+    const links = await getMeetingLinks();
+    setDiplomaLink(links.diplomaZoomLink);
+    setAdvanceDiplomaLink(links.advanceDiplomaZoomLink);
+  };
+
   useEffect(() => {
     setIsClient(true);
     if (isAuthenticated) {
         fetchBatches();
-    }
-    try {
-      const storedDiplomaLink = localStorage.getItem('diplomaZoomLink');
-      if (storedDiplomaLink) setDiplomaLink(storedDiplomaLink);
-      
-      const storedAdvanceDiplomaLink = localStorage.getItem('advanceDiplomaZoomLink');
-      if (storedAdvanceDiplomaLink) setAdvanceDiplomaLink(storedAdvanceDiplomaLink);
-    } catch (error) {
-      console.error("Failed to parse data from storage", error);
+        fetchLinks();
     }
   }, [isAuthenticated]);
 
-  const handleSaveLinks = () => {
-    try {
-      localStorage.setItem('diplomaZoomLink', diplomaLink);
-      localStorage.setItem('advanceDiplomaZoomLink', advanceDiplomaLink);
+  const handleSaveLinks = async () => {
+    const result = await saveMeetingLinks({ diplomaZoomLink: diplomaLink, advanceDiplomaZoomLink: advanceDiplomaLink });
+    if (result.success) {
       toast({
         title: "Links Saved!",
-        description: "The Zoom links have been successfully updated.",
+        description: "The Zoom links have been successfully updated in the database.",
       });
-    } catch (error) {
+    } else {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: "Could not save the links to local storage.",
+        description: result.error || "Could not save the links.",
       });
-      console.error("Failed to save links to localStorage", error);
     }
   };
   

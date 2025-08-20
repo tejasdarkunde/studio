@@ -3,8 +3,8 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, Timestamp, getDoc } from "firebase/firestore";
-import type { Registration, Batch } from "@/lib/types";
+import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc } from "firebase/firestore";
+import type { Registration, Batch, MeetingLinks } from "@/lib/types";
 
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -105,8 +105,6 @@ export async function getBatches(): Promise<Batch[]> {
 export async function startNewBatch(): Promise<{success: boolean, newBatch?: Batch, error?: string}> {
     try {
         const batchesCollection = collection(db, "batches");
-        const batchCountSnapshot = await getDocs(collection(db, "batches"));
-        const newBatchNumber = batchCountSnapshot.size + 1;
         
         // Deactivate all other batches in a transaction
         const activeQuery = query(batchesCollection, where("active", "==", true));
@@ -117,6 +115,9 @@ export async function startNewBatch(): Promise<{success: boolean, newBatch?: Bat
             batch.update(doc(db, "batches", docToDeactivate.id), { active: false });
         });
         await batch.commit();
+        
+        const batchCountSnapshot = await getDocs(collection(db, "batches"));
+        const newBatchNumber = batchCountSnapshot.size + 1;
 
         // Create new batch
         const newBatchData = {
@@ -163,5 +164,41 @@ export async function updateBatchName(batchId: string, newName: string): Promise
     } catch(error) {
         console.error("Error updating batch name:", error);
         return { success: false, error: "Could not update batch name." };
+    }
+}
+
+export async function getMeetingLinks(): Promise<MeetingLinks> {
+    try {
+        const settingsDocRef = doc(db, 'settings', 'meetingLinks');
+        const docSnap = await getDoc(settingsDocRef);
+
+        if (docSnap.exists()) {
+            return docSnap.data() as MeetingLinks;
+        } else {
+            return { diplomaZoomLink: '', advanceDiplomaZoomLink: '' };
+        }
+    } catch (error) {
+        console.error("Error fetching meeting links:", error);
+        return { diplomaZoomLink: '', advanceDiplomaZoomLink: '' };
+    }
+}
+
+export async function saveMeetingLinks(links: MeetingLinks): Promise<{success: boolean, error?: string}> {
+    try {
+        const settingsDocRef = doc(db, 'settings', 'meetingLinks');
+        await setDoc(settingsDocRef, links, { merge: true });
+        return { success: true };
+    } catch (error) {
+        console.error("Error saving meeting links:", error);
+        return { success: false, error: "Could not save links to the database." };
+    }
+}
+
+export async function getRedirectLink(organization: string): Promise<{link: string | null, linkName: string}> {
+    const links = await getMeetingLinks();
+    if (organization === "TE Connectivity, Shirwal") {
+        return { link: links.diplomaZoomLink, linkName: "Diploma Zoom Link" };
+    } else {
+        return { link: links.advanceDiplomaZoomLink, linkName: "Advance Diploma Zoom Link" };
     }
 }

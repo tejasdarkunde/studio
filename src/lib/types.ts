@@ -14,3 +14,8 @@ export type Batch = {
   registrations: Registration[];
   active: boolean;
 };
+
+export type MeetingLinks = {
+  diplomaZoomLink: string;
+  advanceDiplomaZoomLink: string;
+};

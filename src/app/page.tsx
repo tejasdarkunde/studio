@@ -7,32 +7,24 @@ import { RegistrationForm } from '@/components/features/registration-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { getRedirectLink } from '@/app/actions';
 
 
 export default function Home() {
   const { toast } = useToast();
 
-  const handleRegistrationSuccess = (newRegistration: Registration) => {
+  const handleRegistrationSuccess = async (newRegistration: Registration) => {
     toast({
       title: "Registration Successful!",
       description: "Your submission has been recorded. You will be redirected shortly.",
     });
 
-    let link: string | null = null;
-    let linkName = '';
-
     try {
-      if (newRegistration.organization === "TE Connectivity, Shirwal") {
-        link = localStorage.getItem('diplomaZoomLink');
-        linkName = "Diploma Zoom Link";
-      } else {
-        link = localStorage.getItem('advanceDiplomaZoomLink');
-        linkName = "Advance Diploma Zoom Link";
-      }
-
+      const { link, linkName } = await getRedirectLink(newRegistration.organization);
+      
       if (link && link.trim() !== '') {
         setTimeout(() => {
-          window.location.href = link!;
+          window.location.href = link;
         }, 2000);
       } else {
         toast({
@@ -42,11 +34,11 @@ export default function Home() {
         });
       }
     } catch (error) {
-      console.error("Error accessing local storage:", error);
+      console.error("Error fetching redirect link:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not retrieve redirect link.",
+        description: "Could not retrieve redirect link from the database.",
       });
     }
   };
