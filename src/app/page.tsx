@@ -1,48 +1,37 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import type { Registration, Batch } from '@/lib/types';
+import type { Registration } from '@/lib/types';
 import { RegistrationForm } from '@/components/features/registration-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+
 
 export default function Home() {
-  
-  const handleRegistrationSuccess = (newRegistration: Registration) => {
-    try {
-      const storedData = localStorage.getItem('eventlink-data');
-      let data: { batches: Batch[], activeBatchId: number | null } = storedData 
-        ? JSON.parse(storedData) 
-        : { batches: [], activeBatchId: null };
+  const { toast } = useToast();
 
-      if (data.activeBatchId === null && data.batches.length === 0) {
-        const newBatch: Batch = {
-            id: 1,
-            name: `Event Batch 1`,
-            createdAt: new Date(),
-            registrations: [newRegistration],
-        };
-        data.batches = [newBatch];
-        data.activeBatchId = 1;
-      } else {
-        const activeBatch = data.batches.find(b => b.id === data.activeBatchId);
-        if (activeBatch) {
-            activeBatch.registrations.push(newRegistration);
-        } else {
-           const newBatch: Batch = {
-                id: data.batches.length + 1,
-                name: `Event Batch ${data.batches.length + 1}`,
-                createdAt: new Date(),
-                registrations: [newRegistration],
-            };
-            data.batches.push(newBatch);
-            data.activeBatchId = newBatch.id;
-        }
-      }
-      localStorage.setItem('eventlink-data', JSON.stringify(data));
-    } catch (error) {
-        console.error("Failed to save registration to localStorage", error);
+  const handleRegistrationSuccess = (newRegistration: Registration) => {
+    // The server action now handles all data saving. We just need to give feedback.
+    toast({
+      title: "Registration Successful!",
+      description: "Your submission has been recorded. You will be redirected shortly.",
+    });
+
+    // Redirect logic
+    const diplomaLink = localStorage.getItem('diplomaZoomLink');
+    if (diplomaLink) {
+      // Add a small delay for the user to read the toast
+      setTimeout(() => {
+        window.location.href = diplomaLink;
+      }, 2000);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Redirect Failed",
+        description: "The Diploma Zoom link has not been set by the admin.",
+      });
     }
   };
 

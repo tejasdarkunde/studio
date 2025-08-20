@@ -5,13 +5,6 @@ import { exportToCsvV2 } from "@/lib/csv";
 import type { Registration } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -21,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import type { Timestamp } from "firebase/firestore";
 
 type RegistrationsTableProps = {
   registrations: Registration[];
@@ -46,6 +40,13 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
       description: "Your registration data is being downloaded.",
     });
   };
+
+  const toDate = (timestamp: Date | Timestamp): Date => {
+    if (timestamp instanceof Date) {
+      return timestamp;
+    }
+    return timestamp.toDate();
+  }
 
   return (
     <div className="w-full border rounded-lg p-4">
@@ -73,13 +74,13 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
           </TableHeader>
           <TableBody>
             {registrations.length > 0 ? (
-              registrations.map((reg, index) => (
-                <TableRow key={index}>
+              registrations.map((reg) => (
+                <TableRow key={reg.id}>
                   <TableCell className="font-medium">{reg.name}</TableCell>
                   <TableCell>{reg.iitpNo}</TableCell>
                   <TableCell>{reg.organization}</TableCell>
                   <TableCell>
-                    {reg.submissionTime ? new Date(reg.submissionTime).toLocaleString() : 'N/A'}
+                    {reg.submissionTime ? toDate(reg.submissionTime).toLocaleString() : 'N/A'}
                   </TableCell>
                 </TableRow>
               ))

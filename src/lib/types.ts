@@ -1,13 +1,17 @@
+import type { Timestamp } from "firebase/firestore";
+
 export type Registration = {
+  id: string;
   name: string;
   iitpNo: string;
   organization: string;
-  submissionTime: Date;
+  submissionTime: Date | Timestamp;
 };
 
 export type Batch = {
-  id: number;
+  id: string;
   name: string;
-  createdAt: Date;
+  createdAt: Date | Timestamp;
   registrations: Registration[];
+  active: boolean;
 };

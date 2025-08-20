@@ -13,10 +13,10 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Save, PlusCircle, Pencil } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { getBatches, startNewBatch, updateBatchName } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
   const [diplomaLink, setDiplomaLink] = useState('');
   const [advanceDiplomaLink, setAdvanceDiplomaLink] = useState('');
   const [isClient, setIsClient] = useState(false);
@@ -28,28 +28,24 @@ export default function AdminPage() {
 
   useEffect(() => {
     setIsClient(true);
+    if (isAuthenticated) {
+        fetchBatches();
+    }
     try {
-      const storedData = localStorage.getItem('eventlink-data');
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        if (parsedData.batches && Array.isArray(parsedData.batches)) {
-          setBatches(parsedData.batches);
-        }
-        if (parsedData.activeBatchId) {
-          setActiveBatchId(parsedData.activeBatchId);
-        }
-      }
-      
       const storedDiplomaLink = localStorage.getItem('diplomaZoomLink');
       if (storedDiplomaLink) setDiplomaLink(storedDiplomaLink);
       
       const storedAdvanceDiplomaLink = localStorage.getItem('advanceDiplomaZoomLink');
       if (storedAdvanceDiplomaLink) setAdvanceDiplomaLink(storedAdvanceDiplomaLink);
-
     } catch (error) {
       console.error("Failed to parse data from storage", error);
     }
-  }, []);
+  }, [isAuthenticated]);
+
+  const fetchBatches = async () => {
+    const fetchedBatches = await getBatches();
+    setBatches(fetchedBatches);
+  };
 
   const handleSaveLinks = () => {
     try {
@@ -69,32 +65,20 @@ export default function AdminPage() {
     }
   };
   
-  const handleStartNewBatch = () => {
-    const newBatchId = batches.length > 0 ? Math.max(...batches.map(b => b.id)) + 1 : 1;
-    const newBatch: Batch = {
-        id: newBatchId,
-        name: `Event Batch ${newBatchId}`,
-        createdAt: new Date(),
-        registrations: [],
-    };
-
-    const updatedBatches = [...batches, newBatch];
-    setBatches(updatedBatches);
-    setActiveBatchId(newBatchId);
-
-    try {
-        const dataToStore = { batches: updatedBatches, activeBatchId: newBatchId };
-        localStorage.setItem('eventlink-data', JSON.stringify(dataToStore));
+  const handleStartNewBatch = async () => {
+    const result = await startNewBatch();
+    if (result.success && result.newBatch) {
+        const newBatchName = result.newBatch.name;
         toast({
             title: "New Batch Started",
-            description: `${newBatch.name} is now active. New registrations will be added here.`,
+            description: `${newBatchName} is now active. New registrations will be added here.`,
         });
-    } catch (error) {
-        console.error("Failed to save new batch to localStorage", error);
+        fetchBatches(); // Re-fetch to get all batches including the new one.
+    } else {
         toast({
             variant: "destructive",
-            title: "Storage Error",
-            description: "Could not save the new batch.",
+            title: "Error",
+            description: result.error || "Could not start new batch.",
         });
     }
   };
@@ -113,32 +97,30 @@ export default function AdminPage() {
     setEditingBatch(batch);
   };
   
-  const handleSaveBatchName = (newName: string) => {
+  const handleSaveBatchName = async (newName: string) => {
     if (!editingBatch) return;
 
-    const updatedBatches = batches.map(b => 
-      b.id === editingBatch.id ? { ...b, name: newName } : b
-    );
-    setBatches(updatedBatches);
+    const result = await updateBatchName(editingBatch.id, newName);
 
-    try {
-        const dataToStore = { batches: updatedBatches, activeBatchId };
-        localStorage.setItem('eventlink-data', JSON.stringify(dataToStore));
-        toast({
-            title: "Batch Name Updated",
-            description: `Batch "${editingBatch.name}" was renamed to "${newName}".`,
-        });
-    } catch (error) {
-        console.error("Failed to save updated batch name to localStorage", error);
-        toast({
-            variant: "destructive",
-            title: "Storage Error",
-            description: "Could not save the updated batch name.",
-        });
+    if (result.success) {
+      toast({
+          title: "Batch Name Updated",
+          description: `Batch was renamed to "${newName}".`,
+      });
+      fetchBatches(); // Refresh batches from DB
+    } else {
+      toast({
+          variant: "destructive",
+          title: "Database Error",
+          description: result.error || "Could not save the updated batch name.",
+      });
     }
     setEditingBatch(null);
   };
-
+  
+  const activeBatch = batches.find(b => b.active);
+  const sortedBatches = [...batches].sort((a, b) => new Date(b.createdAt as Date).getTime() - new Date(a.createdAt as Date).getTime());
+  
   if (!isClient) {
     return null;
   }
@@ -176,9 +158,8 @@ export default function AdminPage() {
   }
 
   const getDefaultAccordionOpenValue = () => {
-     if (batches.length === 0) return [];
-     const activeBatch = batches.find(b => b.id === activeBatchId);
-     return activeBatch ? [`batch-${activeBatch.id}`] : [`batch-${batches[batches.length - 1].id}`]
+     if (sortedBatches.length === 0) return [];
+     return activeBatch ? [`batch-${activeBatch.id}`] : [`batch-${sortedBatches[0].id}`]
   }
 
   return (
@@ -250,9 +231,9 @@ export default function AdminPage() {
                   <CardDescription>View and export registrations for each event batch.</CardDescription>
               </CardHeader>
               <CardContent>
-                  {batches.length > 0 ? (
+                  {sortedBatches.length > 0 ? (
                       <Accordion type="multiple" defaultValue={getDefaultAccordionOpenValue()}>
-                          {[...batches].reverse().map(batch => (
+                          {sortedBatches.map(batch => (
                               <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
                                   <AccordionTrigger>
                                       <div className="flex justify-between items-center w-full pr-4">
@@ -260,26 +241,27 @@ export default function AdminPage() {
                                           <span>
                                               {batch.name} ({batch.registrations.length} registrations)
                                           </span>
-                                          {batch.id === activeBatchId && <span className="ml-2 text-xs font-semibold text-primary py-0.5 px-2 bg-primary/10 rounded-full">Active</span>}
+                                          {batch.active && <span className="ml-2 text-xs font-semibold text-primary py-0.5 px-2 bg-primary/10 rounded-full">Active</span>}
                                         </div>
-                                        <span className="text-sm text-muted-foreground">
-                                            Created: {new Date(batch.createdAt).toLocaleDateString()}
-                                        </span>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-sm text-muted-foreground">
+                                                Created: {new Date(batch.createdAt as Date).toLocaleDateString()}
+                                            </span>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation(); 
+                                                  handleEditBatchName(batch)
+                                                }}
+                                                className="h-8 w-auto px-2"
+                                            >
+                                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                                            </Button>
+                                        </div>
                                       </div>
                                   </AccordionTrigger>
                                   <AccordionContent>
-                                      <div className="flex items-center justify-end p-2 border-b">
-                                          <Button 
-                                              variant="ghost" 
-                                              size="sm"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEditBatchName(batch)
-                                              }}
-                                          >
-                                              <Pencil className="mr-2 h-4 w-4" /> Edit Batch Name
-                                          </Button>
-                                      </div>
                                       <RegistrationsTable 
                                           registrations={batch.registrations}
                                           batchName={batch.name}
