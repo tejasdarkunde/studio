@@ -74,20 +74,22 @@ export async function getBatches(): Promise<Batch[]> {
                 const regSnapshot = await getDocs(registrationsCollection);
                 const registrations: Registration[] = regSnapshot.docs.map(regDoc => {
                     const data = regDoc.data();
+                    const submissionTime = data.submissionTime as Timestamp;
                     return {
                         id: regDoc.id,
                         name: data.name,
                         iitpNo: data.iitpNo,
                         organization: data.organization,
-                        submissionTime: (data.submissionTime as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+                        submissionTime: submissionTime?.toDate().toISOString() || new Date().toISOString(),
                     } as Registration;
                 });
 
                 const batchData = batchDoc.data();
+                const createdAt = batchData.createdAt as Timestamp;
                 return {
                     id: batchDoc.id,
                     name: batchData.name,
-                    createdAt: (batchData.createdAt as Timestamp)?.toDate().toISOString(),
+                    createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                     registrations,
                     active: batchData.active,
                 };
