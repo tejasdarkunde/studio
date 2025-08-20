@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Save, PlusCircle, Pencil } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { getBatches, startNewBatch, updateBatchName } from '@/app/actions';
+import { startNewBatch, updateBatchName } from '@/app/actions';
+import { getBatches } from '@/app/data/get-batches';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -26,6 +27,11 @@ export default function AdminPage() {
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const { toast } = useToast();
 
+  const fetchBatches = async () => {
+    const fetchedBatches = await getBatches();
+    setBatches(fetchedBatches);
+  };
+  
   useEffect(() => {
     setIsClient(true);
     if (isAuthenticated) {
@@ -41,11 +47,6 @@ export default function AdminPage() {
       console.error("Failed to parse data from storage", error);
     }
   }, [isAuthenticated]);
-
-  const fetchBatches = async () => {
-    const fetchedBatches = await getBatches();
-    setBatches(fetchedBatches);
-  };
 
   const handleSaveLinks = () => {
     try {
@@ -120,7 +121,7 @@ export default function AdminPage() {
   };
   
   const activeBatch = batches.find(b => b.active);
-  const sortedBatches = batches; // Already sorted by action
+  const sortedBatches = batches; // The new getBatches function already sorts
   
   if (!isClient) {
     return null;
