@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -16,11 +17,19 @@ export default function AdminPage() {
   const [diplomaLink, setDiplomaLink] = useState('');
   const [advanceDiplomaLink, setAdvanceDiplomaLink] = useState('');
   const [isClient, setIsClient] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
     setIsClient(true);
     try {
+      const storedAuth = sessionStorage.getItem('isAdminAuthenticated');
+      if (storedAuth === 'true') {
+        setIsAuthenticated(true);
+      }
+
       const storedRegistrations = localStorage.getItem('eventlink-registrations');
       if (storedRegistrations) {
         const parsedRegistrations = JSON.parse(storedRegistrations);
@@ -35,7 +44,7 @@ export default function AdminPage() {
       if (storedAdvanceDiplomaLink) setAdvanceDiplomaLink(storedAdvanceDiplomaLink);
 
     } catch (error) {
-      console.error("Failed to parse data from localStorage", error);
+      console.error("Failed to parse data from storage", error);
     }
   }, []);
 
@@ -57,6 +66,56 @@ export default function AdminPage() {
     }
   };
 
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === 'Bsa@123') {
+      setIsAuthenticated(true);
+      setError('');
+      try {
+        sessionStorage.setItem('isAdminAuthenticated', 'true');
+      } catch (error) {
+        console.error("Could not save auth state to sessionStorage", error);
+      }
+    } else {
+      setError('Incorrect password. Please try again.');
+    }
+  };
+
+  if (!isClient) {
+    return null; // Or a loading spinner
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Admin Access</CardTitle>
+            <CardDescription>Please enter the password to view this page.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input 
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  autoFocus
+                />
+              </div>
+              {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+              <Button type="submit" className="w-full">
+                Login
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className="container mx-auto p-4 md:p-8">
