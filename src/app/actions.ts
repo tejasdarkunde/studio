@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, Timestamp, getDoc } from "firebase/firestore";
 import type { Registration, Batch } from "@/lib/types";
 
 const registrationSchema = z.object({
@@ -104,37 +104,44 @@ export async function getBatches(): Promise<Batch[]> {
 
 export async function startNewBatch(): Promise<{success: boolean, newBatch?: Batch, error?: string}> {
     try {
-        const batch = writeBatch(db);
         const batchesCollection = collection(db, "batches");
         
         // Deactivate all other batches
         const q = query(batchesCollection, where("active", "==", true));
         const activeDocs = await getDocs(q);
-        activeDocs.forEach(doc => {
-            batch.update(doc.ref, { active: false });
-        });
+        
+        const deactivationPromises = activeDocs.docs.map(docToDeactivate => 
+            updateDoc(doc(db, "batches", docToDeactivate.id), { active: false })
+        );
+        await Promise.all(deactivationPromises);
 
         // Create new batch
         const batchCountSnapshot = await getDocs(collection(db, "batches"));
         const newBatchNumber = batchCountSnapshot.size + 1;
-        const newBatchRef = doc(collection(db, "batches"));
         
         const newBatchData = {
             name: `Event Batch ${newBatchNumber}`,
             createdAt: serverTimestamp(),
             active: true,
         };
-        batch.set(newBatchRef, newBatchData);
+
+        const newBatchRef = await addDoc(batchesCollection, newBatchData);
+        const newBatchSnapshot = await getDoc(newBatchRef);
+        const createdBatch = newBatchSnapshot.data();
+
+        if (!createdBatch) {
+            throw new Error("Failed to retrieve the new batch after creation.");
+        }
         
-        await batch.commit();
+        const createdAt = createdBatch.createdAt as Timestamp;
 
         return {
           success: true,
           newBatch: {
             id: newBatchRef.id,
-            name: newBatchData.name,
-            createdAt: new Date().toISOString(),
-            active: newBatchData.active,
+            name: createdBatch.name,
+            createdAt: createdAt.toDate().toISOString(),
+            active: createdBatch.active,
             registrations: [],
           },
         };
