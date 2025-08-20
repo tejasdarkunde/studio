@@ -25,10 +25,7 @@ export default function AdminPage() {
   useEffect(() => {
     setIsClient(true);
     try {
-      const storedAuth = sessionStorage.getItem('isAdminAuthenticated');
-      if (storedAuth === 'true') {
-        setIsAuthenticated(true);
-      }
+      // Authentication state is no longer stored, so it's not checked here.
 
       const storedRegistrations = localStorage.getItem('eventlink-registrations');
       if (storedRegistrations) {
@@ -71,11 +68,7 @@ export default function AdminPage() {
     if (password === 'Bsa@123') {
       setIsAuthenticated(true);
       setError('');
-      try {
-        sessionStorage.setItem('isAdminAuthenticated', 'true');
-      } catch (error) {
-        console.error("Could not save auth state to sessionStorage", error);
-      }
+      // No longer saving auth state to sessionStorage
     } else {
       setError('Incorrect password. Please try again.');
     }
