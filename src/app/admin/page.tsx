@@ -120,7 +120,7 @@ export default function AdminPage() {
   };
   
   const activeBatch = batches.find(b => b.active);
-  const sortedBatches = batches;
+  const sortedBatches = batches; // Already sorted by action
   
   if (!isClient) {
     return null;
@@ -160,7 +160,8 @@ export default function AdminPage() {
 
   const getDefaultAccordionOpenValue = () => {
      if (sortedBatches.length === 0) return [];
-     return activeBatch ? [`batch-${activeBatch.id}`] : [`batch-${sortedBatches[0].id}`]
+     const defaultOpenId = activeBatch ? activeBatch.id : sortedBatches[0].id;
+     return [`batch-${defaultOpenId}`];
   }
 
   return (

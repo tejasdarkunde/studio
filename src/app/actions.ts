@@ -1,8 +1,9 @@
+
 "use server";
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, getDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, Timestamp } from "firebase/firestore";
 import type { Registration, Batch } from "@/lib/types";
 
 const registrationSchema = z.object({
@@ -53,7 +54,7 @@ export async function registerForMeeting(
     const finalRegistration: Registration = {
         id: docRef.id,
         ...validatedFields.data,
-        submissionTime: new Date(), 
+        submissionTime: new Date().toISOString(), 
     };
 
     return { success: true, registration: finalRegistration };
@@ -63,27 +64,6 @@ export async function registerForMeeting(
   }
 }
 
-const toDate = (timestamp: any): Date => {
-  if (timestamp instanceof Date) {
-      return timestamp;
-  }
-  if (timestamp instanceof Timestamp) {
-      return timestamp.toDate();
-  }
-  // Fallback for serialized data or other formats
-  if (typeof timestamp === 'object' && timestamp.seconds) {
-      return new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
-  }
-  // If it's already a string or number that can be parsed
-  const d = new Date(timestamp);
-  if (!isNaN(d.getTime())) {
-    return d;
-  }
-  // Return current date as a last resort if conversion fails
-  return new Date();
-};
-
-
 export async function getBatches(): Promise<Batch[]> {
     try {
         const batchesCollection = collection(db, "batches");
@@ -92,22 +72,28 @@ export async function getBatches(): Promise<Batch[]> {
             batchSnapshot.docs.map(async (batchDoc) => {
                 const registrationsCollection = collection(db, `batches/${batchDoc.id}/registrations`);
                 const regSnapshot = await getDocs(registrationsCollection);
-                const registrations: Registration[] = regSnapshot.docs.map(regDoc => ({
-                    id: regDoc.id,
-                    ...regDoc.data(),
-                    submissionTime: toDate(regDoc.data().submissionTime),
-                } as Registration));
+                const registrations: Registration[] = regSnapshot.docs.map(regDoc => {
+                    const data = regDoc.data();
+                    return {
+                        id: regDoc.id,
+                        name: data.name,
+                        iitpNo: data.iitpNo,
+                        organization: data.organization,
+                        submissionTime: (data.submissionTime as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+                    } as Registration;
+                });
 
+                const batchData = batchDoc.data();
                 return {
                     id: batchDoc.id,
-                    name: batchDoc.data().name,
-                    createdAt: toDate(batchDoc.data().createdAt),
+                    name: batchData.name,
+                    createdAt: (batchData.createdAt as Timestamp)?.toDate().toISOString(),
                     registrations,
-                    active: batchDoc.data().active,
+                    active: batchData.active,
                 };
             })
         );
-        return batches.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        return batches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
         console.error("Error fetching batches:", error);
         return [];
@@ -144,8 +130,9 @@ export async function startNewBatch(): Promise<{success: boolean, newBatch?: Bat
           success: true,
           newBatch: {
             id: newBatchRef.id,
-            ...newBatchData,
-            createdAt: new Date(),
+            name: newBatchData.name,
+            createdAt: new Date().toISOString(),
+            active: newBatchData.active,
             registrations: [],
           },
         };

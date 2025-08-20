@@ -1,6 +1,6 @@
+
 "use client";
 
-import { useState } from 'react';
 import Link from 'next/link';
 import type { Registration } from '@/lib/types';
 import { RegistrationForm } from '@/components/features/registration-form';
@@ -18,26 +18,35 @@ export default function Home() {
       description: "Your submission has been recorded. You will be redirected shortly.",
     });
 
-    let link = null;
+    let link: string | null = null;
     let linkName = '';
 
-    if (newRegistration.organization === "TE Connectivity, Shirwal") {
-      link = localStorage.getItem('diplomaZoomLink');
-      linkName = "Diploma Zoom Link";
-    } else {
-      link = localStorage.getItem('advanceDiplomaZoomLink');
-      linkName = "Advance Diploma Zoom Link";
-    }
+    try {
+      if (newRegistration.organization === "TE Connectivity, Shirwal") {
+        link = localStorage.getItem('diplomaZoomLink');
+        linkName = "Diploma Zoom Link";
+      } else {
+        link = localStorage.getItem('advanceDiplomaZoomLink');
+        linkName = "Advance Diploma Zoom Link";
+      }
 
-    if (link) {
-      setTimeout(() => {
-        window.location.href = link!;
-      }, 2000);
-    } else {
+      if (link && link.trim() !== '') {
+        setTimeout(() => {
+          window.location.href = link!;
+        }, 2000);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Redirect Failed",
+          description: `The ${linkName} has not been set by the admin. Please contact support.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error accessing local storage:", error);
       toast({
         variant: "destructive",
-        title: "Redirect Failed",
-        description: `The ${linkName} has not been set by the admin.`,
+        title: "Error",
+        description: "Could not retrieve redirect link.",
       });
     }
   };

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Download } from "lucide-react";
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Timestamp } from "firebase/firestore";
 
 type RegistrationsTableProps = {
   registrations: Registration[];
@@ -40,16 +40,6 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
       description: "Your registration data is being downloaded.",
     });
   };
-
-   const toDate = (timestamp: Date | Timestamp): Date => {
-    if (timestamp instanceof Date) {
-        return timestamp;
-    }
-    if (timestamp instanceof Timestamp) {
-        return timestamp.toDate();
-    }
-    return new Date(timestamp);
-  }
 
   return (
     <div className="w-full border rounded-lg p-4">
@@ -83,7 +73,7 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
                   <TableCell>{reg.iitpNo}</TableCell>
                   <TableCell>{reg.organization}</TableCell>
                   <TableCell>
-                    {reg.submissionTime ? toDate(reg.submissionTime).toLocaleString() : 'N/A'}
+                    {reg.submissionTime ? new Date(reg.submissionTime).toLocaleString() : 'N/A'}
                   </TableCell>
                 </TableRow>
               ))

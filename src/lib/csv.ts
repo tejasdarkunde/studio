@@ -1,5 +1,5 @@
+
 import type { Registration } from './types';
-import { Timestamp } from 'firebase/firestore';
 
 const keyToHeaderMap: { [K in keyof Omit<Registration, 'id'>]: string } = {
   name: "Name",
@@ -13,17 +13,6 @@ export function exportToCsvV2(registrations: Registration[], fileName: string = 
     console.warn("No data to export.");
     return;
   }
-  
-  const toDate = (timestamp: Date | Timestamp): Date => {
-    if (timestamp instanceof Date) {
-      return timestamp;
-    }
-    if (timestamp instanceof Timestamp) {
-        return timestamp.toDate();
-    }
-    return new Date(timestamp);
-  }
-
 
   const headers = Object.values(keyToHeaderMap);
   const keys = Object.keys(keyToHeaderMap) as (keyof Omit<Registration, 'id'>)[];
@@ -32,7 +21,7 @@ export function exportToCsvV2(registrations: Registration[], fileName: string = 
     return keys.map(key => {
       let value: any = registration[key];
       if (key === 'submissionTime' && value) {
-        value = toDate(value).toLocaleString();
+        value = new Date(value).toLocaleString();
       }
       const stringValue = String(value || '');
       // Handle values that contain commas, quotes, or newlines
