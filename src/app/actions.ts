@@ -60,7 +60,7 @@ export async function registerForMeeting(
     return { success: true, registration: finalRegistration };
   } catch (error) {
     console.error("Error creating registration:", error);
-    return { success: false, error: "Failed to register. Please try again." };
+    return { success: false, error: "Failed to register. Please check your Firestore security rules and configuration." };
   }
 }
 
@@ -81,7 +81,7 @@ export async function getBatches(): Promise<Batch[]> {
                         iitpNo: data.iitpNo,
                         organization: data.organization,
                         submissionTime: submissionTime?.toDate().toISOString() || new Date().toISOString(),
-                    } as Registration;
+                    };
                 });
 
                 const batchData = batchDoc.data();
@@ -105,20 +105,20 @@ export async function getBatches(): Promise<Batch[]> {
 export async function startNewBatch(): Promise<{success: boolean, newBatch?: Batch, error?: string}> {
     try {
         const batchesCollection = collection(db, "batches");
-        
-        // Deactivate all other batches
-        const q = query(batchesCollection, where("active", "==", true));
-        const activeDocs = await getDocs(q);
-        
-        const deactivationPromises = activeDocs.docs.map(docToDeactivate => 
-            updateDoc(doc(db, "batches", docToDeactivate.id), { active: false })
-        );
-        await Promise.all(deactivationPromises);
-
-        // Create new batch
         const batchCountSnapshot = await getDocs(collection(db, "batches"));
         const newBatchNumber = batchCountSnapshot.size + 1;
         
+        // Deactivate all other batches in a transaction
+        const activeQuery = query(batchesCollection, where("active", "==", true));
+        const activeDocs = await getDocs(activeQuery);
+        
+        const batch = writeBatch(db);
+        activeDocs.forEach(docToDeactivate => {
+            batch.update(doc(db, "batches", docToDeactivate.id), { active: false });
+        });
+        await batch.commit();
+
+        // Create new batch
         const newBatchData = {
             name: `Event Batch ${newBatchNumber}`,
             createdAt: serverTimestamp(),
@@ -148,7 +148,7 @@ export async function startNewBatch(): Promise<{success: boolean, newBatch?: Bat
 
     } catch(error) {
         console.error("Error starting new batch:", error);
-        return {success: false, error: "Could not start new batch."}
+        return {success: false, error: "Could not start new batch. Check Firestore rules."}
     }
 }
 

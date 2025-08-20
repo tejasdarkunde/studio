@@ -13,8 +13,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Save, PlusCircle, Pencil } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { startNewBatch, updateBatchName } from '@/app/actions';
-import { getBatches } from '@/app/data/get-batches';
+import { startNewBatch, updateBatchName, getBatches } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -121,7 +120,7 @@ export default function AdminPage() {
   };
   
   const activeBatch = batches.find(b => b.active);
-  const sortedBatches = batches; // The new getBatches function already sorts
+  const sortedBatches = batches;
   
   if (!isClient) {
     return null;
