@@ -1,6 +1,6 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
 import { exportToCsvV2 } from "@/lib/csv";
 import type { Registration } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,14 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 type RegistrationsTableProps = {
   registrations: Registration[];
+  onEdit: (registration: Registration) => void;
 };
 
-export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
+export function RegistrationsTable({ registrations, onEdit }: RegistrationsTableProps) {
   const { toast } = useToast();
   
   const handleExport = () => {
@@ -44,6 +46,8 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
       description: "Your registration data is being downloaded.",
     });
   };
+  
+  const isDefaultLink = (link: string) => link.includes('https://meet.google.com/default');
 
   return (
     <Card className="h-full">
@@ -67,7 +71,9 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                 <TableHead>Name</TableHead>
                 <TableHead>IITP No</TableHead>
                 <TableHead>Organization</TableHead>
+                <TableHead>Meeting Link</TableHead>
                 <TableHead>Submission Time</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -78,13 +84,26 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                     <TableCell>{reg.iitpNo}</TableCell>
                     <TableCell>{reg.organization}</TableCell>
                     <TableCell>
+                      {isDefaultLink(reg.meetingLink) ? (
+                        <Badge variant="secondary">Default</Badge>
+                      ) : (
+                        <Badge variant="default">Custom</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       {reg.submissionTime ? new Date(reg.submissionTime).toLocaleString() : 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => onEdit(reg)}>
+                        <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No registrations yet.
                   </TableCell>
                 </TableRow>

@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import type { Registration } from '@/lib/types';
 import { RegistrationForm } from '@/components/features/registration-form';
 import { RegistrationsTable } from '@/components/features/registrations-table';
+import { EditRegistrationDialog } from '@/components/features/edit-registration-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 
 export default function Home() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [editingRegistration, setEditingRegistration] = useState<Registration | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -37,6 +38,17 @@ export default function Home() {
     setRegistrations(prev => [...prev, newRegistration]);
   };
 
+  const handleUpdateRegistration = (updatedRegistration: Registration) => {
+    setRegistrations(prev => 
+      prev.map(reg => 
+        reg.submissionTime === updatedRegistration.submissionTime && reg.iitpNo === updatedRegistration.iitpNo 
+        ? updatedRegistration 
+        : reg
+      )
+    );
+    setEditingRegistration(null);
+  };
+
   return (
     <main className="container mx-auto p-4 md:p-8">
       <div className="flex flex-col items-center justify-center text-center mb-8 md:mb-12">
@@ -61,9 +73,20 @@ export default function Home() {
           </Card>
         </div>
         <div className="lg:col-span-3">
-          <RegistrationsTable registrations={registrations} />
+          <RegistrationsTable 
+            registrations={registrations}
+            onEdit={setEditingRegistration}
+          />
         </div>
       </div>
+      
+      {editingRegistration && (
+        <EditRegistrationDialog
+          registration={editingRegistration}
+          onSave={handleUpdateRegistration}
+          onOpenChange={(isOpen) => !isOpen && setEditingRegistration(null)}
+        />
+      )}
     </main>
   );
 }
