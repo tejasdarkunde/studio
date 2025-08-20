@@ -4,3 +4,10 @@ export type Registration = {
   organization: string;
   submissionTime: Date;
 };
+
+export type Batch = {
+  id: number;
+  name: string;
+  createdAt: Date;
+  registrations: Registration[];
+};

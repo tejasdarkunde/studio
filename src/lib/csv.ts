@@ -1,6 +1,5 @@
 import type { Registration } from './types';
 
-// A more robust way to map object keys to CSV headers
 const keyToHeaderMap = {
   name: "Name",
   iitpNo: "IITP No",

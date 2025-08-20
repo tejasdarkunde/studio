@@ -2,42 +2,48 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import type { Registration } from '@/lib/types';
+import type { Registration, Batch } from '@/lib/types';
 import { RegistrationForm } from '@/components/features/registration-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
+  
+  const handleRegistrationSuccess = (newRegistration: Registration) => {
     try {
-      const storedRegistrations = localStorage.getItem('eventlink-registrations');
-      if (storedRegistrations) {
-        const parsedRegistrations = JSON.parse(storedRegistrations);
-        if (Array.isArray(parsedRegistrations)) {
-            setRegistrations(parsedRegistrations);
+      const storedData = localStorage.getItem('eventlink-data');
+      let data: { batches: Batch[], activeBatchId: number | null } = storedData 
+        ? JSON.parse(storedData) 
+        : { batches: [], activeBatchId: null };
+
+      if (data.activeBatchId === null && data.batches.length === 0) {
+        const newBatch: Batch = {
+            id: 1,
+            name: `Event Batch 1`,
+            createdAt: new Date(),
+            registrations: [newRegistration],
+        };
+        data.batches = [newBatch];
+        data.activeBatchId = 1;
+      } else {
+        const activeBatch = data.batches.find(b => b.id === data.activeBatchId);
+        if (activeBatch) {
+            activeBatch.registrations.push(newRegistration);
+        } else {
+           const newBatch: Batch = {
+                id: data.batches.length + 1,
+                name: `Event Batch ${data.batches.length + 1}`,
+                createdAt: new Date(),
+                registrations: [newRegistration],
+            };
+            data.batches.push(newBatch);
+            data.activeBatchId = newBatch.id;
         }
       }
+      localStorage.setItem('eventlink-data', JSON.stringify(data));
     } catch (error) {
-      console.error("Failed to parse registrations from localStorage", error);
+        console.error("Failed to save registration to localStorage", error);
     }
-  }, []);
-
-  useEffect(() => {
-    if (isClient) {
-      try {
-        localStorage.setItem('eventlink-registrations', JSON.stringify(registrations));
-      } catch (error) {
-        console.error("Failed to save registrations to localStorage", error);
-      }
-    }
-  }, [registrations, isClient]);
-
-  const handleRegistrationSuccess = (newRegistration: Registration) => {
-    setRegistrations(prev => [...prev, newRegistration]);
   };
 
   return (

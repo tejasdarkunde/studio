@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Registration } from '@/lib/types';
+import type { Batch } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -10,10 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Save } from 'lucide-react';
+import { Save, PlusCircle } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function AdminPage() {
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [activeBatchId, setActiveBatchId] = useState<number | null>(null);
   const [diplomaLink, setDiplomaLink] = useState('');
   const [advanceDiplomaLink, setAdvanceDiplomaLink] = useState('');
   const [isClient, setIsClient] = useState(false);
@@ -25,15 +26,17 @@ export default function AdminPage() {
   useEffect(() => {
     setIsClient(true);
     try {
-      // Authentication state is no longer stored, so it's not checked here.
-
-      const storedRegistrations = localStorage.getItem('eventlink-registrations');
-      if (storedRegistrations) {
-        const parsedRegistrations = JSON.parse(storedRegistrations);
-        if (Array.isArray(parsedRegistrations)) {
-            setRegistrations(parsedRegistrations);
+      const storedData = localStorage.getItem('eventlink-data');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        if (parsedData.batches && Array.isArray(parsedData.batches)) {
+          setBatches(parsedData.batches);
+        }
+        if (parsedData.activeBatchId) {
+          setActiveBatchId(parsedData.activeBatchId);
         }
       }
+      
       const storedDiplomaLink = localStorage.getItem('diplomaZoomLink');
       if (storedDiplomaLink) setDiplomaLink(storedDiplomaLink);
       
@@ -62,20 +65,49 @@ export default function AdminPage() {
       console.error("Failed to save links to localStorage", error);
     }
   };
+  
+  const handleStartNewBatch = () => {
+    const newBatchId = batches.length > 0 ? Math.max(...batches.map(b => b.id)) + 1 : 1;
+    const newBatch: Batch = {
+        id: newBatchId,
+        name: `Event Batch ${newBatchId}`,
+        createdAt: new Date(),
+        registrations: [],
+    };
+
+    const updatedBatches = [...batches, newBatch];
+    setBatches(updatedBatches);
+    setActiveBatchId(newBatchId);
+
+    try {
+        const dataToStore = { batches: updatedBatches, activeBatchId: newBatchId };
+        localStorage.setItem('eventlink-data', JSON.stringify(dataToStore));
+        toast({
+            title: "New Batch Started",
+            description: `${newBatch.name} is now active. New registrations will be added here.`,
+        });
+    } catch (error) {
+        console.error("Failed to save new batch to localStorage", error);
+        toast({
+            variant: "destructive",
+            title: "Storage Error",
+            description: "Could not save the new batch.",
+        });
+    }
+  };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === 'Bsa@123') {
       setIsAuthenticated(true);
       setError('');
-      // No longer saving auth state to sessionStorage
     } else {
       setError('Incorrect password. Please try again.');
     }
   };
 
   if (!isClient) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   if (!isAuthenticated) {
@@ -110,6 +142,12 @@ export default function AdminPage() {
     );
   }
 
+  const getDefaultAccordionOpenValue = () => {
+     if (batches.length === 0) return [];
+     const activeBatch = batches.find(b => b.id === activeBatchId);
+     return activeBatch ? [`batch-${activeBatch.id}`] : [`batch-${batches[batches.length - 1].id}`]
+  }
+
   return (
     <main className="container mx-auto p-4 md:p-8">
        <div className="flex justify-between items-center mb-8 md:mb-12">
@@ -129,10 +167,16 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 gap-8">
         <Card>
           <CardHeader>
-            <CardTitle>Meeting Links</CardTitle>
-            <CardDescription>Manage the Zoom links for the events.</CardDescription>
+            <CardTitle>Event &amp; Meeting Settings</CardTitle>
+            <CardDescription>Manage event batches and Zoom links.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+                <Button onClick={handleStartNewBatch} className="w-full sm:w-auto">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Start New Event Batch
+                </Button>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="diploma-link">Diploma Zoom Link</Label>
               <Input 
@@ -158,11 +202,43 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <div className="w-full">
-            <RegistrationsTable 
-                registrations={registrations}
-            />
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Registrations by Batch</CardTitle>
+                <CardDescription>View and export registrations for each event batch.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {batches.length > 0 ? (
+                    <Accordion type="multiple" defaultValue={getDefaultAccordionOpenValue()}>
+                        {batches.map(batch => (
+                            <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
+                                <AccordionTrigger>
+                                    <div className="flex justify-between items-center w-full pr-4">
+                                      <span>
+                                          {batch.name} ({batch.registrations.length} registrations)
+                                          {batch.id === activeBatchId && <span className="ml-2 text-xs font-semibold text-primary py-0.5 px-2 bg-primary/10 rounded-full">Active</span>}
+                                      </span>
+                                      <span className="text-sm text-muted-foreground">
+                                          Created: {new Date(batch.createdAt).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <RegistrationsTable 
+                                        registrations={batch.registrations}
+                                        batchName={batch.name}
+                                    />
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                ) : (
+                    <div className="text-center text-muted-foreground p-8">
+                        No registration batches found. Start a new batch to begin collecting registrations.
+                    </div>
+                )}
+            </CardContent>
+        </Card>
       </div>
     </main>
   );

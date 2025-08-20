@@ -24,9 +24,10 @@ import { useToast } from "@/hooks/use-toast";
 
 type RegistrationsTableProps = {
   registrations: Registration[];
+  batchName?: string;
 };
 
-export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
+export function RegistrationsTable({ registrations, batchName }: RegistrationsTableProps) {
   const { toast } = useToast();
   
   const handleExport = () => {
@@ -38,7 +39,8 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
       });
       return;
     }
-    exportToCsvV2(registrations, `eventlink_registrations_${new Date().toISOString().split('T')[0]}.csv`);
+    const safeBatchName = batchName ? batchName.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'all';
+    exportToCsvV2(registrations, `eventlink_${safeBatchName}_${new Date().toISOString().split('T')[0]}.csv`);
     toast({
       title: "Export Started",
       description: "Your registration data is being downloaded.",
@@ -46,53 +48,51 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
   };
 
   return (
-    <Card className="h-full">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <div className="w-full border rounded-lg p-4">
+       <div className="flex flex-row items-center justify-between pb-4">
         <div className="space-y-1">
-          <CardTitle>Recent Registrations</CardTitle>
-          <CardDescription>
-            View and export registered attendees.
-          </CardDescription>
+          <h3 className="text-lg font-semibold">{batchName || "Registrations"}</h3>
+           <p className="text-sm text-muted-foreground">
+            {registrations.length} attendee(s) registered in this batch.
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={handleExport} disabled={registrations.length === 0}>
           <Download className="mr-2 h-4 w-4" />
           Export CSV
         </Button>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>IITP No</TableHead>
-                <TableHead>Organization</TableHead>
-                <TableHead>Submission Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {registrations.length > 0 ? (
-                registrations.map((reg, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{reg.name}</TableCell>
-                    <TableCell>{reg.iitpNo}</TableCell>
-                    <TableCell>{reg.organization}</TableCell>
-                    <TableCell>
-                      {reg.submissionTime ? new Date(reg.submissionTime).toLocaleString() : 'N/A'}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    No registrations yet.
+      </div>
+      <ScrollArea className="h-[400px]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>IITP No</TableHead>
+              <TableHead>Organization</TableHead>
+              <TableHead>Submission Time</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {registrations.length > 0 ? (
+              registrations.map((reg, index) => (
+                <TableRow key={index}>
+                  <TableCell className="font-medium">{reg.name}</TableCell>
+                  <TableCell>{reg.iitpNo}</TableCell>
+                  <TableCell>{reg.organization}</TableCell>
+                  <TableCell>
+                    {reg.submissionTime ? new Date(reg.submissionTime).toLocaleString() : 'N/A'}
                   </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">
+                  No registrations yet for this batch.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    </div>
   );
 }
