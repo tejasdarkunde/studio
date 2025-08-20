@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import type { Timestamp } from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 
 type RegistrationsTableProps = {
   registrations: Registration[];
@@ -41,11 +41,14 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
     });
   };
 
-  const toDate = (timestamp: Date | Timestamp): Date => {
+   const toDate = (timestamp: Date | Timestamp): Date => {
     if (timestamp instanceof Date) {
-      return timestamp;
+        return timestamp;
     }
-    return timestamp.toDate();
+    if (timestamp instanceof Timestamp) {
+        return timestamp.toDate();
+    }
+    return new Date(timestamp);
   }
 
   return (
@@ -73,7 +76,7 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
             </TableRow>
           </TableHeader>
           <TableBody>
-            {registrations.length > 0 ? (
+            {registrations && registrations.length > 0 ? (
               registrations.map((reg) => (
                 <TableRow key={reg.id}>
                   <TableCell className="font-medium">{reg.name}</TableCell>

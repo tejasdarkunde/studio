@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, getDoc, Timestamp } from "firebase/firestore";
 import type { Registration, Batch } from "@/lib/types";
 
 const registrationSchema = z.object({
@@ -42,13 +42,13 @@ export async function registerForMeeting(
       activeBatchId = querySnapshot.docs[0].id;
     }
 
-    const newRegistration: Omit<Registration, 'id' | 'submissionTime'> & { submissionTime: any } = {
+    const newRegistrationData = {
       ...validatedFields.data,
       submissionTime: serverTimestamp(),
     };
     
     const registrationsCollection = collection(db, `batches/${activeBatchId}/registrations`);
-    const docRef = await addDoc(registrationsCollection, newRegistration);
+    const docRef = await addDoc(registrationsCollection, newRegistrationData);
 
     const finalRegistration: Registration = {
         id: docRef.id,
@@ -63,6 +63,27 @@ export async function registerForMeeting(
   }
 }
 
+const toDate = (timestamp: any): Date => {
+  if (timestamp instanceof Date) {
+      return timestamp;
+  }
+  if (timestamp instanceof Timestamp) {
+      return timestamp.toDate();
+  }
+  // Fallback for serialized data or other formats
+  if (typeof timestamp === 'object' && timestamp.seconds) {
+      return new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
+  }
+  // If it's already a string or number that can be parsed
+  const d = new Date(timestamp);
+  if (!isNaN(d.getTime())) {
+    return d;
+  }
+  // Return current date as a last resort if conversion fails
+  return new Date();
+};
+
+
 export async function getBatches(): Promise<Batch[]> {
     try {
         const batchesCollection = collection(db, "batches");
@@ -74,18 +95,19 @@ export async function getBatches(): Promise<Batch[]> {
                 const registrations: Registration[] = regSnapshot.docs.map(regDoc => ({
                     id: regDoc.id,
                     ...regDoc.data(),
-                    submissionTime: (regDoc.data().submissionTime as any).toDate(),
+                    submissionTime: toDate(regDoc.data().submissionTime),
                 } as Registration));
 
                 return {
                     id: batchDoc.id,
-                    ...batchDoc.data(),
-                    createdAt: (batchDoc.data().createdAt as any).toDate(),
+                    name: batchDoc.data().name,
+                    createdAt: toDate(batchDoc.data().createdAt),
                     registrations,
-                } as Batch;
+                    active: batchDoc.data().active,
+                };
             })
         );
-        return batches;
+        return batches.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     } catch (error) {
         console.error("Error fetching batches:", error);
         return [];
@@ -105,29 +127,29 @@ export async function startNewBatch(): Promise<{success: boolean, newBatch?: Bat
         });
 
         // Create new batch
-        const newBatchId = doc(collection(db, "batches")).id;
+        const batchCountSnapshot = await getDocs(collection(db, "batches"));
+        const newBatchNumber = batchCountSnapshot.size + 1;
+        const newBatchRef = doc(collection(db, "batches"));
+        
         const newBatchData = {
-            name: `Event Batch ${activeDocs.size + 1}`,
+            name: `Event Batch ${newBatchNumber}`,
             createdAt: serverTimestamp(),
             active: true,
         };
-        batch.set(doc(batchesCollection, newBatchId), newBatchData);
+        batch.set(newBatchRef, newBatchData);
         
         await batch.commit();
 
-        const newBatchDoc = await getDoc(doc(batchesCollection, newBatchId));
-        if (newBatchDoc.exists()) {
-             return {
-                success: true,
-                newBatch: {
-                    id: newBatchDoc.id,
-                    ...newBatchDoc.data(),
-                    createdAt: new Date(),
-                    registrations: [],
-                } as Batch,
-            };
-        }
-        return { success: false, error: "Failed to retrieve new batch." };
+        return {
+          success: true,
+          newBatch: {
+            id: newBatchRef.id,
+            ...newBatchData,
+            createdAt: new Date(),
+            registrations: [],
+          },
+        };
+
     } catch(error) {
         console.error("Error starting new batch:", error);
         return {success: false, error: "Could not start new batch."}
@@ -135,6 +157,9 @@ export async function startNewBatch(): Promise<{success: boolean, newBatch?: Bat
 }
 
 export async function updateBatchName(batchId: string, newName: string): Promise<{success: boolean, error?: string}> {
+    if (!newName.trim()) {
+        return { success: false, error: "Batch name cannot be empty." };
+    }
     try {
         const batchDocRef = doc(db, 'batches', batchId);
         await updateDoc(batchDocRef, { name: newName });

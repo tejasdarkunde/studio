@@ -13,24 +13,31 @@ export default function Home() {
   const { toast } = useToast();
 
   const handleRegistrationSuccess = (newRegistration: Registration) => {
-    // The server action now handles all data saving. We just need to give feedback.
     toast({
       title: "Registration Successful!",
       description: "Your submission has been recorded. You will be redirected shortly.",
     });
 
-    // Redirect logic
-    const diplomaLink = localStorage.getItem('diplomaZoomLink');
-    if (diplomaLink) {
-      // Add a small delay for the user to read the toast
+    let link = null;
+    let linkName = '';
+
+    if (newRegistration.organization === "TE Connectivity, Shirwal") {
+      link = localStorage.getItem('diplomaZoomLink');
+      linkName = "Diploma Zoom Link";
+    } else {
+      link = localStorage.getItem('advanceDiplomaZoomLink');
+      linkName = "Advance Diploma Zoom Link";
+    }
+
+    if (link) {
       setTimeout(() => {
-        window.location.href = diplomaLink;
+        window.location.href = link!;
       }, 2000);
     } else {
       toast({
         variant: "destructive",
         title: "Redirect Failed",
-        description: "The Diploma Zoom link has not been set by the admin.",
+        description: `The ${linkName} has not been set by the admin.`,
       });
     }
   };

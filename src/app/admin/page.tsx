@@ -85,6 +85,7 @@ export default function AdminPage() {
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // A simple, insecure password check. Replace with a proper auth system for production.
     if (password === 'Bsa@123') {
       setIsAuthenticated(true);
       setError('');
@@ -119,7 +120,7 @@ export default function AdminPage() {
   };
   
   const activeBatch = batches.find(b => b.active);
-  const sortedBatches = [...batches].sort((a, b) => new Date(b.createdAt as Date).getTime() - new Date(a.createdAt as Date).getTime());
+  const sortedBatches = batches;
   
   if (!isClient) {
     return null;
@@ -243,25 +244,21 @@ export default function AdminPage() {
                                           </span>
                                           {batch.active && <span className="ml-2 text-xs font-semibold text-primary py-0.5 px-2 bg-primary/10 rounded-full">Active</span>}
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-sm text-muted-foreground">
-                                                Created: {new Date(batch.createdAt as Date).toLocaleDateString()}
-                                            </span>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm"
-                                                onClick={(e) => {
-                                                  e.stopPropagation(); 
-                                                  handleEditBatchName(batch)
-                                                }}
-                                                className="h-8 w-auto px-2"
-                                            >
-                                                <Pencil className="mr-2 h-4 w-4" /> Edit
-                                            </Button>
-                                        </div>
                                       </div>
                                   </AccordionTrigger>
                                   <AccordionContent>
+                                    <div className="flex justify-between items-center pb-4">
+                                      <span className="text-sm text-muted-foreground">
+                                          Created: {new Date(batch.createdAt).toLocaleDateString()}
+                                      </span>
+                                      <Button 
+                                          variant="outline" 
+                                          size="sm"
+                                          onClick={() => handleEditBatchName(batch)}
+                                      >
+                                          <Pencil className="mr-2 h-4 w-4" /> Edit Name
+                                      </Button>
+                                    </div>
                                       <RegistrationsTable 
                                           registrations={batch.registrations}
                                           batchName={batch.name}

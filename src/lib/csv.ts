@@ -1,5 +1,5 @@
 import type { Registration } from './types';
-import type { Timestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 
 const keyToHeaderMap: { [K in keyof Omit<Registration, 'id'>]: string } = {
   name: "Name",
@@ -18,7 +18,10 @@ export function exportToCsvV2(registrations: Registration[], fileName: string = 
     if (timestamp instanceof Date) {
       return timestamp;
     }
-    return timestamp.toDate();
+    if (timestamp instanceof Timestamp) {
+        return timestamp.toDate();
+    }
+    return new Date(timestamp);
   }
 
 
@@ -27,7 +30,7 @@ export function exportToCsvV2(registrations: Registration[], fileName: string = 
 
   const csvRows = registrations.map(registration => {
     return keys.map(key => {
-      let value = registration[key];
+      let value: any = registration[key];
       if (key === 'submissionTime' && value) {
         value = toDate(value).toLocaleString();
       }
