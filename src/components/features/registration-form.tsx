@@ -65,10 +65,25 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
       if (result.success) {
         toast({
           title: "Registration Successful!",
-          description: "Your submission has been recorded.",
+          description: "Your submission has been recorded. You will be redirected shortly.",
         });
         onSuccess(result.registration);
         form.reset();
+        
+        // Redirect logic
+        const diplomaLink = localStorage.getItem('diplomaZoomLink');
+        if (diplomaLink) {
+          // Add a small delay for the user to read the toast
+          setTimeout(() => {
+            window.location.href = diplomaLink;
+          }, 2000);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Redirect Failed",
+            description: "The Diploma Zoom link has not been set by the admin.",
+          });
+        }
       } else {
         throw new Error(result.error);
       }
