@@ -34,8 +34,8 @@ export function exportToCsv(registrations: Registration[], fileName: string = 'r
 // A more robust way to map object keys to CSV headers
 const keyToHeaderMap = {
   name: "Name",
-  email: "Email",
-  registrationData: "Registration Data",
+  iitpNo: "IITP No",
+  organization: "Organization",
   meetingLink: "Meeting Link"
 }
 
@@ -73,4 +73,3 @@ export function exportToCsvV2(registrations: Registration[], fileName: string = 
   link.click();
   document.body.removeChild(link);
 }
-

@@ -1,6 +1,6 @@
 export type Registration = {
   name: string;
-  email: string;
-  registrationData: string;
+  iitpNo: string;
+  organization: string;
   meetingLink: string;
 };

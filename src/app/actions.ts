@@ -6,8 +6,10 @@ import type { Registration } from "@/lib/types";
 
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  registrationData: z.string().min(10, { message: "Please provide some details about your registration (min. 10 characters)." }).max(500, { message: "Details can be up to 500 characters."}),
+  iitpNo: z.string().min(1, { message: "IITP No. is required." }),
+  organization: z.string({
+    required_error: "Please select an organization.",
+  }),
 });
 
 export async function registerForMeeting(

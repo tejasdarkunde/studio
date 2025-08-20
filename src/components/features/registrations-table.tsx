@@ -65,7 +65,8 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>IITP No</TableHead>
+                <TableHead>Organization</TableHead>
                 <TableHead className="hidden md:table-cell">Meeting Link</TableHead>
               </TableRow>
             </TableHeader>
@@ -74,7 +75,8 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                 registrations.map((reg, index) => (
                   <TableRow key={index}>
                     <TableCell className="font-medium">{reg.name}</TableCell>
-                    <TableCell>{reg.email}</TableCell>
+                    <TableCell>{reg.iitpNo}</TableCell>
+                    <TableCell>{reg.organization}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <a 
                         href={reg.meetingLink} 
@@ -89,7 +91,7 @@ export function RegistrationsTable({ registrations }: RegistrationsTableProps) {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     No registrations yet.
                   </TableCell>
                 </TableRow>

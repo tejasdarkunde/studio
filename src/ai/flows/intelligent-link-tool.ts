@@ -13,10 +13,8 @@ import {z} from 'genkit';
 
 const IntelligentLinkToolInputSchema = z.object({
   name: z.string().describe('The name of the user.'),
-  email: z.string().email().describe('The email of the user.'),
-  registrationData: z
-    .string()
-    .describe('Additional registration data provided by the user.'),
+  iitpNo: z.string().describe("The user's IITP Number."),
+  organization: z.string().describe('The organization the user belongs to.'),
 });
 export type IntelligentLinkToolInput = z.infer<typeof IntelligentLinkToolInputSchema>;
 
@@ -38,12 +36,14 @@ const prompt = ai.definePrompt({
   Analyze the following information to select the best meeting link:
 
   Name: {{{name}}}
-  Email: {{{email}}}
-  Registration Data: {{{registrationData}}}
+  IITP No: {{{iitpNo}}}
+  Organization: {{{organization}}}
 
   Based on this information, provide the most relevant meeting link. Return only the link, and ensure it is a valid URL.
-  Consider factors like the user's role, interests, and any specific session preferences indicated in their registration data.
-  If no specific session is indicated, provide the default meeting link.
+  If the organization is "TE Connectivity, Shirwal", provide the link https://meet.google.com/shirwal.
+  If the organization is "BSA Plant, Chakan", provide the link https://meet.google.com/chakan.
+  If the organization is "Belden India", provide the link https://meet.google.com/belden.
+  Otherwise, provide the default meeting link: https://meet.google.com/default.
 
   Output the meeting link in the following format:
   {

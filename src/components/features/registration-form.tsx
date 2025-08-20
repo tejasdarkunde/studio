@@ -4,7 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { User, Mail, FileText, Loader2 } from "lucide-react";
+import { User, Library, Building, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,20 +17,34 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { registerForMeeting } from "@/app/actions";
 import type { Registration } from "@/lib/types";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  registrationData: z.string().min(10, { message: "Please provide some details (min. 10 characters)." }).max(500, { message: "Details can be up to 500 characters."}),
+  iitpNo: z.string().min(1, { message: "IITP No. is required." }),
+  organization: z.string({
+    required_error: "Please select an organization.",
+  }),
 });
 
 type RegistrationFormProps = {
   onSuccess: (registration: Registration) => void;
 };
+
+const organizations = [
+  "TE Connectivity, Shirwal",
+  "BSA Plant, Chakan",
+  "Belden India",
+];
 
 export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const { toast } = useToast();
@@ -40,8 +54,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      email: "",
-      registrationData: "",
+      iitpNo: "",
     },
   });
 
@@ -94,14 +107,14 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
         <FormField
           control={form.control}
-          name="email"
+          name="iitpNo"
           render={({ field }) => (
             <FormItem>
               <FormLabel className="flex items-center gap-2">
-                <Mail className="h-4 w-4" /> Email Address
+                <Library className="h-4 w-4" /> IITP No
               </FormLabel>
               <FormControl>
-                <Input placeholder="john.doe@example.com" {...field} />
+                <Input placeholder="Enter your IITP No." {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -109,22 +122,26 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
         <FormField
           control={form.control}
-          name="registrationData"
+          name="organization"
           render={({ field }) => (
             <FormItem>
               <FormLabel className="flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Registration Details
+                <Building className="h-4 w-4" /> Organization
               </FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="e.g., I'm interested in the marketing session."
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>
-                Help us find the best session for you.
-              </FormDescription>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an organization" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {organizations.map((org) => (
+                    <SelectItem key={org} value={org}>
+                      {org}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
