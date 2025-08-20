@@ -1,118 +1,76 @@
 "use client";
 
-import * as React from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, Loader2 } from "lucide-react";
+import { useState, useEffect } from 'react';
+import type { Registration } from '@/lib/types';
+import { RegistrationForm } from '@/components/features/registration-form';
+import { RegistrationsTable } from '@/components/features/registrations-table';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-import type { Registration } from "@/lib/types";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+export default function Home() {
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [isClient, setIsClient] = useState(false);
 
-type EditRegistrationDialogProps = {
-  registration: Registration;
-  onSave: (updatedRegistration: Registration) => void;
-  onOpenChange: (isOpen: boolean) => void;
-};
-
-const formSchema = z.object({
-  meetingLink: z.string().url({ message: "Please enter a valid URL." }),
-});
-
-export function EditRegistrationDialog({ registration, onSave, onOpenChange }: EditRegistrationDialogProps) {
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      meetingLink: registration.meetingLink,
-    },
-  });
-
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    setIsSubmitting(true);
+  useEffect(() => {
+    setIsClient(true);
     try {
-      onSave({ ...registration, meetingLink: values.meetingLink });
-      toast({
-        title: "Success!",
-        description: "The meeting link has been updated.",
-      });
-      onOpenChange(false);
+      const storedRegistrations = localStorage.getItem('eventlink-registrations');
+      if (storedRegistrations) {
+        const parsedRegistrations = JSON.parse(storedRegistrations);
+        // Basic validation
+        if (Array.isArray(parsedRegistrations)) {
+            setRegistrations(parsedRegistrations);
+        }
+      }
     } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: error instanceof Error ? error.message : "Failed to update link.",
-      });
-    } finally {
-        setIsSubmitting(false);
+      console.error("Failed to parse registrations from localStorage", error);
     }
+  }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      try {
+        localStorage.setItem('eventlink-registrations', JSON.stringify(registrations));
+      } catch (error) {
+        console.error("Failed to save registrations to localStorage", error);
+      }
+    }
+  }, [registrations, isClient]);
+
+  const handleRegistrationSuccess = (newRegistration: Registration) => {
+    setRegistrations(prev => [...prev, newRegistration]);
   };
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Meeting Link for {registration.name}</DialogTitle>
-          <DialogDescription>
-            Update the meeting link for this registration below. Click save when you're done.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="meetingLink"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Link className="h-4 w-4" /> Meeting Link
-                  </FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                    <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                    </>
-                ) : (
-                    "Save Changes"
-                )}
-                </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+    <main className="container mx-auto p-4 md:p-8">
+      <div className="flex flex-col items-center justify-center text-center mb-8 md:mb-12">
+        <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
+          EventLink
+        </h1>
+        <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
+          Register for your event.
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Register for Meeting</CardTitle>
+              <CardDescription>Fill out the form below to register.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RegistrationForm 
+                onSuccess={handleRegistrationSuccess}
+              />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="lg:col-span-3">
+          <RegistrationsTable 
+            registrations={registrations}
+          />
+        </div>
+      </div>
+    </main>
   );
 }

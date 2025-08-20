@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -38,7 +37,6 @@ const formSchema = z.object({
 
 type RegistrationFormProps = {
   onSuccess: (registration: Registration) => void;
-  registrations: Registration[];
 };
 
 const organizations = [
@@ -47,7 +45,7 @@ const organizations = [
   "Belden India",
 ];
 
-export function RegistrationForm({ onSuccess, registrations }: RegistrationFormProps) {
+export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -62,24 +60,15 @@ export function RegistrationForm({ onSuccess, registrations }: RegistrationFormP
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      const result = await registerForMeeting({
-        form: values,
-        existingRegistrations: registrations,
-      });
+      const result = await registerForMeeting(values);
 
       if (result.success) {
         toast({
           title: "Registration Successful!",
-          description: "Redirecting you to the meeting...",
+          description: "Your submission has been recorded.",
         });
         onSuccess(result.registration);
         form.reset();
-        // Redirect after a short delay to allow toast to be seen
-        setTimeout(() => {
-          if (result.registration.meetingLink) {
-            window.location.href = result.registration.meetingLink;
-          }
-        }, 1500);
       } else {
         throw new Error(result.error);
       }

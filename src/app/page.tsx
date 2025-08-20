@@ -4,20 +4,22 @@ import { useState, useEffect } from 'react';
 import type { Registration } from '@/lib/types';
 import { RegistrationForm } from '@/components/features/registration-form';
 import { RegistrationsTable } from '@/components/features/registrations-table';
-import { EditRegistrationDialog } from '@/components/features/edit-registration-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Home() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const [editingRegistration, setEditingRegistration] = useState<Registration | null>(null);
 
   useEffect(() => {
     setIsClient(true);
     try {
       const storedRegistrations = localStorage.getItem('eventlink-registrations');
       if (storedRegistrations) {
-        setRegistrations(JSON.parse(storedRegistrations));
+        const parsedRegistrations = JSON.parse(storedRegistrations);
+        // Basic validation
+        if (Array.isArray(parsedRegistrations)) {
+            setRegistrations(parsedRegistrations);
+        }
       }
     } catch (error) {
       console.error("Failed to parse registrations from localStorage", error);
@@ -38,17 +40,6 @@ export default function Home() {
     setRegistrations(prev => [...prev, newRegistration]);
   };
 
-  const handleUpdateRegistration = (updatedRegistration: Registration) => {
-    setRegistrations(prev => 
-      prev.map(reg => 
-        reg.submissionTime === updatedRegistration.submissionTime && reg.iitpNo === updatedRegistration.iitpNo 
-        ? updatedRegistration 
-        : reg
-      )
-    );
-    setEditingRegistration(null);
-  };
-
   return (
     <main className="container mx-auto p-4 md:p-8">
       <div className="flex flex-col items-center justify-center text-center mb-8 md:mb-12">
@@ -56,7 +47,7 @@ export default function Home() {
           EventLink
         </h1>
         <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-          Register for your event and our AI will find the perfect meeting link for you.
+          Register for your event.
         </p>
       </div>
       
@@ -65,12 +56,11 @@ export default function Home() {
           <Card>
             <CardHeader>
               <CardTitle>Register for Meeting</CardTitle>
-              <CardDescription>Fill out the form below to get your meeting link.</CardDescription>
+              <CardDescription>Fill out the form below to register.</CardDescription>
             </CardHeader>
             <CardContent>
               <RegistrationForm 
                 onSuccess={handleRegistrationSuccess}
-                registrations={registrations} 
               />
             </CardContent>
           </Card>
@@ -78,18 +68,9 @@ export default function Home() {
         <div className="lg:col-span-3">
           <RegistrationsTable 
             registrations={registrations}
-            onEdit={setEditingRegistration}
           />
         </div>
       </div>
-      
-      {editingRegistration && (
-        <EditRegistrationDialog
-          registration={editingRegistration}
-          onSave={handleUpdateRegistration}
-          onOpenChange={(isOpen) => !isOpen && setEditingRegistration(null)}
-        />
-      )}
     </main>
   );
 }
