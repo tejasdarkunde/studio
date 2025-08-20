@@ -5,10 +5,18 @@ import type { Registration } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { Save } from 'lucide-react';
 
 export default function AdminPage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [diplomaLink, setDiplomaLink] = useState('');
+  const [advanceDiplomaLink, setAdvanceDiplomaLink] = useState('');
   const [isClient, setIsClient] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     setIsClient(true);
@@ -20,10 +28,35 @@ export default function AdminPage() {
             setRegistrations(parsedRegistrations);
         }
       }
+      const storedDiplomaLink = localStorage.getItem('diplomaZoomLink');
+      if (storedDiplomaLink) setDiplomaLink(storedDiplomaLink);
+      
+      const storedAdvanceDiplomaLink = localStorage.getItem('advanceDiplomaZoomLink');
+      if (storedAdvanceDiplomaLink) setAdvanceDiplomaLink(storedAdvanceDiplomaLink);
+
     } catch (error) {
-      console.error("Failed to parse registrations from localStorage", error);
+      console.error("Failed to parse data from localStorage", error);
     }
   }, []);
+
+  const handleSaveLinks = () => {
+    try {
+      localStorage.setItem('diplomaZoomLink', diplomaLink);
+      localStorage.setItem('advanceDiplomaZoomLink', advanceDiplomaLink);
+      toast({
+        title: "Links Saved!",
+        description: "The Zoom links have been successfully updated.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: "Could not save the links to local storage.",
+      });
+      console.error("Failed to save links to localStorage", error);
+    }
+  };
+
 
   return (
     <main className="container mx-auto p-4 md:p-8">
@@ -33,18 +66,51 @@ export default function AdminPage() {
                 Admin Access
             </h1>
             <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-                View all event registrations.
+                Manage event registrations and settings.
             </p>
         </div>
         <Link href="/" passHref>
             <Button variant="outline">Back to Home</Button>
         </Link>
       </div>
-      
-      <div className="w-full">
-        <RegistrationsTable 
-            registrations={registrations}
-        />
+
+      <div className="grid grid-cols-1 gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Meeting Links</CardTitle>
+            <CardDescription>Manage the Zoom links for the events.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="diploma-link">Diploma Zoom Link</Label>
+              <Input 
+                id="diploma-link"
+                placeholder="Enter Diploma Zoom link"
+                value={diplomaLink}
+                onChange={(e) => setDiplomaLink(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="advance-diploma-link">Advance Diploma Zoom Link</Label>
+              <Input 
+                id="advance-diploma-link"
+                placeholder="Enter Advance Diploma Zoom link"
+                value={advanceDiplomaLink}
+                onChange={(e) => setAdvanceDiplomaLink(e.target.value)}
+              />
+            </div>
+             <Button onClick={handleSaveLinks}>
+              <Save className="mr-2 h-4 w-4" />
+              Save Links
+            </Button>
+          </CardContent>
+        </Card>
+
+        <div className="w-full">
+            <RegistrationsTable 
+                registrations={registrations}
+            />
+        </div>
       </div>
     </main>
   );
