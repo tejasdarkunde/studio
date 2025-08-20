@@ -196,9 +196,18 @@ export async function saveMeetingLinks(links: MeetingLinks): Promise<{success: b
 
 export async function getRedirectLink(organization: string): Promise<{link: string | null, linkName: string}> {
     const links = await getMeetingLinks();
-    if (organization === "TE Connectivity, Shirwal") {
+    
+    // Diploma organizations
+    const diplomaOrgs = [
+        "TE Connectivity, Shirwal",
+        "BSA Plant, Chakan",
+        "Belden India",
+    ];
+
+    if (diplomaOrgs.includes(organization)) {
         return { link: links.diplomaZoomLink, linkName: "Diploma Zoom Link" };
     } else {
+        // All other organizations, including "Other", will use the Advance Diploma link
         return { link: links.advanceDiplomaZoomLink, linkName: "Advance Diploma Zoom Link" };
     }
 }
