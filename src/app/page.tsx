@@ -11,22 +11,31 @@ import { getBatches } from './actions';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const TrainingCard = ({ batch }: { batch: Batch }) => {
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Date not set';
+    return new Date(dateString).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
   const isPast = new Date(batch.endDate) < new Date();
 
   return (
     <Card className="flex flex-col">
         <CardHeader>
           <CardTitle>{batch.name}</CardTitle>
-          <CardDescription className="flex items-center gap-2 pt-1">
-            <Calendar className="h-4 w-4" /> 
-            {formatDate(batch.startDate)} - {formatDate(batch.endDate)}
-          </CardDescription>
+          {batch.startDate && batch.endDate ? (
+            <CardDescription className="flex items-center gap-2 pt-1">
+              <Calendar className="h-4 w-4" /> 
+              {formatDate(batch.startDate)} - {formatDate(batch.endDate)}
+            </CardDescription>
+          ) : (
+             <CardDescription className="flex items-center gap-2 pt-1">
+                (Dates not set)
+             </CardDescription>
+          )}
         </CardHeader>
         <CardContent className="flex-grow flex flex-col justify-end">
           <Link href={`/register/${batch.id}`} passHref>
-            <Button className="w-full" disabled={isPast}>
-              {isPast ? 'View Details' : 'Register Now'} <ArrowRight className="ml-2" />
+            <Button className="w-full" disabled={isPast && !!batch.endDate}>
+              {isPast && !!batch.endDate ? 'View Details' : 'Register Now'} <ArrowRight className="ml-2" />
             </Button>
           </Link>
         </CardContent>
@@ -77,9 +86,12 @@ export default function Home() {
   }, []);
 
   const now = new Date();
-  const ongoing = batches.filter(b => new Date(b.startDate) <= now && new Date(b.endDate) >= now);
-  const upcoming = batches.filter(b => new Date(b.startDate) > now);
-  const past = batches.filter(b => new Date(b.endDate) < now);
+  
+  const ongoing = batches.filter(b => b.startDate && b.endDate && new Date(b.startDate) <= now && new Date(b.endDate) >= now);
+  const upcoming = batches.filter(b => b.startDate && new Date(b.startDate) > now);
+  const past = batches.filter(b => b.endDate && new Date(b.endDate) < now);
+  const legacy = batches.filter(b => !b.startDate || !b.endDate);
+
 
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center min-h-screen">
@@ -100,6 +112,7 @@ export default function Home() {
             <>
               <TrainingsSection title="Ongoing Trainings" batches={ongoing} />
               <TrainingsSection title="Upcoming Trainings" batches={upcoming} />
+              <TrainingsSection title="Legacy Registrations" batches={legacy} />
               <TrainingsSection title="Past Trainings" batches={past} />
               {batches.length === 0 && !loading && <p>No training sessions found.</p>}
             </>

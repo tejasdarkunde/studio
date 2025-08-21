@@ -59,7 +59,7 @@ export async function registerForMeeting(
 export async function getBatches(): Promise<Batch[]> {
     try {
         const batchesCollectionRef = collection(db, "batches");
-        const q = query(batchesCollectionRef, orderBy("startDate", "desc"));
+        const q = query(batchesCollectionRef, orderBy("createdAt", "desc"));
         const allBatchesSnapshot = await getDocs(q);
         const batches: Batch[] = [];
 
@@ -67,8 +67,10 @@ export async function getBatches(): Promise<Batch[]> {
             const batchId = batchDoc.id;
             const batchData = batchDoc.data();
             const createdAt = batchData.createdAt as Timestamp;
-            const startDate = batchData.startDate as Timestamp;
-            const endDate = batchData.endDate as Timestamp;
+            
+            // Handle potentially missing date fields for backward compatibility
+            const startDate = batchData.startDate as Timestamp | undefined;
+            const endDate = batchData.endDate as Timestamp | undefined;
 
             const registrationsCollection = collection(db, `batches/${batchId}/registrations`);
             const regSnapshot = await getDocs(registrationsCollection);
@@ -88,8 +90,8 @@ export async function getBatches(): Promise<Batch[]> {
             batches.push({
                 id: batchId,
                 name: batchData.name || 'Unnamed Batch',
-                startDate: startDate?.toDate().toISOString() || '',
-                endDate: endDate?.toDate().toISOString() || '',
+                startDate: startDate?.toDate().toISOString() || '', // Default to empty string if not present
+                endDate: endDate?.toDate().toISOString() || '', // Default to empty string if not present
                 meetingLink: batchData.meetingLink || '',
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 registrations,

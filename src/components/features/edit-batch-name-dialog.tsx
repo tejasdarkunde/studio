@@ -27,7 +27,7 @@ type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   onSave: (details: { name: string; startDate?: Date; endDate?: Date; meetingLink: string }) => void;
-  initialData?: { name: string; startDate: string; endDate: string; meetingLink: string; };
+  initialData?: { name: string; startDate?: string; endDate?: string; meetingLink: string; };
 };
 
 export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBatchDialogProps) {
@@ -148,4 +148,3 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBa
     </Dialog>
   );
 }
-
