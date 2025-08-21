@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject } from "@/lib/types";
 
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -528,5 +528,94 @@ export async function deleteTrainer(trainerId: string): Promise<{ success: boole
     } catch (error) {
         console.error("Error deleting trainer:", error);
         return { success: false, error: "Could not delete the trainer." };
+    }
+}
+
+
+// COURSE AND SUBJECT ACTIONS
+
+// Helper to ensure 'courses' collection and docs exist
+async function initializeCourses() {
+    const coursesCollectionRef = collection(db, "courses");
+    const diplomaDocRef = doc(coursesCollectionRef, 'diploma');
+    const advDiplomaDocRef = doc(coursesCollectionRef, 'advance-diploma');
+
+    const diplomaDoc = await getDoc(diplomaDocRef);
+    const advDiplomaDoc = await getDoc(advDiplomaDocRef);
+
+    const batch = writeBatch(db);
+
+    if (!diplomaDoc.exists()) {
+        batch.set(diplomaDocRef, { name: 'Diploma' });
+    }
+    if (!advDiplomaDoc.exists()) {
+        batch.set(advDiplomaDocRef, { name: 'Advance Diploma' });
+    }
+
+    await batch.commit();
+}
+
+
+export async function getCourses(): Promise<Course[]> {
+    try {
+        await initializeCourses(); // Ensure docs exist before fetching
+        const coursesSnapshot = await getDocs(collection(db, 'courses'));
+        
+        const courses: Course[] = [];
+
+        for (const courseDoc of coursesSnapshot.docs) {
+            const subjectsCollectionRef = collection(courseDoc.ref, 'subjects');
+            const subjectsSnapshot = await getDocs(query(subjectsCollectionRef, orderBy('name')));
+            
+            const subjects: Subject[] = subjectsSnapshot.docs.map(subjectDoc => ({
+                id: subjectDoc.id,
+                name: subjectDoc.data().name,
+            }));
+
+            courses.push({
+                id: courseDoc.id,
+                name: courseDoc.data().name,
+                subjects: subjects,
+            });
+        }
+        
+        return courses;
+    } catch (error) {
+        console.error("Error fetching courses:", error);
+        return [];
+    }
+}
+
+
+const addSubjectSchema = z.object({
+  courseId: z.string().min(1),
+  subjectName: z.string().min(2, { message: "Subject name must be at least 2 characters." }),
+});
+
+export async function addSubject(data: z.infer<typeof addSubjectSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = addSubjectSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid subject data." };
+    }
+
+    try {
+        const { courseId, subjectName } = validatedFields.data;
+        const subjectsCollectionRef = collection(db, `courses/${courseId}/subjects`);
+        
+        // Optional: Check for duplicate subject name within the same course
+        const duplicateQuery = query(subjectsCollectionRef, where("name", "==", subjectName));
+        const duplicateSnapshot = await getDocs(duplicateQuery);
+        if (!duplicateSnapshot.empty) {
+            return { success: false, error: "This subject already exists in this course." };
+        }
+
+        await addDoc(subjectsCollectionRef, {
+            name: subjectName,
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding subject:", error);
+        return { success: false, error: "Could not add subject due to a database error." };
     }
 }

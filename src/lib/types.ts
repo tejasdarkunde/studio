@@ -43,3 +43,14 @@ export type Participant = {
     createdAt: string; // ISO 8601 string format
     enrolledCourses?: string[];
 }
+
+export type Subject = {
+  id: string;
+  name: string;
+};
+
+export type Course = {
+  id: string;
+  name: 'Diploma' | 'Advance Diploma';
+  subjects: Subject[];
+};

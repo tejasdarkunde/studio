@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import type { Batch, Participant, Trainer } from '@/lib/types';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { Batch, Participant, Trainer, Course } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
@@ -18,14 +18,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer } from '@/app/actions';
+import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, addSubject } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const organizations = [
   "TE Connectivity, Shirwal",
@@ -34,10 +35,73 @@ const organizations = [
   "Other",
 ];
 
+const CourseSubjectManager = ({ course, onSubjectAdded }: { course: Course; onSubjectAdded: () => void; }) => {
+    const [newSubject, setNewSubject] = useState('');
+    const [isAdding, setIsAdding] = useState(false);
+    const { toast } = useToast();
+
+    const handleAddSubject = async () => {
+        if (!newSubject.trim()) {
+            toast({ variant: 'destructive', title: 'Subject name cannot be empty.' });
+            return;
+        }
+        setIsAdding(true);
+        const result = await addSubject({ courseId: course.id, subjectName: newSubject });
+        if (result.success) {
+            toast({ title: 'Subject Added', description: `"${newSubject}" has been added to ${course.name}.` });
+            setNewSubject('');
+            onSubjectAdded();
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error || 'Could not add subject.' });
+        }
+        setIsAdding(false);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><BookCopy /> {course.name}</CardTitle>
+                <CardDescription>Manage the subjects for the {course.name.toLowerCase()} curriculum.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                    <div className="flex gap-2">
+                        <Input 
+                            placeholder="Enter new subject name..."
+                            value={newSubject}
+                            onChange={(e) => setNewSubject(e.target.value)}
+                            disabled={isAdding}
+                        />
+                        <Button onClick={handleAddSubject} disabled={isAdding}>
+                            {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ListPlus className="mr-2 h-4 w-4" />}
+                            Add
+                        </Button>
+                    </div>
+
+                    <p className="text-sm font-medium text-muted-foreground">Existing Subjects ({course.subjects.length})</p>
+                    <ScrollArea className="h-64 rounded-md border p-2">
+                        {course.subjects.length > 0 ? (
+                            <ul className="space-y-2">
+                                {course.subjects.map(subject => (
+                                    <li key={subject.id} className="text-sm p-2 bg-secondary/50 rounded-md">{subject.name}</li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="text-center text-muted-foreground py-10">No subjects added yet.</div>
+                        )}
+                    </ScrollArea>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -64,23 +128,25 @@ export default function AdminPage() {
 
   const { toast } = useToast();
 
-  const fetchAllData = async () => {
-    const [fetchedBatches, fetchedParticipants, fetchedTrainers] = await Promise.all([
+  const fetchAllData = useCallback(async () => {
+    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses] = await Promise.all([
       getBatches(),
       getParticipants(),
-      getTrainers()
+      getTrainers(),
+      getCourses()
     ]);
     setBatches(fetchedBatches);
     setParticipants(fetchedParticipants);
     setTrainers(fetchedTrainers);
-  };
+    setCourses(fetchedCourses);
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
     if (isAuthenticated) {
         fetchAllData();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchAllData]);
 
   useEffect(() => {
     if (fetchedParticipant) {
@@ -679,13 +745,25 @@ export default function AdminPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Course Management</CardTitle>
-                <CardDescription>Manage your course catalog here.</CardDescription>
+                <CardDescription>Add subjects to your Diploma and Advance Diploma courses.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                    <p>This section is under construction.</p>
-                    <p>You will be able to manage courses, view enrollments, and more here.</p>
-                </div>
+                {courses.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
+                            <CourseSubjectManager 
+                                key={course.id}
+                                course={course}
+                                onSubjectAdded={fetchAllData}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin mb-4" />
+                      <p>Loading course data...</p>
+                    </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
