@@ -33,4 +33,5 @@ export type Participant = {
     mobile: string;
     organization: string;
     createdAt: string; // ISO 8601 string format
+    enrolledCourses?: string[];
 }

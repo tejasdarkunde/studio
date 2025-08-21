@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type ParticipantsTableProps = {
   participants: Participant[];
@@ -32,9 +33,10 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
       });
       return;
     }
-    const headers = "Name,IITP No,Mobile No,Organization,Date Added\n";
+    const headers = "Name,IITP No,Mobile No,Organization,Enrolled Courses,Date Added\n";
     const csvRows = participants.map(p => {
-      const row = [p.name, p.iitpNo, p.mobile, p.organization, new Date(p.createdAt).toLocaleString()];
+      const enrolledCourses = p.enrolledCourses?.join('; ') || '';
+      const row = [p.name, p.iitpNo, p.mobile, p.organization, enrolledCourses, new Date(p.createdAt).toLocaleString()];
       return row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
     }).join('\n');
 
@@ -73,6 +75,7 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
                 <TableHead>IITP No</TableHead>
                 <TableHead>Mobile No</TableHead>
                 <TableHead>Organization</TableHead>
+                <TableHead>Enrolled Courses</TableHead>
                 <TableHead>Date Added</TableHead>
                 </TableRow>
             </TableHeader>
@@ -85,13 +88,24 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
                     <TableCell>{p.mobile}</TableCell>
                     <TableCell>{p.organization}</TableCell>
                     <TableCell>
+                      {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {p.enrolledCourses.map(course => (
+                             <Badge key={course} variant="secondary">{course}</Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                         {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
                     </TableCell>
                     </TableRow>
                 ))
                 ) : (
                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                     No participants found. Add one to get started.
                     </TableCell>
                 </TableRow>
@@ -103,4 +117,3 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
     </div>
   );
 }
-

@@ -238,23 +238,46 @@ export async function deleteBatch(batchId: string): Promise<{ success: boolean, 
 
 export async function getParticipants(): Promise<Participant[]> {
     try {
+        // 1. Fetch all batches to get access to their registration subcollections
+        const allBatches = await getBatches();
+        
+        // 2. Create a map to store course enrollments by IITP No.
+        const enrollmentsByIitpNo: { [key: string]: string[] } = {};
+
+        for (const batch of allBatches) {
+            for (const registration of batch.registrations) {
+                if (!enrollmentsByIitpNo[registration.iitpNo]) {
+                    enrollmentsByIitpNo[registration.iitpNo] = [];
+                }
+                enrollmentsByIitpNo[registration.iitpNo].push(batch.name);
+            }
+        }
+
+        // 3. Fetch all participants from the central directory
         const participantsCollectionRef = collection(db, "participants");
         const q = query(participantsCollectionRef, orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => {
+
+        // 4. Map participants and merge enrollment data
+        const participants = snapshot.docs.map(doc => {
             const data = doc.data();
             const createdAt = data.createdAt as Timestamp;
+            const iitpNo = data.iitpNo;
             return {
                 id: doc.id,
                 name: data.name,
-                iitpNo: data.iitpNo,
+                iitpNo: iitpNo,
                 mobile: data.mobile,
                 organization: data.organization,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+                enrolledCourses: enrollmentsByIitpNo[iitpNo] || [], // Attach the courses
             };
         });
+
+        return participants;
+
     } catch (error) {
-        console.error("Error fetching participants:", error);
+        console.error("Error fetching participants with courses:", error);
         return [];
     }
 }
