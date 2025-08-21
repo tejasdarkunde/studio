@@ -11,13 +11,14 @@ import { ImportParticipantsDialog } from '@/components/features/import-participa
 import { ParticipantsTable } from '@/components/features/participants-table';
 import { TrainersTable } from '@/components/features/trainers-table';
 import { AddTrainerDialog } from '@/components/features/add-trainer-dialog';
+import { AttendanceReport } from '@/components/features/attendance-report';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -507,11 +508,12 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="reports" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="trainings">Trainings</TabsTrigger>
             <TabsTrigger value="users">All Users</TabsTrigger>
             <TabsTrigger value="trainers">Trainers</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
           </TabsList>
           
           <TabsContent value="reports" className="mt-6">
@@ -808,10 +810,23 @@ export default function AdminPage() {
               </Card>
           </TabsContent>
 
+          <TabsContent value="attendance" className="mt-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Attendance Report</CardTitle>
+                    <CardDescription>View and export participant attendance for Diploma and Advance Diploma courses.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AttendanceReport 
+                        participants={participants}
+                        batches={batches}
+                    />
+                </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </main>
     </>
   );
 }
-
-    
