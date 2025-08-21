@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 const organizations = [
   "TE Connectivity, Shirwal",
@@ -123,8 +124,8 @@ export default function AdminPage() {
 
     // Batch-based stats
     const totalSessions = batches.length;
-    const diplomaSessions = batches.filter(b => b.name.toLowerCase().includes('diploma') && !b.name.toLowerCase().includes('advance')).length;
-    const advanceDiplomaSessions = batches.filter(b => b.name.toLowerCase().includes('advance diploma')).length;
+    const diplomaSessions = batches.filter(b => b.course === 'Diploma').length;
+    const advanceDiplomaSessions = batches.filter(b => b.course === 'Advance Diploma').length;
 
     return {
       totalRegistrations,
@@ -156,11 +157,12 @@ export default function AdminPage() {
     setDeletingBatch(batch);
   };
   
-  const handleSaveBatch = async (details: { name: string; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
+  const handleSaveBatch = async (details: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
     if (!editingBatch) return;
 
     const result = await updateBatch(editingBatch.id, {
         name: details.name,
+        course: details.course,
         startDate: details.startDate?.toISOString(),
         startTime: details.startTime,
         endTime: details.endTime,
@@ -183,7 +185,7 @@ export default function AdminPage() {
     setEditingBatch(null);
   };
 
-  const handleCreateBatch = async (details: { name: string; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
+  const handleCreateBatch = async (details: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
     if (!details.startDate) {
         toast({
             variant: "destructive",
@@ -203,6 +205,7 @@ export default function AdminPage() {
 
     const result = await createBatch({
         name: details.name,
+        course: details.course,
         startDate: details.startDate,
         startTime: details.startTime,
         endTime: details.endTime,
@@ -458,6 +461,7 @@ export default function AdminPage() {
             onSave={editingBatch ? handleSaveBatch : handleCreateBatch}
             initialData={editingBatch ? {
                 name: editingBatch.name,
+                course: editingBatch.course,
                 startDate: editingBatch.startDate,
                 startTime: editingBatch.startTime,
                 endTime: editingBatch.endTime,
@@ -622,11 +626,17 @@ export default function AdminPage() {
                             <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
                                 <AccordionTrigger>
                                     <div className="flex justify-between items-center w-full pr-4">
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-4">
                                         <span>
-                                            {batch.name} ({batch.registrations.length} registrations)
+                                            {batch.name} 
                                         </span>
+                                         <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'}>
+                                            {batch.course}
+                                        </Badge>
                                       </div>
+                                      <span className="text-sm text-muted-foreground">
+                                        {batch.registrations.length} registration(s)
+                                      </span>
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent>

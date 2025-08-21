@@ -18,6 +18,7 @@ export type Trainer = {
 export type Batch = {
   id: string;
   name: string;
+  course: 'Diploma' | 'Advance Diploma' | 'Other';
   startDate: string; // ISO 8601 string format
   startTime: string; // e.g., "10:00" (24-hour format)
   endTime: string; // e.g., "13:00" (24-hour format)

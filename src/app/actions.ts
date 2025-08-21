@@ -118,7 +118,6 @@ export async function getBatches(): Promise<Batch[]> {
             
             // Backward compatibility for old data model
             const startDate = batchData.startDate as Timestamp | undefined;
-            const endDate = batchData.endDate as Timestamp | undefined;
 
             const registrationsCollection = collection(db, `batches/${batchId}/registrations`);
             const regSnapshot = await getDocs(registrationsCollection);
@@ -138,6 +137,7 @@ export async function getBatches(): Promise<Batch[]> {
             batches.push({
                 id: batchId,
                 name: batchData.name || 'Unnamed Batch',
+                course: batchData.course || 'Other',
                 startDate: startDate?.toDate().toISOString() || '',
                 startTime: batchData.startTime || '00:00',
                 endTime: batchData.endTime || '00:00',
@@ -172,6 +172,7 @@ export async function getBatchById(id: string): Promise<Batch | null> {
         return {
             id: batchDoc.id,
             name: batchData.name || 'Unnamed Batch',
+            course: batchData.course || 'Other',
             startDate: startDate?.toDate().toISOString() || '',
             startTime: batchData.startTime || '00:00',
             endTime: batchData.endTime || '00:00',
@@ -187,18 +188,22 @@ export async function getBatchById(id: string): Promise<Batch | null> {
 }
 
 
-export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'startDate' | 'startTime' | 'endTime' | 'trainerId'>>): Promise<{success: boolean, error?: string}> {
+export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'course' | 'startDate' | 'startTime' | 'endTime' | 'trainerId'>>): Promise<{success: boolean, error?: string}> {
     if (!data.name || !data.name.trim()) {
         return { success: false, error: "Batch name cannot be empty." };
     }
     if (!data.trainerId) {
         return { success: false, error: "Trainer selection is required."};
     }
+    if (!data.course) {
+        return { success: false, error: "Course selection is required."};
+    }
     try {
         const batchDocRef = doc(db, 'batches', batchId);
         
         const updateData: any = {
             name: data.name,
+            course: data.course,
             startTime: data.startTime || '00:00',
             endTime: data.endTime || '00:00',
             trainerId: data.trainerId
@@ -218,6 +223,7 @@ export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'na
 
 const createBatchSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
+  course: z.enum(['Diploma', 'Advance Diploma', 'Other']),
   startDate: z.date(),
   startTime: z.string(),
   endTime: z.string(),
@@ -232,10 +238,11 @@ export async function createBatch(data: z.infer<typeof createBatchSchema>): Prom
     }
 
     try {
-        const { name, startDate, startTime, endTime, trainerId } = validatedFields.data;
+        const { name, course, startDate, startTime, endTime, trainerId } = validatedFields.data;
         const batchesCollection = collection(db, "batches");
         await addDoc(batchesCollection, {
             name,
+            course,
             startDate: Timestamp.fromDate(startDate),
             startTime,
             endTime,

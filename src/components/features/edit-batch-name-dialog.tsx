@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar as CalendarIcon, UserCog } from "lucide-react"
+import { Calendar as CalendarIcon } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -29,14 +29,14 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import type { Trainer } from '@/lib/types';
+import type { Trainer, Batch } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => void;
-  initialData?: { name: string; startDate?: string; startTime: string; endTime: string; trainerId?: string; };
+  onSave: (details: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => void;
+  initialData?: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: string; startTime: string; endTime: string; trainerId?: string; };
   trainers: Trainer[];
 };
 
@@ -58,10 +58,11 @@ const generateTimeOptions = () => {
     return options;
 }
 const timeOptions = generateTimeOptions();
-
+const courseOptions: Batch['course'][] = ['Diploma', 'Advance Diploma', 'Other'];
 
 export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers }: EditBatchDialogProps) {
   const [name, setName] = useState('');
+  const [course, setCourse] = useState<Batch['course'] | ''>('');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -70,6 +71,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
 
   useEffect(() => {
     setName(initialData?.name || '');
+    setCourse(initialData?.course || '');
     setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
     setStartTime(initialData?.startTime || '');
     setEndTime(initialData?.endTime || '');
@@ -77,15 +79,15 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
   }, [initialData, isOpen]);
 
   const handleSave = () => {
-    if (!name.trim() || !startTime || !endTime || !trainerId) {
+    if (!name.trim() || !course || !startTime || !endTime || !trainerId) {
         toast({
             variant: "destructive",
             title: "Missing Information",
-            description: "Name, start/end times, and trainer selection are all required.",
+            description: "All fields are required.",
         });
         return;
     }
-    onSave({ name: name.trim(), startDate, startTime, endTime, trainerId });
+    onSave({ name: name.trim(), course, startDate, startTime, endTime, trainerId });
     onClose();
   };
 
@@ -111,6 +113,23 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
               className="col-span-3"
               placeholder="e.g., Diploma Program Q3"
             />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="course-select" className="text-right">
+              Course
+            </Label>
+             <Select onValueChange={(value) => setCourse(value as Batch['course'])} value={course}>
+                <SelectTrigger id="course-select" className="col-span-3">
+                    <SelectValue placeholder="Select a course" />
+                </SelectTrigger>
+                <SelectContent>
+                    {courseOptions.map(courseOpt => (
+                        <SelectItem key={courseOpt} value={courseOpt}>
+                            {courseOpt}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">
