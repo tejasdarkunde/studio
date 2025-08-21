@@ -224,7 +224,7 @@ export default function AdminPage() {
     setEditingParticipant(participant);
   }
 
-  const handleSaveParticipant = async (details: Omit<Participant, 'createdAt'>) => {
+  const handleSaveParticipant = async (details: Participant) => {
     if (!editingParticipant) return;
     const result = await updateParticipant(details);
     if(result.success) {
