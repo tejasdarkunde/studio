@@ -133,8 +133,9 @@ export default function AdminPage() {
       diplomaSessions,
       advanceDiplomaSessions,
       totalOrganizations: organizationSet.size,
+      totalTrainers: trainers.length,
     };
-  }, [participants, batches]);
+  }, [participants, batches, trainers]);
   
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -519,57 +520,82 @@ export default function AdminPage() {
                 <CardTitle>Reports</CardTitle>
                 <CardDescription>A high-level overview of your training statistics.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                  <Card className="p-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <Users className="h-8 w-8 text-primary" />
-                      <p className="text-2xl font-bold">{reportStats.totalRegistrations}</p>
-                      <p className="text-sm text-muted-foreground">Total Enrollments</p>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <BookUser className="h-8 w-8 text-primary" />
-                      <p className="text-2xl font-bold">{reportStats.diplomaEnrollments}</p>
-                      <p className="text-sm text-muted-foreground">Diploma Enrollments</p>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <BookUp className="h-8 w-8 text-primary" />
-                      <p className="text-2xl font-bold">{reportStats.advanceDiplomaEnrollments}</p>
-                      <p className="text-sm text-muted-foreground">Adv. Diploma Enrollments</p>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <Presentation className="h-8 w-8 text-primary" />
-                      <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
-                      <p className="text-sm text-muted-foreground">Total Sessions</p>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <School className="h-8 w-8 text-primary" />
-                      <p className="text-2xl font-bold">{reportStats.diplomaSessions}</p>
-                      <p className="text-sm text-muted-foreground">Diploma Sessions</p>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <BookUp className="h-8 w-8 text-primary" />
-                      <p className="text-2xl font-bold">{reportStats.advanceDiplomaSessions}</p>
-                      <p className="text-sm text-muted-foreground">Adv. Diploma Sessions</p>
-                    </div>
-                  </Card>
-                   <Card className="p-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <Building className="h-8 w-8 text-primary" />
-                      <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
-                      <p className="text-sm text-muted-foreground">Total Organizations</p>
-                    </div>
-                  </Card>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium text-primary">Students</h3>
+                  <Separator className="my-2" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                      <Card className="p-4">
+                        <div className="flex flex-col items-center gap-2">
+                          <Users className="h-8 w-8 text-primary" />
+                          <p className="text-2xl font-bold">{reportStats.totalRegistrations}</p>
+                          <p className="text-sm text-muted-foreground">Total Enrollments</p>
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex flex-col items-center gap-2">
+                          <BookUser className="h-8 w-8 text-primary" />
+                          <p className="text-2xl font-bold">{reportStats.diplomaEnrollments}</p>
+                          <p className="text-sm text-muted-foreground">Diploma Enrollments</p>
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="flex flex-col items-center gap-2">
+                          <BookUp className="h-8 w-8 text-primary" />
+                          <p className="text-2xl font-bold">{reportStats.advanceDiplomaEnrollments}</p>
+                          <p className="text-sm text-muted-foreground">Adv. Diploma Enrollments</p>
+                        </div>
+                      </Card>
+                  </div>
+                </div>
+
+                 <div>
+                  <h3 className="text-lg font-medium text-primary">Training Sessions</h3>
+                  <Separator className="my-2" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <Card className="p-4">
+                      <div className="flex flex-col items-center gap-2">
+                        <Presentation className="h-8 w-8 text-primary" />
+                        <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
+                        <p className="text-sm text-muted-foreground">Total Sessions</p>
+                      </div>
+                    </Card>
+                    <Card className="p-4">
+                      <div className="flex flex-col items-center gap-2">
+                        <School className="h-8 w-8 text-primary" />
+                        <p className="text-2xl font-bold">{reportStats.diplomaSessions}</p>
+                        <p className="text-sm text-muted-foreground">Diploma Sessions</p>
+                      </div>
+                    </Card>
+                    <Card className="p-4">
+                      <div className="flex flex-col items-center gap-2">
+                        <BookUp className="h-8 w-8 text-primary" />
+                        <p className="text-2xl font-bold">{reportStats.advanceDiplomaSessions}</p>
+                        <p className="text-sm text-muted-foreground">Adv. Diploma Sessions</p>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+                
+                 <div>
+                  <h3 className="text-lg font-medium text-primary">Other</h3>
+                  <Separator className="my-2" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <Card className="p-4">
+                      <div className="flex flex-col items-center gap-2">
+                        <Building className="h-8 w-8 text-primary" />
+                        <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
+                        <p className="text-sm text-muted-foreground">Total Organizations</p>
+                      </div>
+                    </Card>
+                    <Card className="p-4">
+                      <div className="flex flex-col items-center gap-2">
+                        <UserCog className="h-8 w-8 text-primary" />
+                        <p className="text-2xl font-bold">{reportStats.totalTrainers}</p>
+                        <p className="text-sm text-muted-foreground">Total Trainers</p>
+                      </div>
+                    </Card>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -787,3 +813,5 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
