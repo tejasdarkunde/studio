@@ -52,22 +52,30 @@ export default function AdminPage() {
   }, [isAuthenticated]);
 
   const reportStats = useMemo(() => {
-    const totalRegistrations = batches.reduce((acc, batch) => acc + batch.registrations.length, 0);
-    
-    const diplomaEnrollments = batches
-      .filter(b => b.name.toLowerCase().includes('diploma') && !b.name.toLowerCase().includes('advance'))
-      .reduce((acc, batch) => acc + batch.registrations.length, 0);
-    
-    const advanceDiplomaEnrollments = batches
-      .filter(b => b.name.toLowerCase().includes('advance diploma'))
-      .reduce((acc, batch) => acc + batch.registrations.length, 0);
+    let totalRegistrations = 0;
+    let diplomaEnrollments = 0;
+    let advanceDiplomaEnrollments = 0;
+
+    participants.forEach(participant => {
+      if (participant.enrolledCourses) {
+        totalRegistrations += participant.enrolledCourses.length;
+        participant.enrolledCourses.forEach(course => {
+          const courseName = course.toLowerCase();
+          if (courseName.includes('advance diploma')) {
+            advanceDiplomaEnrollments++;
+          } else if (courseName.includes('diploma')) {
+            diplomaEnrollments++;
+          }
+        });
+      }
+    });
 
     return {
       totalRegistrations,
       diplomaEnrollments,
       advanceDiplomaEnrollments
     };
-  }, [batches]);
+  }, [participants]);
   
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -450,3 +458,5 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
