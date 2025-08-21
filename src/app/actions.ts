@@ -145,6 +145,7 @@ export async function getMeetingLinks(): Promise<MeetingLinks> {
         if (docSnap.exists()) {
             return docSnap.data() as MeetingLinks;
         } else {
+            // Return default empty values if the document doesn't exist
             return { diplomaZoomLink: '', advanceDiplomaZoomLink: '' };
         }
     } catch (error) {

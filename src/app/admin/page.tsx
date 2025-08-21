@@ -32,8 +32,8 @@ export default function AdminPage() {
         getMeetingLinks()
     ]);
     setBatches(fetchedBatches);
-    setDiplomaLink(links.diplomaZoomLink);
-    setAdvanceDiplomaLink(links.advanceDiplomaZoomLink);
+    setDiplomaLink(links.diplomaZoomLink || '');
+    setAdvanceDiplomaLink(links.advanceDiplomaZoomLink || '');
   };
 
   useEffect(() => {
