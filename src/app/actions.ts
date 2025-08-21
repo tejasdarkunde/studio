@@ -285,3 +285,32 @@ export async function addParticipant(data: z.infer<typeof participantSchema>): P
         return { success: false, error: "Could not add participant." };
     }
 }
+
+
+export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt'>[]): Promise<{ success: boolean; error?: string }> {
+  const batch = writeBatch(db);
+  const participantsCollection = collection(db, "participants");
+
+  for (const participant of participants) {
+    const validatedFields = participantSchema.safeParse(participant);
+    if (!validatedFields.success) {
+      console.error("Invalid participant data in bulk upload:", validatedFields.error.flatten().fieldErrors);
+      // Skip invalid records
+      continue;
+    }
+    
+    const newDocRef = doc(participantsCollection);
+    batch.set(newDocRef, {
+      ...validatedFields.data,
+      createdAt: serverTimestamp(),
+    });
+  }
+
+  try {
+    await batch.commit();
+    return { success: true };
+  } catch (error) {
+    console.error("Error adding participants in bulk:", error);
+    return { success: false, error: "Could not add participants due to a database error." };
+  }
+}

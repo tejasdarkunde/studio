@@ -7,6 +7,7 @@ import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
 import { AddParticipantDialog } from '@/components/features/add-participant-dialog';
+import { ImportParticipantsDialog } from '@/components/features/import-participants-dialog';
 import { ParticipantsTable } from '@/components/features/participants-table';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -14,10 +15,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
-import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant } from '@/app/actions';
+import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -30,6 +31,8 @@ export default function AdminPage() {
   const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isAddParticipantOpen, setAddParticipantOpen] = useState(false);
+  const [isImportDialogOpen, setImportDialogOpen] = useState(false);
+
   const { toast } = useToast();
 
   const fetchAllData = async () => {
@@ -173,6 +176,50 @@ export default function AdminPage() {
     }
     setAddParticipantOpen(false);
   };
+
+  const handleDownloadTemplate = () => {
+    const headers = "name,iitpNo,mobile,organization\n";
+    const example = "John Doe,IIPT123,1234567890,Example Org\n";
+    const csvContent = headers + example;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'participants_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportSave = async (importedParticipants: Omit<Participant, 'id'|'createdAt'>[]) => {
+    if (importedParticipants.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No Participants',
+        description: 'No valid participant data was found in the file to import.',
+      });
+      return;
+    }
+
+    const result = await addParticipantsInBulk(importedParticipants);
+
+    if (result.success) {
+      toast({
+        title: 'Import Successful',
+        description: `${importedParticipants.length} participants have been added to the directory.`,
+      });
+      fetchAllData();
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Import Failed',
+        description: result.error || 'An unexpected error occurred during the bulk import.',
+      });
+    }
+
+    setImportDialogOpen(false);
+  };
   
   if (!isClient) {
     return null;
@@ -236,6 +283,11 @@ export default function AdminPage() {
         isOpen={isAddParticipantOpen}
         onClose={() => setAddParticipantOpen(false)}
         onSave={handleAddParticipant}
+      />
+      <ImportParticipantsDialog
+        isOpen={isImportDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onSave={handleImportSave}
       />
 
       <main className="container mx-auto p-4 md:p-8">
@@ -321,10 +373,20 @@ export default function AdminPage() {
                 <CardTitle>All Participants</CardTitle>
                 <CardDescription>Manage the central directory of all participants.</CardDescription>
               </div>
-              <Button onClick={() => setAddParticipantOpen(true)}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add New Participant
-              </Button>
+              <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={handleDownloadTemplate}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Template
+                  </Button>
+                  <Button onClick={() => setImportDialogOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import from CSV
+                  </Button>
+                  <Button onClick={() => setAddParticipantOpen(true)}>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Add New Participant
+                  </Button>
+              </div>
             </CardHeader>
             <CardContent>
                 <ParticipantsTable participants={participants} />
