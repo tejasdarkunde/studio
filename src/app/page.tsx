@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Calendar, Clock, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
@@ -27,7 +28,12 @@ const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
   return (
     <Card className="flex flex-col">
         <CardHeader>
-          <CardTitle>{batch.name}</CardTitle>
+          <div className="flex justify-between items-start">
+            <CardTitle>{batch.name}</CardTitle>
+            <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'}>
+              {batch.course}
+            </Badge>
+          </div>
           <CardDescription className="flex items-center gap-2 pt-1">
             {batch.startDate ? (
               <>
