@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Participant } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '../ui/textarea';
 
 
 type AddParticipantDialogProps = {
@@ -36,6 +37,7 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
   const [iitpNo, setIitpNo] = useState('');
   const [mobile, setMobile] = useState('');
   const [organization, setOrganization] = useState('');
+  const [enrolledCourses, setEnrolledCourses] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,6 +46,7 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
       setIitpNo('');
       setMobile('');
       setOrganization('');
+      setEnrolledCourses('');
     }
   }, [isOpen]);
 
@@ -52,11 +55,14 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
         toast({
             variant: "destructive",
             title: "Missing Information",
-            description: "Please fill out all fields to add a participant.",
+            description: "Please fill out all required fields to add a participant.",
         });
       return;
     }
-    onSave({ name, iitpNo, mobile, organization });
+    
+    const coursesArray = enrolledCourses.split(',').map(c => c.trim()).filter(c => c);
+    
+    onSave({ name, iitpNo, mobile, organization, enrolledCourses: coursesArray });
   };
 
   return (
@@ -94,6 +100,16 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
                 </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-4 items-start gap-4">
+             <Label htmlFor="enrolledCourses" className="text-right pt-2">Enrolled Courses</Label>
+             <Textarea
+                id="enrolledCourses"
+                value={enrolledCourses}
+                onChange={(e) => setEnrolledCourses(e.target.value)}
+                className="col-span-3"
+                placeholder="Course A, Course B, ..."
+             />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -103,4 +119,3 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
     </Dialog>
   );
 }
-

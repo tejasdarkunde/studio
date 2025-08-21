@@ -27,6 +27,14 @@ type ImportParticipantsDialogProps = {
   onSave: (participants: Omit<Participant, 'id' | 'createdAt'>[]) => void;
 };
 
+type CsvParticipantRow = {
+  name: string;
+  iitpNo: string;
+  mobile: string;
+  organization: string;
+  enrolledCourses?: string;
+};
+
 type ParsedParticipant = Omit<Participant, 'id' | 'createdAt'>;
 
 export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportParticipantsDialogProps) {
@@ -50,7 +58,7 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
       return;
     }
 
-    Papa.parse<ParsedParticipant>(file, {
+    Papa.parse<CsvParticipantRow>(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
@@ -68,14 +76,26 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
             return;
         }
         
-        const validParticipants = results.data.filter(p => p.name && p.iitpNo && p.mobile && p.organization);
+        const validParticipants = results.data
+            .filter(p => p.name && p.iitpNo && p.mobile && p.organization)
+            .map(p => {
+                const coursesArray = p.enrolledCourses ? p.enrolledCourses.split(',').map(c => c.trim()).filter(c => c) : [];
+                return {
+                    name: p.name,
+                    iitpNo: p.iitpNo,
+                    mobile: p.mobile,
+                    organization: p.organization,
+                    enrolledCourses: coursesArray,
+                };
+            });
+
         setParticipants(validParticipants);
 
         if(results.data.length !== validParticipants.length) {
             toast({
                 variant: 'destructive',
                 title: 'Incomplete Rows Skipped',
-                description: `${results.data.length - validParticipants.length} rows were skipped due to missing data.`
+                description: `${results.data.length - validParticipants.length} rows were skipped due to missing required data.`
             })
         }
       },
@@ -110,7 +130,7 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
       <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle>Import Participants from CSV</DialogTitle>
-          <DialogDescription>Upload a CSV file with participant data. The file must contain columns: name, iitpNo, mobile, organization.</DialogDescription>
+          <DialogDescription>Upload a CSV file with participant data. Required columns: name, iitpNo, mobile, organization. Optional: enrolledCourses.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -134,6 +154,7 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
                                 <TableHead>IITP No.</TableHead>
                                 <TableHead>Mobile</TableHead>
                                 <TableHead>Organization</TableHead>
+                                <TableHead>Enrolled</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -143,6 +164,7 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
                                     <TableCell>{p.iitpNo}</TableCell>
                                     <TableCell>{p.mobile}</TableCell>
                                     <TableCell>{p.organization}</TableCell>
+                                    <TableCell>{p.enrolledCourses?.join(', ')}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

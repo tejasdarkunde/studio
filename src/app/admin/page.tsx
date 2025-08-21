@@ -178,8 +178,8 @@ export default function AdminPage() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = "name,iitpNo,mobile,organization\n";
-    const example = "John Doe,IIPT123,1234567890,Example Org\n";
+    const headers = "name,iitpNo,mobile,organization,enrolledCourses\n";
+    const example = "John Doe,IIPT123,1234567890,Example Org,\"Course A, Course B\"\n";
     const csvContent = headers + example;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
