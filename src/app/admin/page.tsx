@@ -11,9 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Save, PlusCircle, Pencil } from 'lucide-react';
+import { Save, Pencil } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { startNewBatch, updateBatchName, getBatches, getMeetingLinks, saveMeetingLinks } from '@/app/actions';
+import { updateBatchName, getBatches, getMeetingLinks, saveMeetingLinks } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -26,13 +26,12 @@ export default function AdminPage() {
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const { toast } = useToast();
 
-  const fetchBatches = async () => {
-    const fetchedBatches = await getBatches();
+  const fetchBatchesAndLinks = async () => {
+    const [fetchedBatches, links] = await Promise.all([
+        getBatches(),
+        getMeetingLinks()
+    ]);
     setBatches(fetchedBatches);
-  };
-  
-  const fetchLinks = async () => {
-    const links = await getMeetingLinks();
     setDiplomaLink(links.diplomaZoomLink);
     setAdvanceDiplomaLink(links.advanceDiplomaZoomLink);
   };
@@ -40,8 +39,7 @@ export default function AdminPage() {
   useEffect(() => {
     setIsClient(true);
     if (isAuthenticated) {
-        fetchBatches();
-        fetchLinks();
+        fetchBatchesAndLinks();
     }
   }, [isAuthenticated]);
 
@@ -61,27 +59,8 @@ export default function AdminPage() {
     }
   };
   
-  const handleStartNewBatch = async () => {
-    const result = await startNewBatch();
-    if (result.success && result.newBatch) {
-        const newBatchName = result.newBatch.name;
-        toast({
-            title: "New Batch Started",
-            description: `${newBatchName} is now active. New registrations will be added here.`,
-        });
-        fetchBatches(); // Re-fetch to get all batches including the new one.
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: result.error || "Could not start new batch.",
-        });
-    }
-  };
-
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // A simple, insecure password check. Replace with a proper auth system for production.
     if (password === 'Bsa@123') {
       setIsAuthenticated(true);
       setError('');
@@ -104,7 +83,7 @@ export default function AdminPage() {
           title: "Batch Name Updated",
           description: `Batch was renamed to "${newName}".`,
       });
-      fetchBatches(); // Refresh batches from DB
+      fetchBatchesAndLinks(); // Refresh batches from DB
     } else {
       toast({
           variant: "destructive",
@@ -114,9 +93,6 @@ export default function AdminPage() {
     }
     setEditingBatch(null);
   };
-  
-  const activeBatch = batches.find(b => b.active);
-  const sortedBatches = batches;
   
   if (!isClient) {
     return null;
@@ -154,12 +130,6 @@ export default function AdminPage() {
     );
   }
 
-  const getDefaultAccordionOpenValue = () => {
-     if (sortedBatches.length === 0) return [];
-     const defaultOpenId = activeBatch ? activeBatch.id : sortedBatches[0].id;
-     return [`batch-${defaultOpenId}`];
-  }
-
   return (
     <>
       {editingBatch && (
@@ -188,18 +158,12 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Event &amp; Meeting Settings</CardTitle>
-              <CardDescription>Manage event batches and Zoom links.</CardDescription>
+              <CardTitle>Meeting Settings</CardTitle>
+              <CardDescription>Manage Zoom links for the different programs.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                  <Button onClick={handleStartNewBatch} className="w-full sm:w-auto">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Start New Event Batch
-                  </Button>
-              </div>
               <div className="space-y-2">
-                <Label htmlFor="diploma-link">Diploma Zoom Link</Label>
+                <Label htmlFor="diploma-link">Diploma Program Zoom Link</Label>
                 <Input 
                   id="diploma-link"
                   placeholder="Enter Diploma Zoom link"
@@ -208,7 +172,7 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="advance-diploma-link">Advance Diploma Zoom Link</Label>
+                <Label htmlFor="advance-diploma-link">Advance Diploma Program Zoom Link</Label>
                 <Input 
                   id="advance-diploma-link"
                   placeholder="Enter Advance Diploma Zoom link"
@@ -225,13 +189,13 @@ export default function AdminPage() {
 
           <Card>
               <CardHeader>
-                  <CardTitle>Registrations by Batch</CardTitle>
-                  <CardDescription>View and export registrations for each event batch.</CardDescription>
+                  <CardTitle>Registrations by Program</CardTitle>
+                  <CardDescription>View and export registrations for each program.</CardDescription>
               </CardHeader>
               <CardContent>
-                  {sortedBatches.length > 0 ? (
-                      <Accordion type="multiple" defaultValue={getDefaultAccordionOpenValue()}>
-                          {sortedBatches.map(batch => (
+                  {batches.length > 0 ? (
+                      <Accordion type="multiple" defaultValue={['batch-diploma', 'batch-advance-diploma']}>
+                          {batches.map(batch => (
                               <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
                                   <AccordionTrigger>
                                       <div className="flex justify-between items-center w-full pr-4">
@@ -239,15 +203,11 @@ export default function AdminPage() {
                                           <span>
                                               {batch.name} ({batch.registrations.length} registrations)
                                           </span>
-                                          {batch.active && <span className="ml-2 text-xs font-semibold text-primary py-0.5 px-2 bg-primary/10 rounded-full">Active</span>}
                                         </div>
                                       </div>
                                   </AccordionTrigger>
                                   <AccordionContent>
-                                    <div className="flex justify-between items-center pb-4">
-                                      <span className="text-sm text-muted-foreground">
-                                          Created: {new Date(batch.createdAt).toLocaleDateString()}
-                                      </span>
+                                    <div className="flex justify-end items-center pb-4">
                                       <Button 
                                           variant="outline" 
                                           size="sm"
@@ -266,7 +226,7 @@ export default function AdminPage() {
                       </Accordion>
                   ) : (
                       <div className="text-center text-muted-foreground p-8">
-                          No registration batches found. Start a new batch to begin collecting registrations.
+                          No registration batches found.
                       </div>
                   )}
               </CardContent>

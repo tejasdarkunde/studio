@@ -3,15 +3,17 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, addDoc, updateDoc, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc } from "firebase/firestore";
+import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc } from "firebase/firestore";
 import type { Registration, Batch, MeetingLinks } from "@/lib/types";
 
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
+  mobile: z.string().min(10, { message: "A valid mobile number is required." }),
   organization: z.string({
     required_error: "Please select an organization.",
   }),
+  batchId: z.enum(['diploma', 'advance-diploma']),
 });
 
 export async function registerForMeeting(
@@ -24,36 +26,32 @@ export async function registerForMeeting(
   }
   
   try {
-    const batchesCollection = collection(db, "batches");
-    const q = query(batchesCollection, where("active", "==", true));
-    const querySnapshot = await getDocs(q);
-    
-    let activeBatchId: string;
+    const { batchId, ...registrationData } = validatedFields.data;
 
-    if (querySnapshot.empty) {
-      // If no active batch, create a new one
-      const newBatchDoc = await addDoc(batchesCollection, {
-        name: "Event Batch 1",
-        createdAt: serverTimestamp(),
-        active: true,
-      });
-      activeBatchId = newBatchDoc.id;
-    } else {
-      // Use the existing active batch
-      activeBatchId = querySnapshot.docs[0].id;
+    // Ensure the batch document exists
+    const batchDocRef = doc(db, "batches", batchId);
+    const batchDoc = await getDoc(batchDocRef);
+
+    if (!batchDoc.exists()) {
+        const batchName = batchId === 'diploma' ? 'Diploma Program' : 'Advance Diploma Program';
+        await setDoc(batchDocRef, {
+            name: batchName,
+            createdAt: serverTimestamp(),
+            active: true,
+        });
     }
 
     const newRegistrationData = {
-      ...validatedFields.data,
+      ...registrationData,
       submissionTime: serverTimestamp(),
     };
     
-    const registrationsCollection = collection(db, `batches/${activeBatchId}/registrations`);
+    const registrationsCollection = collection(db, `batches/${batchId}/registrations`);
     const docRef = await addDoc(registrationsCollection, newRegistrationData);
 
     const finalRegistration: Registration = {
         id: docRef.id,
-        ...validatedFields.data,
+        ...registrationData,
         submissionTime: new Date().toISOString(), 
     };
 
@@ -66,90 +64,62 @@ export async function registerForMeeting(
 
 export async function getBatches(): Promise<Batch[]> {
     try {
-        const batchesCollection = collection(db, "batches");
-        const batchSnapshot = await getDocs(batchesCollection);
-        const batches = await Promise.all(
-            batchSnapshot.docs.map(async (batchDoc) => {
-                const registrationsCollection = collection(db, `batches/${batchDoc.id}/registrations`);
-                const regSnapshot = await getDocs(registrationsCollection);
-                const registrations: Registration[] = regSnapshot.docs.map(regDoc => {
-                    const data = regDoc.data();
-                    const submissionTime = data.submissionTime as Timestamp;
-                    return {
-                        id: regDoc.id,
-                        name: data.name,
-                        iitpNo: data.iitpNo,
-                        organization: data.organization,
-                        submissionTime: submissionTime?.toDate().toISOString() || new Date().toISOString(),
-                    };
-                });
+        const batchIds = ['diploma', 'advance-diploma'];
+        const batches: Batch[] = [];
 
-                const batchData = batchDoc.data();
-                const createdAt = batchData.createdAt as Timestamp;
-                return {
-                    id: batchDoc.id,
-                    name: batchData.name,
-                    createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-                    registrations,
-                    active: batchData.active,
+        for (const batchId of batchIds) {
+            const batchDocRef = doc(db, "batches", batchId);
+            const batchDoc = await getDoc(batchDocRef);
+
+            let batchData: any;
+            let createdAt: Timestamp;
+
+            if (batchDoc.exists()) {
+                batchData = batchDoc.data();
+                createdAt = batchData.createdAt as Timestamp;
+            } else {
+                // Create the batch if it doesn't exist
+                const batchName = batchId === 'diploma' ? 'Diploma Program' : 'Advance Diploma Program';
+                const newBatchData = {
+                    name: batchName,
+                    createdAt: serverTimestamp(),
+                    active: true,
                 };
-            })
-        );
-        return batches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                await setDoc(batchDocRef, newBatchData);
+                // We'll just use now for created at on the client
+                createdAt = Timestamp.now();
+                batchData = { name: batchName, active: true };
+            }
+            
+            const registrationsCollection = collection(db, `batches/${batchId}/registrations`);
+            const regSnapshot = await getDocs(registrationsCollection);
+            const registrations: Registration[] = regSnapshot.docs.map(regDoc => {
+                const data = regDoc.data();
+                const submissionTime = data.submissionTime as Timestamp;
+                return {
+                    id: regDoc.id,
+                    name: data.name,
+                    iitpNo: data.iitpNo,
+                    mobile: data.mobile,
+                    organization: data.organization,
+                    submissionTime: submissionTime?.toDate().toISOString() || new Date().toISOString(),
+                };
+            });
+
+            batches.push({
+                id: batchId,
+                name: batchData.name,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+                registrations,
+                active: batchData.active,
+            });
+        }
+        
+        return batches;
+
     } catch (error) {
         console.error("Error fetching batches:", error);
         return [];
-    }
-}
-
-export async function startNewBatch(): Promise<{success: boolean, newBatch?: Batch, error?: string}> {
-    try {
-        const batchesCollection = collection(db, "batches");
-        
-        // Deactivate all other batches in a transaction
-        const activeQuery = query(batchesCollection, where("active", "==", true));
-        const activeDocs = await getDocs(activeQuery);
-        
-        const batch = writeBatch(db);
-        activeDocs.forEach(docToDeactivate => {
-            batch.update(doc(db, "batches", docToDeactivate.id), { active: false });
-        });
-        await batch.commit();
-        
-        const batchCountSnapshot = await getDocs(collection(db, "batches"));
-        const newBatchNumber = batchCountSnapshot.size + 1;
-
-        // Create new batch
-        const newBatchData = {
-            name: `Event Batch ${newBatchNumber}`,
-            createdAt: serverTimestamp(),
-            active: true,
-        };
-
-        const newBatchRef = await addDoc(batchesCollection, newBatchData);
-        const newBatchSnapshot = await getDoc(newBatchRef);
-        const createdBatch = newBatchSnapshot.data();
-
-        if (!createdBatch) {
-            throw new Error("Failed to retrieve the new batch after creation.");
-        }
-        
-        const createdAt = createdBatch.createdAt as Timestamp;
-
-        return {
-          success: true,
-          newBatch: {
-            id: newBatchRef.id,
-            name: createdBatch.name,
-            createdAt: createdAt.toDate().toISOString(),
-            active: createdBatch.active,
-            registrations: [],
-          },
-        };
-
-    } catch(error) {
-        console.error("Error starting new batch:", error);
-        return {success: false, error: "Could not start new batch. Check Firestore rules."}
     }
 }
 
@@ -159,7 +129,7 @@ export async function updateBatchName(batchId: string, newName: string): Promise
     }
     try {
         const batchDocRef = doc(db, 'batches', batchId);
-        await updateDoc(batchDocRef, { name: newName });
+        await setDoc(batchDocRef, { name: newName }, { merge: true });
         return { success: true };
     } catch(error) {
         console.error("Error updating batch name:", error);
@@ -194,20 +164,12 @@ export async function saveMeetingLinks(links: MeetingLinks): Promise<{success: b
     }
 }
 
-export async function getRedirectLink(organization: string): Promise<{link: string | null, linkName: string}> {
+export async function getRedirectLink(batchId: 'diploma' | 'advance-diploma'): Promise<{link: string | null, linkName: string}> {
     const links = await getMeetingLinks();
     
-    // Diploma organizations
-    const diplomaOrgs = [
-        "TE Connectivity, Shirwal",
-        "BSA Plant, Chakan",
-        "Belden India",
-    ];
-
-    if (diplomaOrgs.includes(organization)) {
+    if (batchId === 'diploma') {
         return { link: links.diplomaZoomLink, linkName: "Diploma Zoom Link" };
     } else {
-        // All other organizations, including "Other", will use the Advance Diploma link
         return { link: links.advanceDiplomaZoomLink, linkName: "Advance Diploma Zoom Link" };
     }
 }

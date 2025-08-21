@@ -4,6 +4,7 @@ import type { Registration } from './types';
 const keyToHeaderMap: { [K in keyof Omit<Registration, 'id'>]: string } = {
   name: "Name",
   iitpNo: "IITP No",
+  mobile: "Mobile No",
   organization: "Organization",
   submissionTime: "Submission Time",
 }

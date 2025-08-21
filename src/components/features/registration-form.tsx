@@ -1,10 +1,11 @@
+
 "use client";
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { User, Library, Building, Loader2 } from "lucide-react";
+import { User, Library, Building, Loader2, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,22 +31,25 @@ import type { Registration } from "@/lib/types";
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
+  mobile: z.string().min(10, { message: "A valid 10-digit mobile number is required." }).max(10, { message: "A valid 10-digit mobile number is required." }),
   organization: z.string({
     required_error: "Please select an organization.",
   }),
 });
 
 type RegistrationFormProps = {
-  onSuccess: (registration: Registration) => void;
+  batchId: 'diploma' | 'advance-diploma';
+  onSuccess: (registration: Registration, batchId: 'diploma' | 'advance-diploma') => void;
 };
 
 const organizations = [
   "TE Connectivity, Shirwal",
   "BSA Plant, Chakan",
   "Belden India",
+  "Other",
 ];
 
-export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
+export function RegistrationForm({ batchId, onSuccess }: RegistrationFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -54,16 +58,17 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     defaultValues: {
       name: "",
       iitpNo: "",
+      mobile: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      const result = await registerForMeeting(values);
+      const result = await registerForMeeting({ ...values, batchId });
 
       if (result.success) {
-        onSuccess(result.registration);
+        onSuccess(result.registration, batchId);
         form.reset();
       } else {
         throw new Error(result.error);
@@ -114,6 +119,21 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
         />
         <FormField
           control={form.control}
+          name="mobile"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <Phone className="h-4 w-4" /> Mobile No
+              </FormLabel>
+              <FormControl>
+                <Input type="tel" placeholder="Enter your mobile number" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="organization"
           render={({ field }) => (
             <FormItem>
@@ -132,7 +152,6 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                       {org}
                     </SelectItem>
                   ))}
-                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

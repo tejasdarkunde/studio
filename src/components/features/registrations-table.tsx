@@ -61,6 +61,7 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>IITP No</TableHead>
+              <TableHead>Mobile No</TableHead>
               <TableHead>Organization</TableHead>
               <TableHead>Submission Time</TableHead>
             </TableRow>
@@ -71,6 +72,7 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
                 <TableRow key={reg.id}>
                   <TableCell className="font-medium">{reg.name}</TableCell>
                   <TableCell>{reg.iitpNo}</TableCell>
+                  <TableCell>{reg.mobile}</TableCell>
                   <TableCell>{reg.organization}</TableCell>
                   <TableCell>
                     {reg.submissionTime ? new Date(reg.submissionTime).toLocaleString() : 'N/A'}
@@ -79,7 +81,7 @@ export function RegistrationsTable({ registrations, batchName }: RegistrationsTa
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No registrations yet for this batch.
                 </TableCell>
               </TableRow>
