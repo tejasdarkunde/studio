@@ -84,6 +84,7 @@ export async function joinMeeting(data: z.infer<typeof joinMeetingSchema>): Prom
         const participantDoc = participantSnapshot.docs[0];
         const participant = { id: participantDoc.id, ...participantDoc.data() } as Participant;
         
+        // Create a registration record for this batch using the participant's data
         const registrationData = {
           name: participant.name,
           iitpNo: participant.iitpNo,
