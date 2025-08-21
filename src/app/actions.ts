@@ -68,6 +68,7 @@ export async function getBatches(): Promise<Batch[]> {
             const batchData = batchDoc.data();
             const createdAt = batchData.createdAt as Timestamp;
             
+            // Backward compatibility for old data model
             const startDate = batchData.startDate as Timestamp | undefined;
             const endDate = batchData.endDate as Timestamp | undefined;
 
@@ -90,8 +91,8 @@ export async function getBatches(): Promise<Batch[]> {
                 id: batchId,
                 name: batchData.name || 'Unnamed Batch',
                 startDate: startDate?.toDate().toISOString() || '',
-                endDate: endDate?.toDate().toISOString(),
-                time: batchData.time || '',
+                startTime: batchData.startTime || '00:00',
+                endTime: batchData.endTime || '00:00',
                 meetingLink: batchData.meetingLink || '',
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 registrations,
@@ -118,14 +119,13 @@ export async function getBatchById(id: string): Promise<Batch | null> {
         const batchData = batchDoc.data();
         const createdAt = batchData.createdAt as Timestamp;
         const startDate = batchData.startDate as Timestamp;
-        const endDate = batchData.endDate as Timestamp;
 
         return {
             id: batchDoc.id,
             name: batchData.name || 'Unnamed Batch',
             startDate: startDate?.toDate().toISOString() || '',
-            endDate: endDate?.toDate().toISOString(),
-            time: batchData.time || '',
+            startTime: batchData.startTime || '00:00',
+            endTime: batchData.endTime || '00:00',
             meetingLink: batchData.meetingLink || '',
             createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
             registrations: [], 
@@ -137,7 +137,7 @@ export async function getBatchById(id: string): Promise<Batch | null> {
 }
 
 
-export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'meetingLink' | 'startDate' | 'time'>>): Promise<{success: boolean, error?: string}> {
+export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'meetingLink' | 'startDate' | 'startTime' | 'endTime'>>): Promise<{success: boolean, error?: string}> {
     if (!data.name || !data.name.trim()) {
         return { success: false, error: "Batch name cannot be empty." };
     }
@@ -147,7 +147,8 @@ export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'na
         const updateData: any = {
             name: data.name,
             meetingLink: data.meetingLink || '',
-            time: data.time || '',
+            startTime: data.startTime || '00:00',
+            endTime: data.endTime || '00:00',
         };
 
         if(data.startDate) {
@@ -165,23 +166,26 @@ export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'na
 const createBatchSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   startDate: z.date(),
-  time: z.string().optional(),
+  startTime: z.string(),
+  endTime: z.string(),
   meetingLink: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
 });
 
 export async function createBatch(data: z.infer<typeof createBatchSchema>): Promise<{success: boolean, error?: string}> {
     const validatedFields = createBatchSchema.safeParse(data);
     if(!validatedFields.success) {
+        console.error(validatedFields.error.flatten().fieldErrors);
         return { success: false, error: "Invalid form data."};
     }
 
     try {
-        const { name, startDate, time, meetingLink } = validatedFields.data;
+        const { name, startDate, startTime, endTime, meetingLink } = validatedFields.data;
         const batchesCollection = collection(db, "batches");
         await addDoc(batchesCollection, {
             name,
             startDate: Timestamp.fromDate(startDate),
-            time: time || '',
+            startTime,
+            endTime,
             meetingLink: meetingLink || '',
             createdAt: serverTimestamp(),
         });

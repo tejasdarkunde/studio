@@ -20,32 +20,61 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 
 type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; startDate?: Date; time?: string; meetingLink: string }) => void;
-  initialData?: { name: string; startDate?: string; time?: string; meetingLink: string; };
+  onSave: (details: { name: string; startDate?: Date; startTime: string; endTime: string; meetingLink: string }) => void;
+  initialData?: { name: string; startDate?: string; startTime: string; endTime: string; meetingLink: string; };
 };
+
+const generateTimeOptions = () => {
+    const options = [];
+    for (let i = 0; i < 24; i++) {
+        for (let j = 0; j < 60; j += 30) {
+            const hour = i.toString().padStart(2, '0');
+            const minute = j.toString().padStart(2, '0');
+            const time = `${hour}:${minute}`;
+            
+            const displayHour = i % 12 === 0 ? 12 : i % 12;
+            const ampm = i < 12 ? 'AM' : 'PM';
+            const displayTime = `${displayHour}:${minute} ${ampm}`;
+
+            options.push({ value: time, label: displayTime });
+        }
+    }
+    return options;
+}
+const timeOptions = generateTimeOptions();
+
 
 export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBatchDialogProps) {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState<Date | undefined>();
-  const [time, setTime] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
 
   useEffect(() => {
     setName(initialData?.name || '');
     setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
-    setTime(initialData?.time || '');
+    setStartTime(initialData?.startTime || '');
+    setEndTime(initialData?.endTime || '');
     setMeetingLink(initialData?.meetingLink || '');
   }, [initialData, isOpen]);
 
   const handleSave = () => {
-    if (name.trim()) {
-      onSave({ name: name.trim(), startDate, time, meetingLink });
+    if (name.trim() && startTime && endTime) {
+      onSave({ name: name.trim(), startDate, startTime, endTime, meetingLink });
       onClose();
     }
   };
@@ -75,7 +104,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBa
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">
-              Start Date
+              Date
             </Label>
             <Popover>
                 <PopoverTrigger asChild>
@@ -101,16 +130,38 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBa
             </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="time" className="text-right">
-              Time
+            <Label htmlFor="start-time" className="text-right">
+              Start Time
             </Label>
-            <Input
-              id="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="col-span-3"
-              placeholder="e.g., 10:00 AM"
-            />
+             <Select onValueChange={setStartTime} value={startTime}>
+                <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a start time" />
+                </SelectTrigger>
+                <SelectContent>
+                    {timeOptions.map(option => (
+                        <SelectItem key={`start-${option.value}`} value={option.value}>
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          </div>
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="end-time" className="text-right">
+              End Time
+            </Label>
+             <Select onValueChange={setEndTime} value={endTime}>
+                <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select an end time" />
+                </SelectTrigger>
+                <SelectContent>
+                    {timeOptions.map(option => (
+                        <SelectItem key={`end-${option.value}`} value={option.value}>
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="meeting-link" className="text-right">

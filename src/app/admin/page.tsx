@@ -57,13 +57,14 @@ export default function AdminPage() {
     setDeletingBatch(batch);
   };
   
-  const handleSaveBatch = async (details: { name: string; startDate?: Date; time?: string; meetingLink: string }) => {
+  const handleSaveBatch = async (details: { name: string; startDate?: Date; startTime: string; endTime: string; meetingLink: string }) => {
     if (!editingBatch) return;
 
     const result = await updateBatch(editingBatch.id, {
         name: details.name,
         startDate: details.startDate?.toISOString(),
-        time: details.time,
+        startTime: details.startTime,
+        endTime: details.endTime,
         meetingLink: details.meetingLink,
     });
 
@@ -83,7 +84,7 @@ export default function AdminPage() {
     setEditingBatch(null);
   };
 
-  const handleCreateBatch = async (details: { name: string; startDate?: Date; time?: string; meetingLink: string }) => {
+  const handleCreateBatch = async (details: { name: string; startDate?: Date; startTime: string; endTime: string; meetingLink: string }) => {
     if (!details.startDate) {
         toast({
             variant: "destructive",
@@ -92,11 +93,20 @@ export default function AdminPage() {
         });
         return;
     }
+     if (!details.startTime || !details.endTime) {
+        toast({
+            variant: "destructive",
+            title: "Missing Time",
+            description: "Start and end times are required.",
+        });
+        return;
+    }
 
     const result = await createBatch({
         name: details.name,
         startDate: details.startDate,
-        time: details.time,
+        startTime: details.startTime,
+        endTime: details.endTime,
         meetingLink: details.meetingLink,
     });
 
@@ -189,7 +199,8 @@ export default function AdminPage() {
             initialData={editingBatch ? {
                 name: editingBatch.name,
                 startDate: editingBatch.startDate,
-                time: editingBatch.time,
+                startTime: editingBatch.startTime,
+                endTime: editingBatch.endTime,
                 meetingLink: editingBatch.meetingLink,
             } : undefined}
         />

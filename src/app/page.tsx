@@ -10,27 +10,19 @@ import type { Batch } from '@/lib/types';
 import { getBatches } from './actions';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const TrainingCard = ({ batch }: { batch: Batch }) => {
+const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Date not set';
     return new Date(dateString).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
-  const isPastEvent = () => {
-    if (batch.endDate) { // Handle old data model
-      return new Date(batch.endDate) < new Date();
-    }
-    if (batch.startDate) { // New model: single day event
-      const eventDate = new Date(batch.startDate);
-      const today = new Date();
-      today.setHours(0,0,0,0); // Compare dates only
-      eventDate.setHours(0,0,0,0);
-      return eventDate < today;
-    }
-    return false; // No date info, assume not past
+  const formatTime = (timeString: string) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes));
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   }
-
-  const isPast = isPastEvent();
 
   return (
     <Card className="flex flex-col">
@@ -41,14 +33,11 @@ const TrainingCard = ({ batch }: { batch: Batch }) => {
               <>
                 <Calendar className="h-4 w-4" /> 
                 <span>{formatDate(batch.startDate)}</span>
-                {batch.time && (
+                {(batch.startTime && batch.endTime) && (
                   <>
                     <Clock className="h-4 w-4 ml-2" />
-                    <span>{batch.time}</span>
+                    <span>{formatTime(batch.startTime)} - {formatTime(batch.endTime)}</span>
                   </>
-                )}
-                {batch.endDate && !batch.time && (
-                   <span> - {formatDate(batch.endDate)}</span>
                 )}
               </>
             ) : (
@@ -73,13 +62,13 @@ const TrainingCard = ({ batch }: { batch: Batch }) => {
   )
 };
 
-const TrainingsSection = ({ title, batches }: { title: string, batches: Batch[] }) => {
+const TrainingsSection = ({ title, batches, isPastSection = false }: { title: string, batches: Batch[], isPastSection?: boolean }) => {
   if (batches.length === 0) return null;
   return (
     <div className="w-full">
       <h2 className="text-2xl font-semibold text-primary mb-4">{title}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {batches.map(batch => <TrainingCard key={batch.id} batch={batch} />)}
+        {batches.map(batch => <TrainingCard key={batch.id} batch={batch} isPast={isPastSection} />)}
       </div>
     </div>
   );
@@ -94,9 +83,11 @@ const LoadingSkeleton = () => (
                     <Skeleton className="h-4 w-1/2" />
                 </CardHeader>
                 <CardContent>
-                    <Skeleton className="h-4 w-1/3 mb-4" />
-                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-4 w-1/3" />
                 </CardContent>
+                <CardFooter>
+                    <Skeleton className="h-10 w-full" />
+                </CardFooter>
             </Card>
         ))}
     </div>
@@ -118,36 +109,30 @@ export default function Home() {
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  const getEventDate = (b: Batch) => new Date(new Date(b.startDate).getFullYear(), new Date(b.startDate).getMonth(), new Date(b.startDate).getDate());
+  const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
   const ongoing = batches.filter(b => {
-      if (!b.startDate) return false;
-      if (b.endDate) { // Legacy multi-day events
-          return new Date(b.startDate) <= now && new Date(b.endDate) >= now;
-      }
-      // Single-day events are "ongoing" on that day
-      return getEventDate(b).getTime() === today.getTime();
+      if (!b.startDate || !b.startTime || !b.endTime) return false;
+      const eventDate = new Date(b.startDate);
+      eventDate.setHours(0,0,0,0);
+      return eventDate.getTime() === today.getTime() && b.startTime <= currentTime && b.endTime > currentTime;
   });
 
   const upcoming = batches.filter(b => {
       if (!b.startDate) return false;
-      // Exclude ongoing events from upcoming
-      if (ongoing.some(ongoingBatch => ongoingBatch.id === b.id)) return false;
-      return getEventDate(b) > today;
+      const eventDate = new Date(b.startDate);
+      eventDate.setHours(0,0,0,0);
+      return eventDate > today || (eventDate.getTime() === today.getTime() && b.startTime > currentTime);
   });
   
   const past = batches.filter(b => {
-    if (!b.startDate) return false;
-    if (b.endDate) { // Legacy multi-day events
-      return new Date(b.endDate) < now;
-    }
-    // Single-day events are "past" the day after
-    return getEventDate(b) < today;
+    if (!b.startDate) return false; // Legacy batches with no date are considered past.
+    const eventDate = new Date(b.startDate);
+    eventDate.setHours(0,0,0,0);
+    return eventDate < today || (eventDate.getTime() === today.getTime() && b.endTime <= currentTime);
   });
-
+  
   const legacy = batches.filter(b => !b.startDate);
-
 
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center min-h-screen">
@@ -168,8 +153,8 @@ export default function Home() {
             <>
               <TrainingsSection title="Ongoing Trainings" batches={ongoing} />
               <TrainingsSection title="Upcoming Trainings" batches={upcoming} />
-              <TrainingsSection title="Legacy Registrations" batches={legacy} />
-              <TrainingsSection title="Past Trainings" batches={past} />
+              <TrainingsSection title="Past Trainings" batches={past} isPastSection={true} />
+              <TrainingsSection title="Legacy Registrations" batches={legacy} isPastSection={true} />
               {batches.length === 0 && !loading && <p>No training sessions found.</p>}
             </>
           )}
