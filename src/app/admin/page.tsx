@@ -241,14 +241,14 @@ export default function AdminPage() {
             description: `${details.name} has been added to the central directory.`,
         });
         fetchAllData();
+        setAddParticipantOpen(false);
     } else {
         toast({
             variant: "destructive",
-            title: "Error",
+            title: "Error Adding Participant",
             description: result.error || "Could not add the participant."
         });
     }
-    setAddParticipantOpen(false);
   };
 
   const handleFetchParticipant = async () => {
@@ -333,9 +333,10 @@ export default function AdminPage() {
     const result = await addParticipantsInBulk(importedParticipants);
 
     if (result.success) {
+      const successfulCount = importedParticipants.length - (result.skippedCount || 0);
       toast({
-        title: 'Import Successful',
-        description: `${importedParticipants.length} participants have been added to the directory.`,
+        title: 'Import Complete',
+        description: `${successfulCount} participants have been added. ${result.skippedCount || 0} were skipped.`,
       });
       fetchAllData();
     } else {
@@ -691,3 +692,5 @@ export default function AdminPage() {
     </>
   );
 }
+
+    

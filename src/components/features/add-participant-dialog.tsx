@@ -55,7 +55,7 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
         toast({
             variant: "destructive",
             title: "Missing Information",
-            description: "Please fill out Name and IITP No. fields to add a participant.",
+            description: "Name and IITP No. fields are required.",
         });
       return;
     }
@@ -119,3 +119,5 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
     </Dialog>
   );
 }
+
+    
