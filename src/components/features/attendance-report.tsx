@@ -29,7 +29,12 @@ const generateAttendanceGrid = (courseName: 'Diploma' | 'Advance Diploma', parti
         .filter(b => b.name.toLowerCase().includes(courseName.toLowerCase()))
         .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     
-    const headers = courseBatches.map(b => ({ id: b.id, name: b.name }));
+    const headers = courseBatches.map(b => {
+        const date = b.startDate ? new Date(b.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'No Date';
+        const time = b.startTime || '';
+        const headerName = `${b.name} (${date} ${time})`.trim();
+        return { id: b.id, name: headerName };
+    });
 
     // 2. Filter participants enrolled in the course
     const enrolledParticipants = participants.filter(p => 
@@ -141,7 +146,7 @@ const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseNam
                     </Table>
                 </ScrollArea>
             ) : (
-                <div className="flex items-center justify-center h-64 border rounded-md">
+                <div className="flex flex-col items-center justify-center h-64 border rounded-md">
                     <p className="text-muted-foreground">No attendance data to display for {courseName}.</p>
                     <p className="text-muted-foreground text-sm mt-2">Ensure participants are enrolled and batches are named correctly.</p>
                 </div>
