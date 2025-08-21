@@ -13,14 +13,15 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type ParticipantsTableProps = {
   participants: Participant[];
+  onEdit: (participant: Participant) => void;
 };
 
-export function ParticipantsTable({ participants }: ParticipantsTableProps) {
+export function ParticipantsTable({ participants, onEdit }: ParticipantsTableProps) {
   const { toast } = useToast();
   
   // A simple CSV export for participants
@@ -77,6 +78,7 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
                 <TableHead>Organization</TableHead>
                 <TableHead>Enrolled Courses</TableHead>
                 <TableHead>Date Added</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -101,11 +103,17 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
                     <TableCell>
                         {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
                     </TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(p)}>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Edit Participant</span>
+                        </Button>
+                    </TableCell>
                     </TableRow>
                 ))
                 ) : (
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                     No participants found. Add one to get started.
                     </TableCell>
                 </TableRow>

@@ -7,6 +7,7 @@ import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
 import { AddParticipantDialog } from '@/components/features/add-participant-dialog';
+import { EditParticipantDialog } from '@/components/features/edit-participant-dialog';
 import { ImportParticipantsDialog } from '@/components/features/import-participants-dialog';
 import { ParticipantsTable } from '@/components/features/participants-table';
 import Link from 'next/link';
@@ -19,7 +20,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk } from '@/app/actions';
+import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -30,6 +31,7 @@ export default function AdminPage() {
   const [error, setError] = useState('');
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
+  const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isAddParticipantOpen, setAddParticipantOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
@@ -217,6 +219,29 @@ export default function AdminPage() {
     }
     setAddParticipantOpen(false);
   };
+  
+  const handleEditParticipant = (participant: Participant) => {
+    setEditingParticipant(participant);
+  }
+
+  const handleSaveParticipant = async (details: Omit<Participant, 'createdAt'>) => {
+    if (!editingParticipant) return;
+    const result = await updateParticipant(details);
+    if(result.success) {
+        toast({
+            title: "Participant Updated",
+            description: `${details.name}'s information has been successfully updated.`,
+        });
+        fetchAllData();
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: result.error || "Could not update the participant."
+        });
+    }
+    setEditingParticipant(null);
+  };
 
   const handleDownloadTemplate = () => {
     const headers = "name,iitpNo,mobile,organization,enrolledCourses\n";
@@ -325,6 +350,12 @@ export default function AdminPage() {
         onClose={() => setAddParticipantOpen(false)}
         onSave={handleAddParticipant}
       />
+       <EditParticipantDialog 
+        isOpen={!!editingParticipant}
+        onClose={() => setEditingParticipant(null)}
+        onSave={handleSaveParticipant}
+        participant={editingParticipant}
+       />
       <ImportParticipantsDialog
         isOpen={isImportDialogOpen}
         onClose={() => setImportDialogOpen(false)}
@@ -499,7 +530,10 @@ export default function AdminPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                  <ParticipantsTable participants={participants} />
+                  <ParticipantsTable 
+                    participants={participants}
+                    onEdit={handleEditParticipant}
+                  />
               </CardContent>
             </Card>
           </TabsContent>

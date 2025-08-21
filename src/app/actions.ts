@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc } from "firebase/firestore";
 import type { Registration, Batch, MeetingLinks, Participant } from "@/lib/types";
 
 const registrationSchema = z.object({
@@ -290,6 +290,28 @@ export async function addParticipant(data: z.infer<typeof participantSchema>): P
         console.error("Error adding participant:", error);
         return { success: false, error: "Could not add participant." };
     }
+}
+
+const participantUpdateSchema = participantSchema.extend({
+  id: z.string().min(1),
+});
+
+export async function updateParticipant(data: z.infer<typeof participantUpdateSchema>): Promise<{ success: boolean; error?: string }> {
+  const { id, ...participantData } = data;
+  const validatedFields = participantSchema.safeParse(participantData);
+
+  if (!validatedFields.success) {
+    return { success: false, error: "Invalid participant data." };
+  }
+
+  try {
+    const participantDocRef = doc(db, 'participants', id);
+    await updateDoc(participantDocRef, validatedFields.data);
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating participant:", error);
+    return { success: false, error: "Could not update participant." };
+  }
 }
 
 
