@@ -38,8 +38,8 @@ const formSchema = z.object({
 });
 
 type RegistrationFormProps = {
-  batchId: 'diploma' | 'advance-diploma';
-  onSuccess: (registration: Registration, batchId: 'diploma' | 'advance-diploma') => void;
+  batchId: string;
+  onSuccess: () => void;
 };
 
 const organizations = [
@@ -68,7 +68,7 @@ export function RegistrationForm({ batchId, onSuccess }: RegistrationFormProps) 
       const result = await registerForMeeting({ ...values, batchId });
 
       if (result.success) {
-        onSuccess(result.registration, batchId);
+        onSuccess();
         form.reset();
       } else {
         throw new Error(result.error);

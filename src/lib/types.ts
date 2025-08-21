@@ -9,13 +9,16 @@ export type Registration = {
 };
 
 export type Batch = {
-  id: string; // Will be 'diploma' or 'advance-diploma'
+  id: string;
   name: string;
-  createdAt: string; // ISO 8601 string format
+  startDate: string; // ISO 8601 string format
+  endDate: string; // ISO 8601 string format
+  meetingLink: string;
   registrations: Registration[];
-  active: boolean; // This can be used to enable/disable a program
+  createdAt: string; // ISO 8601 string format
 };
 
+// This type is no longer used, but kept for potential future global settings.
 export type MeetingLinks = {
   diplomaZoomLink: string;
   advanceDiplomaZoomLink: string;

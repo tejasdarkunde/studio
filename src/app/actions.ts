@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc } from "firebase/firestore";
+import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy } from "firebase/firestore";
 import type { Registration, Batch, MeetingLinks } from "@/lib/types";
 
 const registrationSchema = z.object({
@@ -13,7 +13,7 @@ const registrationSchema = z.object({
   organization: z.string({
     required_error: "Please select an organization.",
   }),
-  batchId: z.enum(['diploma', 'advance-diploma']),
+  batchId: z.string().min(1, { message: "Batch ID is required." }),
 });
 
 export async function registerForMeeting(
@@ -28,17 +28,11 @@ export async function registerForMeeting(
   try {
     const { batchId, ...registrationData } = validatedFields.data;
 
-    // Ensure the batch document exists
     const batchDocRef = doc(db, "batches", batchId);
     const batchDoc = await getDoc(batchDocRef);
 
     if (!batchDoc.exists()) {
-        const batchName = batchId === 'diploma' ? 'Diploma Program' : 'Advance Diploma Program';
-        await setDoc(batchDocRef, {
-            name: batchName,
-            createdAt: serverTimestamp(),
-            active: true,
-        });
+        return { success: false, error: "The event you are trying to register for does not exist." };
     }
 
     const newRegistrationData = {
@@ -65,13 +59,16 @@ export async function registerForMeeting(
 export async function getBatches(): Promise<Batch[]> {
     try {
         const batchesCollectionRef = collection(db, "batches");
-        const allBatchesSnapshot = await getDocs(batchesCollectionRef);
+        const q = query(batchesCollectionRef, orderBy("startDate", "desc"));
+        const allBatchesSnapshot = await getDocs(q);
         const batches: Batch[] = [];
 
         for (const batchDoc of allBatchesSnapshot.docs) {
             const batchId = batchDoc.id;
             const batchData = batchDoc.data();
             const createdAt = batchData.createdAt as Timestamp;
+            const startDate = batchData.startDate as Timestamp;
+            const endDate = batchData.endDate as Timestamp;
 
             const registrationsCollection = collection(db, `batches/${batchId}/registrations`);
             const regSnapshot = await getDocs(registrationsCollection);
@@ -91,9 +88,11 @@ export async function getBatches(): Promise<Batch[]> {
             batches.push({
                 id: batchId,
                 name: batchData.name || 'Unnamed Batch',
+                startDate: startDate?.toDate().toISOString() || '',
+                endDate: endDate?.toDate().toISOString() || '',
+                meetingLink: batchData.meetingLink || '',
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 registrations,
-                active: batchData.active === undefined ? true : batchData.active,
             });
         }
         
@@ -105,54 +104,105 @@ export async function getBatches(): Promise<Batch[]> {
     }
 }
 
-export async function updateBatchName(batchId: string, newName: string): Promise<{success: boolean, error?: string}> {
-    if (!newName.trim()) {
+export async function getBatchById(id: string): Promise<Batch | null> {
+    try {
+        const batchDocRef = doc(db, 'batches', id);
+        const batchDoc = await getDoc(batchDocRef);
+
+        if (!batchDoc.exists()) {
+            return null;
+        }
+
+        const batchData = batchDoc.data();
+        const createdAt = batchData.createdAt as Timestamp;
+        const startDate = batchData.startDate as Timestamp;
+        const endDate = batchData.endDate as Timestamp;
+
+        return {
+            id: batchDoc.id,
+            name: batchData.name || 'Unnamed Batch',
+            startDate: startDate?.toDate().toISOString() || '',
+            endDate: endDate?.toDate().toISOString() || '',
+            meetingLink: batchData.meetingLink || '',
+            createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            registrations: [], // Registrations not needed for this specific query
+        };
+    } catch (error) {
+        console.error('Error fetching batch by ID:', error);
+        return null;
+    }
+}
+
+
+export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'meetingLink' | 'startDate' | 'endDate'>>): Promise<{success: boolean, error?: string}> {
+    if (!data.name || !data.name.trim()) {
         return { success: false, error: "Batch name cannot be empty." };
     }
     try {
         const batchDocRef = doc(db, 'batches', batchId);
-        await setDoc(batchDocRef, { name: newName }, { merge: true });
+        
+        const updateData: any = {
+            name: data.name,
+            meetingLink: data.meetingLink || '',
+        };
+
+        if(data.startDate) {
+            updateData.startDate = Timestamp.fromDate(new Date(data.startDate));
+        }
+        if(data.endDate) {
+            updateData.endDate = Timestamp.fromDate(new Date(data.endDate));
+        }
+
+        await setDoc(batchDocRef, updateData, { merge: true });
         return { success: true };
     } catch(error) {
-        console.error("Error updating batch name:", error);
-        return { success: false, error: "Could not update batch name." };
+        console.error("Error updating batch:", error);
+        return { success: false, error: "Could not update batch." };
     }
 }
 
-export async function getMeetingLinks(): Promise<MeetingLinks> {
-    try {
-        const settingsDocRef = doc(db, 'settings', 'meetingLinks');
-        const docSnap = await getDoc(settingsDocRef);
+const createBatchSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  startDate: z.date(),
+  endDate: z.date(),
+  meetingLink: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
+});
 
-        if (docSnap.exists()) {
-            return docSnap.data() as MeetingLinks;
-        } else {
-            // Return default empty values if the document doesn't exist
-            return { diplomaZoomLink: '', advanceDiplomaZoomLink: '' };
-        }
-    } catch (error) {
-        console.error("Error fetching meeting links:", error);
-        return { diplomaZoomLink: '', advanceDiplomaZoomLink: '' };
+export async function createBatch(data: z.infer<typeof createBatchSchema>): Promise<{success: boolean, error?: string}> {
+    const validatedFields = createBatchSchema.safeParse(data);
+    if(!validatedFields.success) {
+        return { success: false, error: "Invalid form data."};
     }
-}
 
-export async function saveMeetingLinks(links: MeetingLinks): Promise<{success: boolean, error?: string}> {
     try {
-        const settingsDocRef = doc(db, 'settings', 'meetingLinks');
-        await setDoc(settingsDocRef, links, { merge: true });
+        const { name, startDate, endDate, meetingLink } = validatedFields.data;
+        const batchesCollection = collection(db, "batches");
+        await addDoc(batchesCollection, {
+            name,
+            startDate: Timestamp.fromDate(startDate),
+            endDate: Timestamp.fromDate(endDate),
+            meetingLink: meetingLink || '',
+            createdAt: serverTimestamp(),
+        });
         return { success: true };
     } catch (error) {
-        console.error("Error saving meeting links:", error);
-        return { success: false, error: "Could not save links to the database." };
+        console.error("Error creating batch:", error);
+        return { success: false, error: "Could not create batch." };
     }
 }
 
-export async function getRedirectLink(batchId: 'diploma' | 'advance-diploma'): Promise<{link: string | null, linkName: string}> {
-    const links = await getMeetingLinks();
-    
-    if (batchId === 'diploma') {
-        return { link: links.diplomaZoomLink, linkName: "Diploma Zoom Link" };
-    } else {
-        return { link: links.advanceDiplomaZoomLink, linkName: "Advance Diploma Zoom Link" };
+
+export async function getRedirectLink(batchId: string): Promise<{link: string | null}> {
+    try {
+        const batchDocRef = doc(db, 'batches', batchId);
+        const batchDoc = await getDoc(batchDocRef);
+
+        if (batchDoc.exists()) {
+            return { link: batchDoc.data().meetingLink || null };
+        } else {
+            return { link: null };
+        }
+    } catch(error) {
+        return { link: null };
     }
 }

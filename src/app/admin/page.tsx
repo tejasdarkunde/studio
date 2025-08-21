@@ -4,65 +4,41 @@
 import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
-import { EditBatchNameDialog } from '@/components/features/edit-batch-name-dialog';
+import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Pencil } from 'lucide-react';
+import { Pencil, PlusCircle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { updateBatchName, getBatches, getMeetingLinks, saveMeetingLinks } from '@/app/actions';
+import { updateBatch, getBatches, createBatch } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [diplomaLink, setDiplomaLink] = useState('');
-  const [advanceDiplomaLink, setAdvanceDiplomaLink] = useState('');
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
+  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const fetchBatchesAndLinks = async () => {
-    const [fetchedBatches, links] = await Promise.all([
-        getBatches(),
-        getMeetingLinks()
-    ]);
+  const fetchBatches = async () => {
+    const fetchedBatches = await getBatches();
     setBatches(fetchedBatches);
-    setDiplomaLink(links.diplomaZoomLink || '');
-    setAdvanceDiplomaLink(links.advanceDiplomaZoomLink || '');
   };
 
   useEffect(() => {
     setIsClient(true);
     if (isAuthenticated) {
-        fetchBatchesAndLinks();
+        fetchBatches();
     }
   }, [isAuthenticated]);
-
-  const handleSaveLinks = async () => {
-    const result = await saveMeetingLinks({ diplomaZoomLink: diplomaLink, advanceDiplomaZoomLink: advanceDiplomaLink });
-    if (result.success) {
-      toast({
-        title: "Links Saved!",
-        description: "The Zoom links have been successfully updated in the database.",
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: result.error || "Could not save the links.",
-      });
-    }
-  };
   
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // This is a simple, insecure password check. 
-    // For a real application, use a proper authentication system.
     if (password === 'Bsa@123') {
       setIsAuthenticated(true);
       setError('');
@@ -71,21 +47,26 @@ export default function AdminPage() {
     }
   };
 
-  const handleEditBatchName = (batch: Batch) => {
+  const handleEditBatch = (batch: Batch) => {
     setEditingBatch(batch);
   };
   
-  const handleSaveBatchName = async (newName: string) => {
+  const handleSaveBatch = async (details: { name: string; startDate?: Date; endDate?: Date; meetingLink: string }) => {
     if (!editingBatch) return;
 
-    const result = await updateBatchName(editingBatch.id, newName);
+    const result = await updateBatch(editingBatch.id, {
+        name: details.name,
+        startDate: details.startDate?.toISOString(),
+        endDate: details.endDate?.toISOString(),
+        meetingLink: details.meetingLink,
+    });
 
     if (result.success) {
       toast({
-          title: "Batch Name Updated",
-          description: `Batch was renamed to "${newName}".`,
+          title: "Batch Updated",
+          description: `Batch "${details.name}" has been saved.`,
       });
-      fetchBatchesAndLinks(); // Refresh batches from DB
+      fetchBatches(); // Refresh batches from DB
     } else {
       toast({
           variant: "destructive",
@@ -96,10 +77,41 @@ export default function AdminPage() {
     setEditingBatch(null);
   };
 
-  const hasRegistrations = batches.some(batch => batch.registrations.length > 0);
+  const handleCreateBatch = async (details: { name: string; startDate?: Date; endDate?: Date; meetingLink: string }) => {
+    if (!details.startDate || !details.endDate) {
+        toast({
+            variant: "destructive",
+            title: "Missing Dates",
+            description: "Start date and end date are required to create a batch.",
+        });
+        return;
+    }
+
+    const result = await createBatch({
+        name: details.name,
+        startDate: details.startDate,
+        endDate: details.endDate,
+        meetingLink: details.meetingLink,
+    });
+
+    if (result.success) {
+        toast({
+            title: "Batch Created",
+            description: `New batch "${details.name}" was successfully created.`,
+        });
+        fetchBatches();
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Error Creating Batch",
+            description: result.error || "Could not create the new batch.",
+        });
+    }
+    setCreateDialogOpen(false);
+  }
   
   if (!isClient) {
-    return null; // Don't render server-side
+    return null;
   }
 
   if (!isAuthenticated) {
@@ -136,22 +148,27 @@ export default function AdminPage() {
 
   return (
     <>
-      {editingBatch && (
-        <EditBatchNameDialog
-            isOpen={!!editingBatch}
-            onClose={() => setEditingBatch(null)}
-            onSave={handleSaveBatchName}
-            currentName={editingBatch.name}
+      {(editingBatch || isCreateDialogOpen) && (
+        <EditBatchDialog
+            isOpen={!!editingBatch || isCreateDialogOpen}
+            onClose={() => { setEditingBatch(null); setCreateDialogOpen(false); }}
+            onSave={editingBatch ? handleSaveBatch : handleCreateBatch}
+            initialData={editingBatch ? {
+                name: editingBatch.name,
+                startDate: editingBatch.startDate,
+                endDate: editingBatch.endDate,
+                meetingLink: editingBatch.meetingLink,
+            } : undefined}
         />
       )}
       <main className="container mx-auto p-4 md:p-8">
         <div className="flex justify-between items-center mb-8 md:mb-12">
           <div className="flex flex-col">
               <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-                  Admin Access
+                  Admin Dashboard
               </h1>
               <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-                  Manage event registrations and settings.
+                  Manage training batches and view registrations.
               </p>
           </div>
           <Link href="/" passHref>
@@ -161,72 +178,54 @@ export default function AdminPage() {
 
         <div className="grid grid-cols-1 gap-8">
           <Card>
-            <CardHeader>
-              <CardTitle>Meeting Settings</CardTitle>
-              <CardDescription>Manage Zoom links for the different programs.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="diploma-link">Diploma Program Zoom Link</Label>
-                <Input 
-                  id="diploma-link"
-                  placeholder="Enter Diploma Zoom link"
-                  value={diplomaLink}
-                  onChange={(e) => setDiplomaLink(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="advance-diploma-link">Advance Diploma Program Zoom Link</Label>
-                <Input 
-                  id="advance-diploma-link"
-                  placeholder="Enter Advance Diploma Zoom link"
-                  value={advanceDiplomaLink}
-                  onChange={(e) => setAdvanceDiplomaLink(e.target.value)}
-                />
-              </div>
-              <Button onClick={handleSaveLinks}>
-                <Save className="mr-2 h-4 w-4" />
-                Save Links
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-              <CardHeader>
-                  <CardTitle>Registrations by Program</CardTitle>
-                  <CardDescription>View and export registrations for each program.</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Training Batches</CardTitle>
+                  <CardDescription>View and manage all training batches and their registrations.</CardDescription>
+                </div>
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create New Batch
+                </Button>
               </CardHeader>
               <CardContent>
-                <Accordion type="multiple" defaultValue={['batch-diploma', 'batch-advance-diploma']}>
-                    {batches.map(batch => (
-                        <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
-                            <AccordionTrigger>
-                                <div className="flex justify-between items-center w-full pr-4">
-                                  <div className="flex items-center gap-2">
-                                    <span>
-                                        {batch.name} ({batch.registrations.length} registrations)
-                                    </span>
+                {batches && batches.length > 0 ? (
+                  <Accordion type="multiple" className="w-full">
+                      {batches.map(batch => (
+                          <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
+                              <AccordionTrigger>
+                                  <div className="flex justify-between items-center w-full pr-4">
+                                    <div className="flex items-center gap-2">
+                                      <span>
+                                          {batch.name} ({batch.registrations.length} registrations)
+                                      </span>
+                                    </div>
                                   </div>
+                              </AccordionTrigger>
+                              <AccordionContent>
+                                <div className="flex justify-end items-center pb-4">
+                                  <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleEditBatch(batch)}
+                                  >
+                                      <Pencil className="mr-2 h-4 w-4" /> Edit Batch
+                                  </Button>
                                 </div>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <div className="flex justify-end items-center pb-4">
-                                <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleEditBatchName(batch)}
-                                >
-                                    <Pencil className="mr-2 h-4 w-4" /> Edit Name
-                                </Button>
-                              </div>
-                                <RegistrationsTable 
-                                    registrations={batch.registrations}
-                                    batchName={batch.name}
-                                />
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
+                                  <RegistrationsTable 
+                                      registrations={batch.registrations}
+                                      batchName={batch.name}
+                                  />
+                              </AccordionContent>
+                          </AccordionItem>
+                      ))}
+                  </Accordion>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p>No batches found.</p>
+                    <p>Click "Create New Batch" to get started.</p>
+                  </div>
+                )}
               </CardContent>
           </Card>
         </div>

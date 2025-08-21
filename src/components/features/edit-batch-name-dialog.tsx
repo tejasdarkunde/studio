@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,37 +13,52 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
-type EditBatchNameDialogProps = {
+type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (newName: string) => void;
-  currentName: string;
+  onSave: (details: { name: string; startDate?: Date; endDate?: Date; meetingLink: string }) => void;
+  initialData?: { name: string; startDate: string; endDate: string; meetingLink: string; };
 };
 
-export function EditBatchNameDialog({ isOpen, onClose, onSave, currentName }: EditBatchNameDialogProps) {
-  const [newName, setNewName] = useState(currentName);
+export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBatchDialogProps) {
+  const [name, setName] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [meetingLink, setMeetingLink] = useState('');
+
+  useEffect(() => {
+    setName(initialData?.name || '');
+    setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
+    setEndDate(initialData?.endDate ? new Date(initialData.endDate) : undefined);
+    setMeetingLink(initialData?.meetingLink || '');
+  }, [initialData, isOpen]);
 
   const handleSave = () => {
-    if (newName.trim()) {
-      onSave(newName.trim());
+    if (name.trim()) {
+      onSave({ name: name.trim(), startDate, endDate, meetingLink });
       onClose();
     }
   };
-  
-  // Update state if prop changes
-  useState(() => {
-    setNewName(currentName);
-  }, [currentName]);
+
+  const dialogTitle = initialData ? 'Edit Batch' : 'Create New Batch';
+  const dialogDescription = initialData ? "Change the details for your batch." : "Fill in the details for the new training batch.";
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={isOpen} onOpenChange={(open) => { if(!open) onClose()}}>
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Edit Batch Name</DialogTitle>
-          <DialogDescription>
-            Change the name of your event batch here. Click save when you're done.
-          </DialogDescription>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
@@ -52,9 +67,76 @@ export function EditBatchNameDialog({ isOpen, onClose, onSave, currentName }: Ed
             </Label>
             <Input
               id="batch-name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="col-span-3"
+              placeholder="e.g., Diploma Program Q3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              Start Date
+            </Label>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                    variant={"outline"}
+                    className={cn(
+                        "w-[280px] justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                    )}
+                    >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                    <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                    />
+                </PopoverContent>
+            </Popover>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              End Date
+            </Label>
+             <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                    variant={"outline"}
+                    className={cn(
+                        "w-[280px] justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                    )}
+                    >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                    <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                    />
+                </PopoverContent>
+            </Popover>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="meeting-link" className="text-right">
+              Meeting Link
+            </Label>
+            <Input
+              id="meeting-link"
+              value={meetingLink}
+              onChange={(e) => setMeetingLink(e.target.value)}
+              className="col-span-3"
+              placeholder="https://zoom.us/j/..."
             />
           </div>
         </div>
@@ -66,3 +148,4 @@ export function EditBatchNameDialog({ isOpen, onClose, onSave, currentName }: Ed
     </Dialog>
   );
 }
+
