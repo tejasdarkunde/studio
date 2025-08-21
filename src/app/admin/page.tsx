@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk } from '@/app/actions';
@@ -52,12 +52,13 @@ export default function AdminPage() {
   }, [isAuthenticated]);
 
   const reportStats = useMemo(() => {
+    // Participant-based stats
     let totalRegistrations = 0;
     let diplomaEnrollments = 0;
     let advanceDiplomaEnrollments = 0;
 
     participants.forEach(participant => {
-      if (participant.enrolledCourses) {
+      if (participant.enrolledCourses && participant.enrolledCourses.length > 0) {
         totalRegistrations += participant.enrolledCourses.length;
         participant.enrolledCourses.forEach(course => {
           const courseName = course.toLowerCase();
@@ -70,12 +71,20 @@ export default function AdminPage() {
       }
     });
 
+    // Batch-based stats
+    const totalSessions = batches.length;
+    const diplomaSessions = batches.filter(b => b.name.toLowerCase().includes('diploma') && !b.name.toLowerCase().includes('advance')).length;
+    const advanceDiplomaSessions = batches.filter(b => b.name.toLowerCase().includes('advance diploma')).length;
+
     return {
       totalRegistrations,
       diplomaEnrollments,
-      advanceDiplomaEnrollments
+      advanceDiplomaEnrollments,
+      totalSessions,
+      diplomaSessions,
+      advanceDiplomaSessions,
     };
-  }, [participants]);
+  }, [participants, batches]);
   
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -339,12 +348,12 @@ export default function AdminPage() {
               <CardDescription>A high-level overview of your training statistics.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
                 <Card className="p-4">
                   <div className="flex flex-col items-center gap-2">
                     <Users className="h-8 w-8 text-primary" />
                     <p className="text-2xl font-bold">{reportStats.totalRegistrations}</p>
-                    <p className="text-sm text-muted-foreground">Total Registrations</p>
+                    <p className="text-sm text-muted-foreground">Total Enrollments</p>
                   </div>
                 </Card>
                  <Card className="p-4">
@@ -358,7 +367,28 @@ export default function AdminPage() {
                   <div className="flex flex-col items-center gap-2">
                     <BookUp className="h-8 w-8 text-primary" />
                     <p className="text-2xl font-bold">{reportStats.advanceDiplomaEnrollments}</p>
-                    <p className="text-sm text-muted-foreground">Advance Diploma Enrollments</p>
+                    <p className="text-sm text-muted-foreground">Adv. Diploma Enrollments</p>
+                  </div>
+                </Card>
+                 <Card className="p-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <Presentation className="h-8 w-8 text-primary" />
+                    <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
+                    <p className="text-sm text-muted-foreground">Total Sessions</p>
+                  </div>
+                </Card>
+                 <Card className="p-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <School className="h-8 w-8 text-primary" />
+                    <p className="text-2xl font-bold">{reportStats.diplomaSessions}</p>
+                    <p className="text-sm text-muted-foreground">Diploma Sessions</p>
+                  </div>
+                </Card>
+                 <Card className="p-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <BookUp className="h-8 w-8 text-primary" />
+                    <p className="text-2xl font-bold">{reportStats.advanceDiplomaSessions}</p>
+                    <p className="text-sm text-muted-foreground">Adv. Diploma Sessions</p>
                   </div>
                 </Card>
               </div>
@@ -458,5 +488,3 @@ export default function AdminPage() {
     </>
   );
 }
-
-    
