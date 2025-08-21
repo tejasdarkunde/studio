@@ -64,33 +64,15 @@ export async function registerForMeeting(
 
 export async function getBatches(): Promise<Batch[]> {
     try {
-        const batchIds = ['diploma', 'advance-diploma'];
+        const batchesCollectionRef = collection(db, "batches");
+        const allBatchesSnapshot = await getDocs(batchesCollectionRef);
         const batches: Batch[] = [];
 
-        for (const batchId of batchIds) {
-            const batchDocRef = doc(db, "batches", batchId);
-            const batchDoc = await getDoc(batchDocRef);
+        for (const batchDoc of allBatchesSnapshot.docs) {
+            const batchId = batchDoc.id;
+            const batchData = batchDoc.data();
+            const createdAt = batchData.createdAt as Timestamp;
 
-            let batchData: any;
-            let createdAt: Timestamp;
-
-            if (batchDoc.exists()) {
-                batchData = batchDoc.data();
-                createdAt = batchData.createdAt as Timestamp;
-            } else {
-                // Create the batch if it doesn't exist
-                const batchName = batchId === 'diploma' ? 'Diploma Program' : 'Advance Diploma Program';
-                const newBatchData = {
-                    name: batchName,
-                    createdAt: serverTimestamp(),
-                    active: true,
-                };
-                await setDoc(batchDocRef, newBatchData);
-                // We'll just use now for created at on the client
-                createdAt = Timestamp.now();
-                batchData = { name: batchName, active: true };
-            }
-            
             const registrationsCollection = collection(db, `batches/${batchId}/registrations`);
             const regSnapshot = await getDocs(registrationsCollection);
             const registrations: Registration[] = regSnapshot.docs.map(regDoc => {
@@ -108,10 +90,10 @@ export async function getBatches(): Promise<Batch[]> {
 
             batches.push({
                 id: batchId,
-                name: batchData.name,
+                name: batchData.name || 'Unnamed Batch',
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 registrations,
-                active: batchData.active,
+                active: batchData.active === undefined ? true : batchData.active,
             });
         }
         
