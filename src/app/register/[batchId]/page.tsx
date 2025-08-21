@@ -10,11 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 import { getRedirectLink } from '@/app/actions';
 
 
-export default function RegistrationPage({ params }: { params: { batchId: string } }) {
+export default function RegistrationPage({ params }: { params: { batchId: 'diploma' | 'advance-diploma' } }) {
   const { toast } = useToast();
-  const { batchId } = params;
 
-  if (batchId !== 'diploma' && batchId !== 'advance-diploma') {
+  if (params.batchId !== 'diploma' && params.batchId !== 'advance-diploma') {
     notFound();
   }
 
@@ -49,7 +48,7 @@ export default function RegistrationPage({ params }: { params: { batchId: string
     }
   };
 
-  const programName = batchId === 'diploma' ? 'Diploma Program' : 'Advance Diploma Program';
+  const programName = params.batchId === 'diploma' ? 'Diploma Program' : 'Advance Diploma Program';
 
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center justify-center min-h-screen">
@@ -72,7 +71,7 @@ export default function RegistrationPage({ params }: { params: { batchId: string
                     </CardHeader>
                     <CardContent>
                     <RegistrationForm 
-                        batchId={batchId}
+                        batchId={params.batchId}
                         onSuccess={handleRegistrationSuccess}
                     />
                     </CardContent>
@@ -88,4 +87,3 @@ export default function RegistrationPage({ params }: { params: { batchId: string
     </main>
   );
 }
-
