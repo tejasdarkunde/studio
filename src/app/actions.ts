@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer } from "@/lib/types";
 
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -94,6 +94,7 @@ export async function getBatches(): Promise<Batch[]> {
                 startTime: batchData.startTime || '00:00',
                 endTime: batchData.endTime || '00:00',
                 meetingLink: batchData.meetingLink || '',
+                trainerId: batchData.trainerId,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 registrations,
             });
@@ -127,6 +128,7 @@ export async function getBatchById(id: string): Promise<Batch | null> {
             startTime: batchData.startTime || '00:00',
             endTime: batchData.endTime || '00:00',
             meetingLink: batchData.meetingLink || '',
+            trainerId: batchData.trainerId,
             createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
             registrations: [], 
         };
@@ -137,18 +139,21 @@ export async function getBatchById(id: string): Promise<Batch | null> {
 }
 
 
-export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'meetingLink' | 'startDate' | 'startTime' | 'endTime'>>): Promise<{success: boolean, error?: string}> {
+export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'startDate' | 'startTime' | 'endTime' | 'trainerId'>>): Promise<{success: boolean, error?: string}> {
     if (!data.name || !data.name.trim()) {
         return { success: false, error: "Batch name cannot be empty." };
+    }
+    if (!data.trainerId) {
+        return { success: false, error: "Trainer selection is required."};
     }
     try {
         const batchDocRef = doc(db, 'batches', batchId);
         
         const updateData: any = {
             name: data.name,
-            meetingLink: data.meetingLink || '',
             startTime: data.startTime || '00:00',
             endTime: data.endTime || '00:00',
+            trainerId: data.trainerId
         };
 
         if(data.startDate) {
@@ -168,7 +173,7 @@ const createBatchSchema = z.object({
   startDate: z.date(),
   startTime: z.string(),
   endTime: z.string(),
-  meetingLink: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
+  trainerId: z.string().min(1, "A trainer must be selected."),
 });
 
 export async function createBatch(data: z.infer<typeof createBatchSchema>): Promise<{success: boolean, error?: string}> {
@@ -179,14 +184,14 @@ export async function createBatch(data: z.infer<typeof createBatchSchema>): Prom
     }
 
     try {
-        const { name, startDate, startTime, endTime, meetingLink } = validatedFields.data;
+        const { name, startDate, startTime, endTime, trainerId } = validatedFields.data;
         const batchesCollection = collection(db, "batches");
         await addDoc(batchesCollection, {
             name,
             startDate: Timestamp.fromDate(startDate),
             startTime,
             endTime,
-            meetingLink: meetingLink || '',
+            trainerId,
             createdAt: serverTimestamp(),
         });
         return { success: true };
@@ -203,11 +208,22 @@ export async function getRedirectLink(batchId: string): Promise<{link: string | 
         const batchDoc = await getDoc(batchDocRef);
 
         if (batchDoc.exists()) {
-            return { link: batchDoc.data().meetingLink || null };
+            const batchData = batchDoc.data();
+            // If there's a trainer ID, get the link from the trainer document
+            if (batchData.trainerId) {
+                const trainerDocRef = doc(db, 'trainers', batchData.trainerId);
+                const trainerDoc = await getDoc(trainerDocRef);
+                if (trainerDoc.exists()) {
+                    return { link: trainerDoc.data().meetingLink || null };
+                }
+            }
+            // Fallback to meetingLink on the batch itself for old data
+            return { link: batchData.meetingLink || null };
         } else {
             return { link: null };
         }
     } catch(error) {
+        console.error("Error getting redirect link:", error);
         return { link: null };
     }
 }
@@ -315,9 +331,6 @@ export async function updateParticipant(data: z.infer<typeof participantUpdateSc
 
   try {
     const participantDocRef = doc(db, 'participants', id);
-    // You might want to check for duplicate IITP No here as well, if it's being changed.
-    // For simplicity, we'll assume IITP No is unique and can be changed.
-    // A more robust solution would query for other docs with the new IITP No, excluding the current doc.
     await updateDoc(participantDocRef, validatedFields.data);
     return { success: true };
   } catch (error) {
@@ -326,13 +339,11 @@ export async function updateParticipant(data: z.infer<typeof participantUpdateSc
   }
 }
 
-
 export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt'>[]): Promise<{ success: boolean; error?: string, skippedCount?: number }> {
     const participantsCollection = collection(db, "participants");
     
     try {
-        // Fetch all existing IITP Nos for an efficient in-memory check
-        const existingDocsSnapshot = await getDocs(query(participantsCollection, select("iitpNo")));
+        const existingDocsSnapshot = await getDocs(query(participantsCollection));
         const existingIitpNos = new Set(existingDocsSnapshot.docs.map(doc => doc.data().iitpNo));
         
         const batch = writeBatch(db);
@@ -376,13 +387,91 @@ export async function addParticipantsInBulk(participants: Omit<Participant, 'id'
         return { success: false, error: "Could not add participants due to a database error." };
     }
 }
-// Helper for addParticipantsInBulk to get just the iitpNo field
-const select = (...fields: string[]) => {
-    // This is a placeholder. In a real application, you might use a library
-    // or a more complex query builder. For Firestore (client/admin), there's no direct `select`
-    // on the query itself, you get the whole doc. This function signature is for clarity.
-    // The logic in addParticipantsInBulk handles getting the full docs and mapping to the field.
-    return query(collection(db, "participants"));
-};
 
+// TRAINER ACTIONS
+const trainerSchema = z.object({
+  name: z.string().min(2, "Trainer name must be at least 2 characters."),
+  meetingLink: z.string().url("Must be a valid meeting URL."),
+});
+
+export async function getTrainers(): Promise<Trainer[]> {
+    try {
+        const trainersCollectionRef = collection(db, "trainers");
+        const q = query(trainersCollectionRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+            return {
+                id: doc.id,
+                name: data.name,
+                meetingLink: data.meetingLink,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching trainers:", error);
+        return [];
+    }
+}
+
+export async function addTrainer(data: z.infer<typeof trainerSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = trainerSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid trainer data." };
+    }
     
+    try {
+        const trainersCollection = collection(db, "trainers");
+        await addDoc(trainersCollection, {
+            ...validatedFields.data,
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding trainer:", error);
+        return { success: false, error: "Could not add trainer." };
+    }
+}
+
+const updateTrainerSchema = trainerSchema.extend({
+  id: z.string().min(1),
+});
+
+export async function updateTrainer(data: z.infer<typeof updateTrainerSchema>): Promise<{ success: boolean; error?: string }> {
+    const { id, ...trainerData } = data;
+    const validatedFields = trainerSchema.safeParse(trainerData);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid trainer data." };
+    }
+    
+    try {
+        const trainerDocRef = doc(db, 'trainers', id);
+        await updateDoc(trainerDocRef, validatedFields.data);
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating trainer:", error);
+        return { success: false, error: "Could not update trainer." };
+    }
+}
+
+
+export async function deleteTrainer(trainerId: string): Promise<{ success: boolean, error?: string }> {
+    try {
+        // Optional: Check if trainer is assigned to any batches before deleting
+        const batchesQuery = query(collection(db, 'batches'), where('trainerId', '==', trainerId));
+        const batchesSnapshot = await getDocs(batchesQuery);
+        if (!batchesSnapshot.empty) {
+            return { success: false, error: `Cannot delete trainer. They are assigned to ${batchesSnapshot.size} batch(es). Please reassign them first.` };
+        }
+
+        const trainerDocRef = doc(db, 'trainers', trainerId);
+        await deleteDoc(trainerDocRef);
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error deleting trainer:", error);
+        return { success: false, error: "Could not delete the trainer." };
+    }
+}

@@ -1,5 +1,4 @@
 
-
 export type Registration = {
   id: string;
   name: string;
@@ -9,13 +8,21 @@ export type Registration = {
   submissionTime: string; // ISO 8601 string format
 };
 
+export type Trainer = {
+    id: string;
+    name: string;
+    meetingLink: string;
+    createdAt: string; // ISO 8601 string format
+};
+
 export type Batch = {
   id: string;
   name: string;
   startDate: string; // ISO 8601 string format
   startTime: string; // e.g., "10:00" (24-hour format)
   endTime: string; // e.g., "13:00" (24-hour format)
-  meetingLink: string;
+  meetingLink: string; // This will now be derived from the trainer
+  trainerId?: string; // Link to the trainer
   registrations: Registration[];
   createdAt: string; // ISO 8601 string format
 };

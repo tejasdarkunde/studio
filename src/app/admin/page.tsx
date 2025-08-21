@@ -2,24 +2,26 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import type { Batch, Participant } from '@/lib/types';
+import type { Batch, Participant, Trainer } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
 import { AddParticipantDialog } from '@/components/features/add-participant-dialog';
 import { ImportParticipantsDialog } from '@/components/features/import-participants-dialog';
 import { ParticipantsTable } from '@/components/features/participants-table';
+import { TrainersTable } from '@/components/features/trainers-table';
+import { AddTrainerDialog } from '@/components/features/add-trainer-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2 } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant } from '@/app/actions';
+import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -33,6 +35,7 @@ const organizations = [
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -50,16 +53,24 @@ export default function AdminPage() {
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isAddParticipantOpen, setAddParticipantOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
+  
+  // Trainer states
+  const [isAddTrainerOpen, setAddTrainerOpen] = useState(false);
+  const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
+  const [deletingTrainerId, setDeletingTrainerId] = useState<string | null>(null);
+
 
   const { toast } = useToast();
 
   const fetchAllData = async () => {
-    const [fetchedBatches, fetchedParticipants] = await Promise.all([
+    const [fetchedBatches, fetchedParticipants, fetchedTrainers] = await Promise.all([
       getBatches(),
-      getParticipants()
+      getParticipants(),
+      getTrainers()
     ]);
     setBatches(fetchedBatches);
     setParticipants(fetchedParticipants);
+    setTrainers(fetchedTrainers);
   };
 
   useEffect(() => {
@@ -143,7 +154,7 @@ export default function AdminPage() {
     setDeletingBatch(batch);
   };
   
-  const handleSaveBatch = async (details: { name: string; startDate?: Date; startTime: string; endTime: string; meetingLink: string }) => {
+  const handleSaveBatch = async (details: { name: string; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
     if (!editingBatch) return;
 
     const result = await updateBatch(editingBatch.id, {
@@ -151,7 +162,7 @@ export default function AdminPage() {
         startDate: details.startDate?.toISOString(),
         startTime: details.startTime,
         endTime: details.endTime,
-        meetingLink: details.meetingLink,
+        trainerId: details.trainerId,
     });
 
     if (result.success) {
@@ -170,7 +181,7 @@ export default function AdminPage() {
     setEditingBatch(null);
   };
 
-  const handleCreateBatch = async (details: { name: string; startDate?: Date; startTime: string; endTime: string; meetingLink: string }) => {
+  const handleCreateBatch = async (details: { name: string; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
     if (!details.startDate) {
         toast({
             variant: "destructive",
@@ -193,7 +204,7 @@ export default function AdminPage() {
         startDate: details.startDate,
         startTime: details.startTime,
         endTime: details.endTime,
-        meetingLink: details.meetingLink,
+        trainerId: details.trainerId,
     });
 
     if (result.success) {
@@ -350,6 +361,50 @@ export default function AdminPage() {
     setImportDialogOpen(false);
   };
   
+  // Trainer Handlers
+  const handleSaveTrainer = async (details: { name: string, meetingLink: string }) => {
+    const action = editingTrainer ? updateTrainer : addTrainer;
+    const payload = editingTrainer ? { ...details, id: editingTrainer.id } : details;
+
+    const result = await action(payload as any); // Cast needed due to overload
+
+    if (result.success) {
+      toast({
+        title: `Trainer ${editingTrainer ? 'Updated' : 'Added'}`,
+        description: `${details.name} has been saved successfully.`,
+      });
+      fetchAllData();
+    } else {
+      toast({
+        variant: 'destructive',
+        title: `Error ${editingTrainer ? 'Updating' : 'Adding'} Trainer`,
+        description: result.error || `Could not save the trainer.`,
+      });
+    }
+    setEditingTrainer(null);
+    setAddTrainerOpen(false);
+  }
+
+  const handleDeleteTrainer = async () => {
+    if (!deletingTrainerId) return;
+
+    const result = await deleteTrainer(deletingTrainerId);
+    if(result.success) {
+      toast({
+        title: 'Trainer Deleted',
+        description: 'The trainer has been removed.',
+      });
+      fetchAllData();
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Deletion Failed',
+        description: result.error || 'Could not delete the trainer.',
+      });
+    }
+    setDeletingTrainerId(null);
+  }
+
   if (!isClient) {
     return null;
   }
@@ -404,8 +459,9 @@ export default function AdminPage() {
                 startDate: editingBatch.startDate,
                 startTime: editingBatch.startTime,
                 endTime: editingBatch.endTime,
-                meetingLink: editingBatch.meetingLink,
+                trainerId: editingBatch.trainerId,
             } : undefined}
+            trainers={trainers}
         />
       )}
        <AddParticipantDialog 
@@ -418,6 +474,21 @@ export default function AdminPage() {
         onClose={() => setImportDialogOpen(false)}
         onSave={handleImportSave}
       />
+      {(isAddTrainerOpen || editingTrainer) && (
+        <AddTrainerDialog
+            isOpen={isAddTrainerOpen || !!editingTrainer}
+            onClose={() => { setAddTrainerOpen(false); setEditingTrainer(null); }}
+            onSave={handleSaveTrainer}
+            initialData={editingTrainer}
+        />
+      )}
+       <DeleteBatchDialog
+          isOpen={!!deletingTrainerId}
+          onClose={() => setDeletingTrainerId(null)}
+          onConfirm={handleDeleteTrainer}
+          batchName={`the trainer: ${trainers.find(t => t.id === deletingTrainerId)?.name || 'N/A'}`}
+      />
+
 
       <main className="container mx-auto p-4 md:p-8">
         <div className="flex justify-between items-center mb-8 md:mb-12">
@@ -435,10 +506,11 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="reports" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="trainings">Trainings</TabsTrigger>
             <TabsTrigger value="users">All Users</TabsTrigger>
+            <TabsTrigger value="trainers">Trainers</TabsTrigger>
           </TabsList>
           
           <TabsContent value="reports" className="mt-6">
@@ -687,10 +759,31 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="trainers" className="mt-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Trainer Management</CardTitle>
+                      <CardDescription>Add, edit, or remove trainers from the system.</CardDescription>
+                    </div>
+                     <Button onClick={() => setAddTrainerOpen(true)}>
+                        <UserCog className="mr-2 h-4 w-4" />
+                        Add New Trainer
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <TrainersTable 
+                        trainers={trainers}
+                        onEdit={(trainer) => setEditingTrainer(trainer)}
+                        onDelete={(trainer) => setDeletingTrainerId(trainer.id)}
+                    />
+                </CardContent>
+              </Card>
+          </TabsContent>
+
         </Tabs>
       </main>
     </>
   );
 }
-
-    

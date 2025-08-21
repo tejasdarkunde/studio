@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar as CalendarIcon, UserCog } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -29,12 +29,15 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
+import type { Trainer } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; startDate?: Date; startTime: string; endTime: string; meetingLink: string }) => void;
-  initialData?: { name: string; startDate?: string; startTime: string; endTime: string; meetingLink: string; };
+  onSave: (details: { name: string; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => void;
+  initialData?: { name: string; startDate?: string; startTime: string; endTime: string; trainerId?: string; };
+  trainers: Trainer[];
 };
 
 const generateTimeOptions = () => {
@@ -57,26 +60,33 @@ const generateTimeOptions = () => {
 const timeOptions = generateTimeOptions();
 
 
-export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBatchDialogProps) {
+export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers }: EditBatchDialogProps) {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [meetingLink, setMeetingLink] = useState('');
+  const [trainerId, setTrainerId] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
     setName(initialData?.name || '');
     setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
     setStartTime(initialData?.startTime || '');
     setEndTime(initialData?.endTime || '');
-    setMeetingLink(initialData?.meetingLink || '');
+    setTrainerId(initialData?.trainerId || '');
   }, [initialData, isOpen]);
 
   const handleSave = () => {
-    if (name.trim() && startTime && endTime) {
-      onSave({ name: name.trim(), startDate, startTime, endTime, meetingLink });
-      onClose();
+    if (!name.trim() || !startTime || !endTime || !trainerId) {
+        toast({
+            variant: "destructive",
+            title: "Missing Information",
+            description: "Name, start/end times, and trainer selection are all required.",
+        });
+        return;
     }
+    onSave({ name: name.trim(), startDate, startTime, endTime, trainerId });
+    onClose();
   };
 
   const dialogTitle = initialData ? 'Edit Batch' : 'Create New Batch';
@@ -164,16 +174,23 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBa
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="meeting-link" className="text-right">
-              Meeting Link
+            <Label htmlFor="trainer-select" className="text-right">
+              Trainer
             </Label>
-            <Input
-              id="meeting-link"
-              value={meetingLink}
-              onChange={(e) => setMeetingLink(e.target.value)}
-              className="col-span-3"
-              placeholder="https://zoom.us/j/..."
-            />
+             <Select onValueChange={setTrainerId} value={trainerId}>
+                <SelectTrigger id="trainer-select" className="col-span-3">
+                    <SelectValue placeholder="Select a trainer" />
+                </SelectTrigger>
+                <SelectContent>
+                    {trainers.length > 0 ? trainers.map(trainer => (
+                        <SelectItem key={trainer.id} value={trainer.id}>
+                            {trainer.name}
+                        </SelectItem>
+                    )) : (
+                        <div className="p-4 text-sm text-muted-foreground">No trainers found. Add one on the Trainers tab.</div>
+                    )}
+                </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
