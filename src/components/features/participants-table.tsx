@@ -60,60 +60,66 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
 
   return (
     <div className="w-full">
-       <div className="flex flex-row items-center justify-end pb-4">
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={participants.length === 0}>
-          <Download className="mr-2 h-4 w-4" />
-          Export All as CSV
-        </Button>
+      <div className="flex flex-col space-y-2">
+        <div className="flex flex-row items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium">Full Participant Directory</h3>
+            <p className="text-sm text-muted-foreground">A complete view of every participant.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={participants.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Export All as CSV
+          </Button>
+        </div>
+        <div className="border rounded-lg">
+          <ScrollArea className="h-[400px]">
+              <Table>
+              <TableHeader>
+                  <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>IITP No</TableHead>
+                  <TableHead>Mobile No</TableHead>
+                  <TableHead>Organization</TableHead>
+                  <TableHead>Enrolled Courses</TableHead>
+                  <TableHead>Date Added</TableHead>
+                  </TableRow>
+              </TableHeader>
+              <TableBody>
+                  {participants && participants.length > 0 ? (
+                  participants.map((p) => (
+                      <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{p.iitpNo}</TableCell>
+                      <TableCell>{p.mobile}</TableCell>
+                      <TableCell>{p.organization}</TableCell>
+                      <TableCell>
+                        {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {p.enrolledCourses.map(course => (
+                               <Badge key={course} variant="secondary">{course}</Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">None</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                          {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
+                      </TableCell>
+                      </TableRow>
+                  ))
+                  ) : (
+                  <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                      No participants found. Add one to get started.
+                      </TableCell>
+                  </TableRow>
+                  )}
+              </TableBody>
+              </Table>
+          </ScrollArea>
+         </div>
       </div>
-      <div className="border rounded-lg">
-        <ScrollArea className="h-[400px]">
-            <Table>
-            <TableHeader>
-                <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>IITP No</TableHead>
-                <TableHead>Mobile No</TableHead>
-                <TableHead>Organization</TableHead>
-                <TableHead>Enrolled Courses</TableHead>
-                <TableHead>Date Added</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {participants && participants.length > 0 ? (
-                participants.map((p) => (
-                    <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.iitpNo}</TableCell>
-                    <TableCell>{p.mobile}</TableCell>
-                    <TableCell>{p.organization}</TableCell>
-                    <TableCell>
-                      {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {p.enrolledCourses.map(course => (
-                             <Badge key={course} variant="secondary">{course}</Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">None</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                        {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
-                    </TableCell>
-                    </TableRow>
-                ))
-                ) : (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                    No participants found. Add one to get started.
-                    </TableCell>
-                </TableRow>
-                )}
-            </TableBody>
-            </Table>
-        </ScrollArea>
-       </div>
     </div>
   );
 }

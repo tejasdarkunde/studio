@@ -75,8 +75,8 @@ export default function AdminPage() {
         id: fetchedParticipant.id,
         name: fetchedParticipant.name,
         iitpNo: fetchedParticipant.iitpNo,
-        mobile: fetchedParticipant.mobile,
-        organization: fetchedParticipant.organization,
+        mobile: fetchedParticipant.mobile || '',
+        organization: fetchedParticipant.organization || '',
         enrolledCourses: fetchedParticipant.enrolledCourses || [],
       });
     } else {
@@ -284,7 +284,7 @@ export default function AdminPage() {
     
     const result = await updateParticipant({
       ...editFormData,
-      enrolledCourses: Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses : editFormData.enrolledCourses.split(',').map(c => c.trim()).filter(Boolean)
+      enrolledCourses: Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses : String(editFormData.enrolledCourses).split(',').map(c => c.trim()).filter(Boolean)
     });
     
     if (result.success) {
@@ -565,28 +565,57 @@ export default function AdminPage() {
 
           <TabsContent value="users" className="mt-6">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Participant Directory</CardTitle>
-                  <CardDescription>Manage the central directory of all participants.</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={handleDownloadTemplate}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Template
-                    </Button>
-                    <Button onClick={() => setImportDialogOpen(true)}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Import from CSV
-                    </Button>
-                    <Button onClick={() => setAddParticipantOpen(true)}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Add New Participant
-                    </Button>
-                </div>
+              <CardHeader>
+                <CardTitle>Participant Management</CardTitle>
+                <CardDescription>A central place to add, update, import, and view all participants.</CardDescription>
               </CardHeader>
-              <CardContent className='space-y-8'>
-                  <Card className="border-dashed">
+              <CardContent>
+                <Tabs defaultValue="directory" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="directory">Directory</TabsTrigger>
+                    <TabsTrigger value="add">Add / Import</TabsTrigger>
+                    <TabsTrigger value="update">Update User</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="directory" className="mt-6">
+                     <ParticipantsTable participants={participants} />
+                  </TabsContent>
+
+                  <TabsContent value="add" className="mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Add a New Participant</CardTitle>
+                          <CardDescription>Manually add a single participant to the directory.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <Button onClick={() => setAddParticipantOpen(true)} className="w-full">
+                              <UserPlus className="mr-2 h-4 w-4" />
+                              Add New Participant
+                          </Button>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Import from CSV</CardTitle>
+                          <CardDescription>Bulk upload participants from a CSV file.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col gap-4">
+                           <Button onClick={() => setImportDialogOpen(true)} className="w-full">
+                              <Upload className="mr-2 h-4 w-4" />
+                              Import from CSV
+                          </Button>
+                           <Button variant="outline" onClick={handleDownloadTemplate} className="w-full">
+                              <Download className="mr-2 h-4 w-4" />
+                              Download Template
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="update" className="mt-6">
+                    <Card className="border-dashed">
                       <CardHeader>
                           <CardTitle>Update User Details</CardTitle>
                           <CardDescription>Fetch a user by their IITP No. to edit their details.</CardDescription>
@@ -645,21 +674,15 @@ export default function AdminPage() {
                                       />
                                   </div>
                                   <div className="col-span-1 md:col-span-2 flex justify-end gap-2">
-                                    <Button variant="outline" onClick={() => setFetchedParticipant(null)}>Cancel</Button>
+                                    <Button variant="outline" onClick={() => {setFetchedParticipant(null); setSearchIitpNo('');}}>Cancel</Button>
                                     <Button onClick={handleUpdateParticipant}>Update Details</Button>
                                   </div>
                               </div>
                           )}
                       </CardContent>
                   </Card>
-                  
-                  <div>
-                    <h3 className="text-lg font-medium">All Participants List</h3>
-                    <p className="text-sm text-muted-foreground mb-4">A complete view of every participant in the directory.</p>
-                     <ParticipantsTable 
-                        participants={participants}
-                      />
-                  </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>
