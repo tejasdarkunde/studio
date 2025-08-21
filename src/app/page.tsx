@@ -52,11 +52,17 @@ const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
             </div>
         </CardContent>
         <CardFooter>
-          <Link href={`/register/${batch.id}`} passHref>
+          {isPast ? (
             <Button className="w-full" disabled={isPast}>
-              {isPast ? 'View Details' : 'Register Now'} <ArrowRight className="ml-2" />
+              View Details <ArrowRight className="ml-2" />
             </Button>
-          </Link>
+          ) : (
+            <Link href={`/register/${batch.id}`} passHref className="w-full">
+              <Button className="w-full">
+                Register Now <ArrowRight className="ml-2" />
+              </Button>
+            </Link>
+          )}
         </CardFooter>
     </Card>
   )
