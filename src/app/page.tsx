@@ -145,7 +145,7 @@ export default function Home() {
       <div className="w-full max-w-6xl">
         <div className="flex flex-col items-center justify-center text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-              Training Programs
+              BSA Training Academy, Pune
             </h1>
             <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
               Register for our ongoing and upcoming training sessions.
