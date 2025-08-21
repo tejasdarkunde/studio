@@ -18,10 +18,9 @@ import { Badge } from "@/components/ui/badge";
 
 type ParticipantsTableProps = {
   participants: Participant[];
-  onEdit: (participant: Participant) => void;
 };
 
-export function ParticipantsTable({ participants, onEdit }: ParticipantsTableProps) {
+export function ParticipantsTable({ participants }: ParticipantsTableProps) {
   const { toast } = useToast();
   
   // A simple CSV export for participants
@@ -38,7 +37,7 @@ export function ParticipantsTable({ participants, onEdit }: ParticipantsTablePro
     const csvRows = participants.map(p => {
       const enrolledCourses = p.enrolledCourses?.join('; ') || '';
       const row = [p.name, p.iitpNo, p.mobile, p.organization, enrolledCourses, new Date(p.createdAt).toLocaleString()];
-      return row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
+      return row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
     }).join('\n');
 
     const csvContent = headers + csvRows;
@@ -78,7 +77,6 @@ export function ParticipantsTable({ participants, onEdit }: ParticipantsTablePro
                 <TableHead>Organization</TableHead>
                 <TableHead>Enrolled Courses</TableHead>
                 <TableHead>Date Added</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -103,17 +101,11 @@ export function ParticipantsTable({ participants, onEdit }: ParticipantsTablePro
                     <TableCell>
                         {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
                     </TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => onEdit(p)}>
-                            <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Edit Participant</span>
-                        </Button>
-                    </TableCell>
                     </TableRow>
                 ))
                 ) : (
                 <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                     No participants found. Add one to get started.
                     </TableCell>
                 </TableRow>

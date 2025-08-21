@@ -7,7 +7,6 @@ import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
 import { AddParticipantDialog } from '@/components/features/add-participant-dialog';
-import { EditParticipantDialog } from '@/components/features/edit-participant-dialog';
 import { ImportParticipantsDialog } from '@/components/features/import-participants-dialog';
 import { ParticipantsTable } from '@/components/features/participants-table';
 import Link from 'next/link';
@@ -16,11 +15,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant } from '@/app/actions';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const organizations = [
+  "TE Connectivity, Shirwal",
+  "BSA Plant, Chakan",
+  "Belden India",
+  "Other",
+];
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -31,7 +39,14 @@ export default function AdminPage() {
   const [error, setError] = useState('');
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
-  const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
+  
+  // State for the new edit form
+  const [searchIitpNo, setSearchIitpNo] = useState('');
+  const [isFetchingParticipant, setIsFetchingParticipant] = useState(false);
+  const [fetchedParticipant, setFetchedParticipant] = useState<Participant | null>(null);
+  const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: []});
+
+
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isAddParticipantOpen, setAddParticipantOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
@@ -54,6 +69,22 @@ export default function AdminPage() {
     }
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (fetchedParticipant) {
+      setEditFormData({
+        id: fetchedParticipant.id,
+        name: fetchedParticipant.name,
+        iitpNo: fetchedParticipant.iitpNo,
+        mobile: fetchedParticipant.mobile,
+        organization: fetchedParticipant.organization,
+        enrolledCourses: fetchedParticipant.enrolledCourses || [],
+      });
+    } else {
+       setEditFormData({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: []});
+    }
+  }, [fetchedParticipant]);
+
+
   const reportStats = useMemo(() => {
     // Participant-based stats
     let totalRegistrations = 0;
@@ -71,7 +102,7 @@ export default function AdminPage() {
           const courseName = course.toLowerCase();
           if (courseName.includes('advance diploma')) {
             advanceDiplomaEnrollments++;
-          } else if (courseName.includes('diploma')) {
+          } else if (courseName.includes('diploma') && !courseName.includes('advance diploma')) {
             diplomaEnrollments++;
           }
         });
@@ -219,29 +250,60 @@ export default function AdminPage() {
     }
     setAddParticipantOpen(false);
   };
-  
-  const handleEditParticipant = (participant: Participant) => {
-    setEditingParticipant(participant);
-  }
 
-  const handleSaveParticipant = async (details: Participant) => {
-    if (!editingParticipant) return;
-    const result = await updateParticipant(details);
-    if(result.success) {
-        toast({
-            title: "Participant Updated",
-            description: `${details.name}'s information has been successfully updated.`,
-        });
-        fetchAllData();
+  const handleFetchParticipant = async () => {
+    if (!searchIitpNo.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'IITP No Required',
+        description: 'Please enter an IITP No to search.',
+      });
+      return;
+    }
+    setIsFetchingParticipant(true);
+    setFetchedParticipant(null);
+    
+    // We can search the client-side list first for speed
+    const found = participants.find(p => p.iitpNo === searchIitpNo.trim());
+
+    if (found) {
+        setFetchedParticipant(found);
     } else {
         toast({
-            variant: "destructive",
-            title: "Error",
-            description: result.error || "Could not update the participant."
+            variant: 'destructive',
+            title: 'Not Found',
+            description: `No participant found with IITP No: ${searchIitpNo}`
         });
     }
-    setEditingParticipant(null);
+
+    setIsFetchingParticipant(false);
+  }
+
+  const handleUpdateParticipant = async () => {
+    if (!editFormData.id) return;
+    
+    const result = await updateParticipant({
+      ...editFormData,
+      enrolledCourses: Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses : editFormData.enrolledCourses.split(',').map(c => c.trim()).filter(Boolean)
+    });
+    
+    if (result.success) {
+      toast({
+        title: 'Participant Updated',
+        description: `Details for ${editFormData.name} have been saved.`,
+      });
+      fetchAllData();
+      setFetchedParticipant(null); // Clear the form
+      setSearchIitpNo('');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: result.error || 'Could not update participant.',
+      });
+    }
   };
+
 
   const handleDownloadTemplate = () => {
     const headers = "name,iitpNo,mobile,organization,enrolledCourses\n";
@@ -350,12 +412,6 @@ export default function AdminPage() {
         onClose={() => setAddParticipantOpen(false)}
         onSave={handleAddParticipant}
       />
-       <EditParticipantDialog 
-        isOpen={!!editingParticipant}
-        onClose={() => setEditingParticipant(null)}
-        onSave={handleSaveParticipant}
-        participant={editingParticipant}
-       />
       <ImportParticipantsDialog
         isOpen={isImportDialogOpen}
         onClose={() => setImportDialogOpen(false)}
@@ -434,7 +490,7 @@ export default function AdminPage() {
                       <p className="text-sm text-muted-foreground">Adv. Diploma Sessions</p>
                     </div>
                   </Card>
-                  <Card className="p-4">
+                   <Card className="p-4">
                     <div className="flex flex-col items-center gap-2">
                       <Building className="h-8 w-8 text-primary" />
                       <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
@@ -511,7 +567,7 @@ export default function AdminPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>All Participants</CardTitle>
+                  <CardTitle>Participant Directory</CardTitle>
                   <CardDescription>Manage the central directory of all participants.</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
@@ -529,11 +585,81 @@ export default function AdminPage() {
                     </Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                  <ParticipantsTable 
-                    participants={participants}
-                    onEdit={handleEditParticipant}
-                  />
+              <CardContent className='space-y-8'>
+                  <Card className="border-dashed">
+                      <CardHeader>
+                          <CardTitle>Update User Details</CardTitle>
+                          <CardDescription>Fetch a user by their IITP No. to edit their details.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                          <div className="flex items-center gap-2">
+                              <Label htmlFor="searchIitpNo" className="sr-only">IITP No</Label>
+                              <Input 
+                                id="searchIitpNo"
+                                placeholder="Enter IITP No to fetch details..."
+                                value={searchIitpNo}
+                                onChange={(e) => setSearchIitpNo(e.target.value)}
+                                className="max-w-xs"
+                              />
+                              <Button onClick={handleFetchParticipant} disabled={isFetchingParticipant}>
+                                  {isFetchingParticipant ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-4"/>}
+                                  Fetch Details
+                              </Button>
+                          </div>
+                          {fetchedParticipant && (
+                              <div className="border rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-name">Name</Label>
+                                    <Input id="edit-name" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-iitpNo">IITP No</Label>
+                                    <Input id="edit-iitpNo" value={editFormData.iitpNo} onChange={e => setEditFormData({...editFormData, iitpNo: e.target.value})} />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-mobile">Mobile No</Label>
+                                    <Input id="edit-mobile" value={editFormData.mobile} onChange={e => setEditFormData({...editFormData, mobile: e.target.value})} />
+                                  </div>
+                                   <div className="space-y-2">
+                                    <Label htmlFor="edit-organization">Organization</Label>
+                                     <Select onValueChange={(value) => setEditFormData({...editFormData, organization: value})} value={editFormData.organization}>
+                                        <SelectTrigger id="edit-organization">
+                                            <SelectValue placeholder="Select an organization" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {organizations.map((org) => (
+                                            <SelectItem key={org} value={org}>
+                                              {org}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2 col-span-1 md:col-span-2">
+                                      <Label htmlFor="edit-courses">Enrolled Courses (comma-separated)</Label>
+                                      <Textarea 
+                                        id="edit-courses"
+                                        value={Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses.join(', ') : editFormData.enrolledCourses}
+                                        onChange={e => setEditFormData({...editFormData, enrolledCourses: e.target.value.split(',').map(c => c.trim())})}
+                                        placeholder="Course A, Course B, ..."
+                                      />
+                                  </div>
+                                  <div className="col-span-1 md:col-span-2 flex justify-end gap-2">
+                                    <Button variant="outline" onClick={() => setFetchedParticipant(null)}>Cancel</Button>
+                                    <Button onClick={handleUpdateParticipant}>Update Details</Button>
+                                  </div>
+                              </div>
+                          )}
+                      </CardContent>
+                  </Card>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium">All Participants List</h3>
+                    <p className="text-sm text-muted-foreground mb-4">A complete view of every participant in the directory.</p>
+                     <ParticipantsTable 
+                        participants={participants}
+                      />
+                  </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -542,5 +668,3 @@ export default function AdminPage() {
     </>
   );
 }
-
-    
