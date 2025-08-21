@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant } from "@/lib/types";
 
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -233,5 +233,55 @@ export async function deleteBatch(batchId: string): Promise<{ success: boolean, 
     } catch (error) {
         console.error("Error deleting batch:", error);
         return { success: false, error: "Could not delete the batch." };
+    }
+}
+
+export async function getParticipants(): Promise<Participant[]> {
+    try {
+        const participantsCollectionRef = collection(db, "participants");
+        const q = query(participantsCollectionRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+            return {
+                id: doc.id,
+                name: data.name,
+                iitpNo: data.iitpNo,
+                mobile: data.mobile,
+                organization: data.organization,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching participants:", error);
+        return [];
+    }
+}
+
+const participantSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  iitpNo: z.string().min(1, { message: "IITP No. is required." }),
+  mobile: z.string().min(10, { message: "A valid 10-digit mobile number is required." }),
+  organization: z.string().min(1, { message: "Organization is required." }),
+});
+
+
+export async function addParticipant(data: z.infer<typeof participantSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = participantSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid form data." };
+    }
+
+    try {
+        const participantsCollection = collection(db, "participants");
+        await addDoc(participantsCollection, {
+            ...validatedFields.data,
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding participant:", error);
+        return { success: false, error: "Could not add participant." };
     }
 }

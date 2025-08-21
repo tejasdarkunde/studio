@@ -1,4 +1,5 @@
 
+
 export type Registration = {
   id: string;
   name: string;
@@ -24,3 +25,12 @@ export type MeetingLinks = {
   diplomaZoomLink: string;
   advanceDiplomaZoomLink: string;
 };
+
+export type Participant = {
+    id: string;
+    name: string;
+    iitpNo: string;
+    mobile: string;
+    organization: string;
+    createdAt: string; // ISO 8601 string format
+}

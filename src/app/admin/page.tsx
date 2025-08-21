@@ -2,22 +2,26 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Batch } from '@/lib/types';
+import type { Batch, Participant } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
+import { AddParticipantDialog } from '@/components/features/add-participant-dialog';
+import { ParticipantsTable } from '@/components/features/participants-table';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { updateBatch, getBatches, createBatch, deleteBatch } from '@/app/actions';
+import { Separator } from '@/components/ui/separator';
+import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -25,17 +29,22 @@ export default function AdminPage() {
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isAddParticipantOpen, setAddParticipantOpen] = useState(false);
   const { toast } = useToast();
 
-  const fetchBatches = async () => {
-    const fetchedBatches = await getBatches();
+  const fetchAllData = async () => {
+    const [fetchedBatches, fetchedParticipants] = await Promise.all([
+      getBatches(),
+      getParticipants()
+    ]);
     setBatches(fetchedBatches);
+    setParticipants(fetchedParticipants);
   };
 
   useEffect(() => {
     setIsClient(true);
     if (isAuthenticated) {
-        fetchBatches();
+        fetchAllData();
     }
   }, [isAuthenticated]);
   
@@ -73,7 +82,7 @@ export default function AdminPage() {
           title: "Batch Updated",
           description: `Batch "${details.name}" has been saved.`,
       });
-      fetchBatches(); // Refresh batches from DB
+      fetchAllData();
     } else {
       toast({
           variant: "destructive",
@@ -115,7 +124,7 @@ export default function AdminPage() {
             title: "Batch Created",
             description: `New batch "${details.name}" was successfully created.`,
         });
-        fetchBatches();
+        fetchAllData();
     } else {
         toast({
             variant: "destructive",
@@ -136,7 +145,7 @@ export default function AdminPage() {
             title: "Batch Deleted",
             description: `The batch "${deletingBatch.name}" has been permanently removed.`,
         });
-        fetchBatches();
+        fetchAllData();
     } else {
         toast({
             variant: "destructive",
@@ -146,6 +155,24 @@ export default function AdminPage() {
     }
     setDeletingBatch(null);
   }
+
+  const handleAddParticipant = async (details: Omit<Participant, 'id' | 'createdAt'>) => {
+    const result = await addParticipant(details);
+    if(result.success) {
+        toast({
+            title: "Participant Added",
+            description: `${details.name} has been added to the central directory.`,
+        });
+        fetchAllData();
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: result.error || "Could not add the participant."
+        });
+    }
+    setAddParticipantOpen(false);
+  };
   
   if (!isClient) {
     return null;
@@ -205,6 +232,12 @@ export default function AdminPage() {
             } : undefined}
         />
       )}
+       <AddParticipantDialog 
+        isOpen={isAddParticipantOpen}
+        onClose={() => setAddParticipantOpen(false)}
+        onSave={handleAddParticipant}
+      />
+
       <main className="container mx-auto p-4 md:p-8">
         <div className="flex justify-between items-center mb-8 md:mb-12">
           <div className="flex flex-col">
@@ -212,7 +245,7 @@ export default function AdminPage() {
                   Admin Dashboard
               </h1>
               <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-                  Manage training batches and view registrations.
+                  Manage training batches, registrations, and participants.
               </p>
           </div>
           <Link href="/" passHref>
@@ -220,7 +253,7 @@ export default function AdminPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 gap-8">
+        <div className="grid grid-cols-1 gap-12">
           <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -278,6 +311,24 @@ export default function AdminPage() {
                   </div>
                 )}
               </CardContent>
+          </Card>
+          
+          <Separator />
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>All Participants</CardTitle>
+                <CardDescription>Manage the central directory of all participants.</CardDescription>
+              </div>
+              <Button onClick={() => setAddParticipantOpen(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add New Participant
+              </Button>
+            </CardHeader>
+            <CardContent>
+                <ParticipantsTable participants={participants} />
+            </CardContent>
           </Card>
         </div>
       </main>
