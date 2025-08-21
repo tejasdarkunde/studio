@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useParams } from 'next/navigation'
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Registration } from '@/lib/types';
@@ -10,9 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { getRedirectLink } from '@/app/actions';
 
 
-export default function RegistrationPage({ params }: { params: { batchId: 'diploma' | 'advance-diploma' } }) {
+export default function RegistrationPage() {
   const { toast } = useToast();
-  const { batchId } = params;
+  const params = useParams();
+  const batchId = params.batchId as ('diploma' | 'advance-diploma');
 
   if (batchId !== 'diploma' && batchId !== 'advance-diploma') {
     notFound();
