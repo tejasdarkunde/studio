@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Batch, Participant } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk } from '@/app/actions';
@@ -50,6 +50,24 @@ export default function AdminPage() {
         fetchAllData();
     }
   }, [isAuthenticated]);
+
+  const reportStats = useMemo(() => {
+    const totalRegistrations = batches.reduce((acc, batch) => acc + batch.registrations.length, 0);
+    
+    const diplomaEnrollments = batches
+      .filter(b => b.name.toLowerCase().includes('diploma') && !b.name.toLowerCase().includes('advance'))
+      .reduce((acc, batch) => acc + batch.registrations.length, 0);
+    
+    const advanceDiplomaEnrollments = batches
+      .filter(b => b.name.toLowerCase().includes('advance diploma'))
+      .reduce((acc, batch) => acc + batch.registrations.length, 0);
+
+    return {
+      totalRegistrations,
+      diplomaEnrollments,
+      advanceDiplomaEnrollments
+    };
+  }, [batches]);
   
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,6 +324,41 @@ export default function AdminPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-12">
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Reports</CardTitle>
+              <CardDescription>A high-level overview of your training statistics.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <Card className="p-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <Users className="h-8 w-8 text-primary" />
+                    <p className="text-2xl font-bold">{reportStats.totalRegistrations}</p>
+                    <p className="text-sm text-muted-foreground">Total Registrations</p>
+                  </div>
+                </Card>
+                 <Card className="p-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <BookUser className="h-8 w-8 text-primary" />
+                    <p className="text-2xl font-bold">{reportStats.diplomaEnrollments}</p>
+                    <p className="text-sm text-muted-foreground">Diploma Enrollments</p>
+                  </div>
+                </Card>
+                 <Card className="p-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <BookUp className="h-8 w-8 text-primary" />
+                    <p className="text-2xl font-bold">{reportStats.advanceDiplomaEnrollments}</p>
+                    <p className="text-sm text-muted-foreground">Advance Diploma Enrollments</p>
+                  </div>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Separator />
+          
           <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
