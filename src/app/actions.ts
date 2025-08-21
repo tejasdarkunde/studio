@@ -619,3 +619,49 @@ export async function addSubject(data: z.infer<typeof addSubjectSchema>): Promis
         return { success: false, error: "Could not add subject due to a database error." };
     }
 }
+
+
+const updateSubjectSchema = z.object({
+  courseId: z.string().min(1),
+  subjectId: z.string().min(1),
+  newName: z.string().min(2, { message: "Subject name must be at least 2 characters." }),
+});
+
+export async function updateSubject(data: z.infer<typeof updateSubjectSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = updateSubjectSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    try {
+        const { courseId, subjectId, newName } = validatedFields.data;
+        const subjectDocRef = doc(db, `courses/${courseId}/subjects/${subjectId}`);
+        await updateDoc(subjectDocRef, { name: newName });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating subject:", error);
+        return { success: false, error: "Could not update subject." };
+    }
+}
+
+const deleteSubjectSchema = z.object({
+  courseId: z.string().min(1),
+  subjectId: z.string().min(1),
+});
+
+export async function deleteSubject(data: z.infer<typeof deleteSubjectSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = deleteSubjectSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+    
+    try {
+        const { courseId, subjectId } = validatedFields.data;
+        const subjectDocRef = doc(db, `courses/${courseId}/subjects/${subjectId}`);
+        await deleteDoc(subjectDocRef);
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting subject:", error);
+        return { success: false, error: "Could not delete subject." };
+    }
+}

@@ -2,10 +2,11 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Batch, Participant, Trainer, Course } from '@/lib/types';
+import type { Batch, Participant, Trainer, Course, Subject } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
+import { ConfirmDialog } from '@/components/features/confirm-dialog';
 import { AddParticipantDialog } from '@/components/features/add-participant-dialog';
 import { ImportParticipantsDialog } from '@/components/features/import-participants-dialog';
 import { ParticipantsTable } from '@/components/features/participants-table';
@@ -18,11 +19,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, addSubject } from '@/app/actions';
+import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, addSubject, updateSubject, deleteSubject } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,9 @@ const organizations = [
 const CourseSubjectManager = ({ course, onSubjectAdded }: { course: Course; onSubjectAdded: () => void; }) => {
     const [newSubject, setNewSubject] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+    const [editingValue, setEditingValue] = useState('');
+    const [deletingSubject, setDeletingSubject] = useState<Subject | null>(null);
     const { toast } = useToast();
 
     const handleAddSubject = async () => {
@@ -57,42 +61,107 @@ const CourseSubjectManager = ({ course, onSubjectAdded }: { course: Course; onSu
         setIsAdding(false);
     };
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><BookCopy /> {course.name}</CardTitle>
-                <CardDescription>Manage the subjects for the {course.name.toLowerCase()} curriculum.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    <div className="flex gap-2">
-                        <Input 
-                            placeholder="Enter new subject name..."
-                            value={newSubject}
-                            onChange={(e) => setNewSubject(e.target.value)}
-                            disabled={isAdding}
-                        />
-                        <Button onClick={handleAddSubject} disabled={isAdding}>
-                            {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ListPlus className="mr-2 h-4 w-4" />}
-                            Add
-                        </Button>
-                    </div>
+    const startEditing = (subject: Subject) => {
+        setEditingSubject(subject);
+        setEditingValue(subject.name);
+    }
+    const cancelEditing = () => {
+        setEditingSubject(null);
+        setEditingValue('');
+    }
 
-                    <p className="text-sm font-medium text-muted-foreground">Existing Subjects ({course.subjects.length})</p>
-                    <ScrollArea className="h-64 rounded-md border p-2">
-                        {course.subjects.length > 0 ? (
-                            <ul className="space-y-2">
-                                {course.subjects.map(subject => (
-                                    <li key={subject.id} className="text-sm p-2 bg-secondary/50 rounded-md">{subject.name}</li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <div className="text-center text-muted-foreground py-10">No subjects added yet.</div>
-                        )}
-                    </ScrollArea>
-                </div>
-            </CardContent>
-        </Card>
+    const handleUpdateSubject = async () => {
+        if (!editingSubject || !editingValue.trim()) return;
+        
+        const result = await updateSubject({
+            courseId: course.id,
+            subjectId: editingSubject.id,
+            newName: editingValue
+        });
+
+        if (result.success) {
+            toast({ title: 'Subject Updated' });
+            onSubjectAdded();
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error || 'Could not update subject.' });
+        }
+        cancelEditing();
+    }
+    
+    const handleDeleteSubject = async () => {
+        if (!deletingSubject) return;
+
+        const result = await deleteSubject({ courseId: course.id, subjectId: deletingSubject.id });
+        if (result.success) {
+            toast({ title: 'Subject Deleted' });
+            onSubjectAdded();
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error || 'Could not delete subject.' });
+        }
+        setDeletingSubject(null);
+    }
+
+    return (
+        <>
+            <ConfirmDialog 
+                isOpen={!!deletingSubject}
+                onClose={() => setDeletingSubject(null)}
+                onConfirm={handleDeleteSubject}
+                title="Are you sure?"
+                description={`This will permanently delete the subject: "${deletingSubject?.name}". This action cannot be undone.`}
+            />
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><BookCopy /> {course.name}</CardTitle>
+                    <CardDescription>Manage the subjects for the {course.name.toLowerCase()} curriculum.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <div className="flex gap-2">
+                            <Input 
+                                placeholder="Enter new subject name..."
+                                value={newSubject}
+                                onChange={(e) => setNewSubject(e.target.value)}
+                                disabled={isAdding}
+                            />
+                            <Button onClick={handleAddSubject} disabled={isAdding}>
+                                {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ListPlus className="mr-2 h-4 w-4" />}
+                                Add
+                            </Button>
+                        </div>
+
+                        <p className="text-sm font-medium text-muted-foreground">Existing Subjects ({course.subjects.length})</p>
+                        <ScrollArea className="h-64 rounded-md border p-2">
+                            {course.subjects.length > 0 ? (
+                                <ul className="space-y-2">
+                                    {course.subjects.map(subject => (
+                                        <li key={subject.id} className="text-sm p-2 bg-secondary/50 rounded-md flex items-center justify-between group">
+                                            {editingSubject?.id === subject.id ? (
+                                                <div className="flex-grow flex items-center gap-2">
+                                                    <Input value={editingValue} onChange={(e) => setEditingValue(e.target.value)} className="h-8" />
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600 hover:text-green-700" onClick={handleUpdateSubject}><Save className="h-4 w-4" /></Button>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700" onClick={cancelEditing}><XCircle className="h-4 w-4" /></Button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <span>{subject.name}</span>
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => startEditing(subject)}><Pencil className="h-4 w-4" /></Button>
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive/80" onClick={() => setDeletingSubject(subject)}><Trash className="h-4 w-4" /></Button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div className="text-center text-muted-foreground py-10">No subjects added yet.</div>
+                            )}
+                        </ScrollArea>
+                    </div>
+                </CardContent>
+            </Card>
+        </>
     );
 };
 
