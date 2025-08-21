@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk } from '@/app/actions';
 
 export default function AdminPage() {
@@ -345,157 +346,164 @@ export default function AdminPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 gap-12">
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Reports</CardTitle>
-              <CardDescription>A high-level overview of your training statistics.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <Card className="p-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <Users className="h-8 w-8 text-primary" />
-                    <p className="text-2xl font-bold">{reportStats.totalRegistrations}</p>
-                    <p className="text-sm text-muted-foreground">Total Enrollments</p>
-                  </div>
-                </Card>
-                 <Card className="p-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <BookUser className="h-8 w-8 text-primary" />
-                    <p className="text-2xl font-bold">{reportStats.diplomaEnrollments}</p>
-                    <p className="text-sm text-muted-foreground">Diploma Enrollments</p>
-                  </div>
-                </Card>
-                 <Card className="p-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <BookUp className="h-8 w-8 text-primary" />
-                    <p className="text-2xl font-bold">{reportStats.advanceDiplomaEnrollments}</p>
-                    <p className="text-sm text-muted-foreground">Adv. Diploma Enrollments</p>
-                  </div>
-                </Card>
-                 <Card className="p-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <Presentation className="h-8 w-8 text-primary" />
-                    <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
-                    <p className="text-sm text-muted-foreground">Total Sessions</p>
-                  </div>
-                </Card>
-                 <Card className="p-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <School className="h-8 w-8 text-primary" />
-                    <p className="text-2xl font-bold">{reportStats.diplomaSessions}</p>
-                    <p className="text-sm text-muted-foreground">Diploma Sessions</p>
-                  </div>
-                </Card>
-                 <Card className="p-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <BookUp className="h-8 w-8 text-primary" />
-                    <p className="text-2xl font-bold">{reportStats.advanceDiplomaSessions}</p>
-                    <p className="text-sm text-muted-foreground">Adv. Diploma Sessions</p>
-                  </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <Building className="h-8 w-8 text-primary" />
-                    <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
-                    <p className="text-sm text-muted-foreground">Total Organizations</p>
-                  </div>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="reports" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="trainings">Trainings</TabsTrigger>
+            <TabsTrigger value="users">All Users</TabsTrigger>
+          </TabsList>
           
-          <Separator />
-          
-          <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Training Batches</CardTitle>
-                  <CardDescription>View and manage all training batches and their registrations.</CardDescription>
-                </div>
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create New Batch
-                </Button>
+          <TabsContent value="reports" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Reports</CardTitle>
+                <CardDescription>A high-level overview of your training statistics.</CardDescription>
               </CardHeader>
               <CardContent>
-                {batches && batches.length > 0 ? (
-                  <Accordion type="multiple" className="w-full">
-                      {batches.map(batch => (
-                          <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
-                              <AccordionTrigger>
-                                  <div className="flex justify-between items-center w-full pr-4">
-                                    <div className="flex items-center gap-2">
-                                      <span>
-                                          {batch.name} ({batch.registrations.length} registrations)
-                                      </span>
-                                    </div>
-                                  </div>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <div className="flex justify-end items-center pb-4 gap-2">
-                                  <Button 
-                                      variant="outline" 
-                                      size="sm"
-                                      onClick={() => handleEditBatch(batch)}
-                                  >
-                                      <Pencil className="mr-2 h-4 w-4" /> Edit Batch
-                                  </Button>
-                                  <Button 
-                                      variant="destructive" 
-                                      size="sm"
-                                      onClick={() => handleDeleteBatch(batch)}
-                                  >
-                                      <Trash className="mr-2 h-4 w-4" /> Delete Batch
-                                  </Button>
-                                </div>
-                                  <RegistrationsTable 
-                                      registrations={batch.registrations}
-                                      batchName={batch.name}
-                                  />
-                              </AccordionContent>
-                          </AccordionItem>
-                      ))}
-                  </Accordion>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <p>No batches found.</p>
-                    <p>Click "Create New Batch" to get started.</p>
-                  </div>
-                )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <Card className="p-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <Users className="h-8 w-8 text-primary" />
+                      <p className="text-2xl font-bold">{reportStats.totalRegistrations}</p>
+                      <p className="text-sm text-muted-foreground">Total Enrollments</p>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <BookUser className="h-8 w-8 text-primary" />
+                      <p className="text-2xl font-bold">{reportStats.diplomaEnrollments}</p>
+                      <p className="text-sm text-muted-foreground">Diploma Enrollments</p>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <BookUp className="h-8 w-8 text-primary" />
+                      <p className="text-2xl font-bold">{reportStats.advanceDiplomaEnrollments}</p>
+                      <p className="text-sm text-muted-foreground">Adv. Diploma Enrollments</p>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <Presentation className="h-8 w-8 text-primary" />
+                      <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
+                      <p className="text-sm text-muted-foreground">Total Sessions</p>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <School className="h-8 w-8 text-primary" />
+                      <p className="text-2xl font-bold">{reportStats.diplomaSessions}</p>
+                      <p className="text-sm text-muted-foreground">Diploma Sessions</p>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <BookUp className="h-8 w-8 text-primary" />
+                      <p className="text-2xl font-bold">{reportStats.advanceDiplomaSessions}</p>
+                      <p className="text-sm text-muted-foreground">Adv. Diploma Sessions</p>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <Building className="h-8 w-8 text-primary" />
+                      <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
+                      <p className="text-sm text-muted-foreground">Total Organizations</p>
+                    </div>
+                  </Card>
+                </div>
               </CardContent>
-          </Card>
+            </Card>
+          </TabsContent>
           
-          <Separator />
+          <TabsContent value="trainings" className="mt-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Training Batches</CardTitle>
+                    <CardDescription>View and manage all training batches and their registrations.</CardDescription>
+                  </div>
+                  <Button onClick={() => setCreateDialogOpen(true)}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Create New Batch
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {batches && batches.length > 0 ? (
+                    <Accordion type="multiple" className="w-full">
+                        {batches.map(batch => (
+                            <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
+                                <AccordionTrigger>
+                                    <div className="flex justify-between items-center w-full pr-4">
+                                      <div className="flex items-center gap-2">
+                                        <span>
+                                            {batch.name} ({batch.registrations.length} registrations)
+                                        </span>
+                                      </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <div className="flex justify-end items-center pb-4 gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleEditBatch(batch)}
+                                    >
+                                        <Pencil className="mr-2 h-4 w-4" /> Edit Batch
+                                    </Button>
+                                    <Button 
+                                        variant="destructive" 
+                                        size="sm"
+                                        onClick={() => handleDeleteBatch(batch)}
+                                    >
+                                        <Trash className="mr-2 h-4 w-4" /> Delete Batch
+                                    </Button>
+                                  </div>
+                                    <RegistrationsTable 
+                                        registrations={batch.registrations}
+                                        batchName={batch.name}
+                                    />
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>No batches found.</p>
+                      <p>Click "Create New Batch" to get started.</p>
+                    </div>
+                  )}
+                </CardContent>
+            </Card>
+          </TabsContent>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>All Participants</CardTitle>
-                <CardDescription>Manage the central directory of all participants.</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={handleDownloadTemplate}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Template
-                  </Button>
-                  <Button onClick={() => setImportDialogOpen(true)}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import from CSV
-                  </Button>
-                  <Button onClick={() => setAddParticipantOpen(true)}>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Add New Participant
-                  </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-                <ParticipantsTable participants={participants} />
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="users" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>All Participants</CardTitle>
+                  <CardDescription>Manage the central directory of all participants.</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={handleDownloadTemplate}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Template
+                    </Button>
+                    <Button onClick={() => setImportDialogOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import from CSV
+                    </Button>
+                    <Button onClick={() => setAddParticipantOpen(true)}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add New Participant
+                    </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                  <ParticipantsTable participants={participants} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </>
   );
