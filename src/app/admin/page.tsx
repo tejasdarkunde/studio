@@ -61,6 +61,8 @@ export default function AdminPage() {
   
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // This is a simple, insecure password check. 
+    // For a real application, use a proper authentication system.
     if (password === 'Bsa@123') {
       setIsAuthenticated(true);
       setError('');
@@ -93,9 +95,11 @@ export default function AdminPage() {
     }
     setEditingBatch(null);
   };
+
+  const hasRegistrations = batches.some(batch => batch.registrations.length > 0);
   
   if (!isClient) {
-    return null;
+    return null; // Don't render server-side
   }
 
   if (!isAuthenticated) {
@@ -193,42 +197,36 @@ export default function AdminPage() {
                   <CardDescription>View and export registrations for each program.</CardDescription>
               </CardHeader>
               <CardContent>
-                  {batches.length > 0 ? (
-                      <Accordion type="multiple" defaultValue={['batch-diploma', 'batch-advance-diploma']}>
-                          {batches.map(batch => (
-                              <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
-                                  <AccordionTrigger>
-                                      <div className="flex justify-between items-center w-full pr-4">
-                                        <div className="flex items-center gap-2">
-                                          <span>
-                                              {batch.name} ({batch.registrations.length} registrations)
-                                          </span>
-                                        </div>
-                                      </div>
-                                  </AccordionTrigger>
-                                  <AccordionContent>
-                                    <div className="flex justify-end items-center pb-4">
-                                      <Button 
-                                          variant="outline" 
-                                          size="sm"
-                                          onClick={() => handleEditBatchName(batch)}
-                                      >
-                                          <Pencil className="mr-2 h-4 w-4" /> Edit Name
-                                      </Button>
-                                    </div>
-                                      <RegistrationsTable 
-                                          registrations={batch.registrations}
-                                          batchName={batch.name}
-                                      />
-                                  </AccordionContent>
-                              </AccordionItem>
-                          ))}
-                      </Accordion>
-                  ) : (
-                      <div className="text-center text-muted-foreground p-8">
-                          No registration batches found.
-                      </div>
-                  )}
+                <Accordion type="multiple" defaultValue={['batch-diploma', 'batch-advance-diploma']}>
+                    {batches.map(batch => (
+                        <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
+                            <AccordionTrigger>
+                                <div className="flex justify-between items-center w-full pr-4">
+                                  <div className="flex items-center gap-2">
+                                    <span>
+                                        {batch.name} ({batch.registrations.length} registrations)
+                                    </span>
+                                  </div>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="flex justify-end items-center pb-4">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleEditBatchName(batch)}
+                                >
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit Name
+                                </Button>
+                              </div>
+                                <RegistrationsTable 
+                                    registrations={batch.registrations}
+                                    batchName={batch.name}
+                                />
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
               </CardContent>
           </Card>
         </div>
