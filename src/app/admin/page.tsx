@@ -512,9 +512,10 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="reports" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="trainings">Trainings</TabsTrigger>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="users">All Users</TabsTrigger>
             <TabsTrigger value="trainers">Trainers</TabsTrigger>
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
@@ -671,6 +672,21 @@ export default function AdminPage() {
                     </div>
                   )}
                 </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="courses" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Course Management</CardTitle>
+                <CardDescription>Manage your course catalog here.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12 text-muted-foreground">
+                    <p>This section is under construction.</p>
+                    <p>You will be able to manage courses, view enrollments, and more here.</p>
+                </div>
+              </CardContent>
             </Card>
           </TabsContent>
 
