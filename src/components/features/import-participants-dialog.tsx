@@ -67,7 +67,7 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
           return;
         }
 
-        const requiredHeaders = ['name', 'iitpNo', 'mobile', 'organization'];
+        const requiredHeaders = ['name', 'iitpNo'];
         const fileHeaders = results.meta.fields || [];
         const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
 
@@ -77,14 +77,14 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
         }
         
         const validParticipants = results.data
-            .filter(p => p.name && p.iitpNo && p.mobile && p.organization)
+            .filter(p => p.name && p.iitpNo)
             .map(p => {
                 const coursesArray = p.enrolledCourses ? p.enrolledCourses.split(',').map(c => c.trim()).filter(c => c) : [];
                 return {
                     name: p.name,
                     iitpNo: p.iitpNo,
-                    mobile: p.mobile,
-                    organization: p.organization,
+                    mobile: p.mobile || '',
+                    organization: p.organization || '',
                     enrolledCourses: coursesArray,
                 };
             });
@@ -95,7 +95,7 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
             toast({
                 variant: 'destructive',
                 title: 'Incomplete Rows Skipped',
-                description: `${results.data.length - validParticipants.length} rows were skipped due to missing required data.`
+                description: `${results.data.length - validParticipants.length} rows were skipped due to missing Name or IITP No.`
             })
         }
       },
@@ -130,7 +130,7 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
       <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle>Import Participants from CSV</DialogTitle>
-          <DialogDescription>Upload a CSV file with participant data. Required columns: name, iitpNo, mobile, organization. Optional: enrolledCourses.</DialogDescription>
+          <DialogDescription>Upload a CSV file with participant data. Required columns: name, iitpNo. Optional: mobile, organization, enrolledCourses.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">

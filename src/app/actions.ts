@@ -267,8 +267,8 @@ export async function getParticipants(): Promise<Participant[]> {
 const participantSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
-  mobile: z.string().min(10, { message: "A valid 10-digit mobile number is required." }),
-  organization: z.string().min(1, { message: "Organization is required." }),
+  mobile: z.string().optional(),
+  organization: z.string().optional(),
   enrolledCourses: z.array(z.string()).optional(),
 });
 

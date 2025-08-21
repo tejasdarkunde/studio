@@ -51,11 +51,11 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
   }, [isOpen]);
 
   const handleSave = () => {
-    if (!name.trim() || !iitpNo.trim() || !mobile.trim() || !organization) {
+    if (!name.trim() || !iitpNo.trim()) {
         toast({
             variant: "destructive",
             title: "Missing Information",
-            description: "Please fill out all required fields to add a participant.",
+            description: "Please fill out Name and IITP No. fields to add a participant.",
         });
       return;
     }
@@ -74,11 +74,11 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">Name</Label>
+            <Label htmlFor="name" className="text-right">Name *</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="iitpNo" className="text-right">IITP No</Label>
+            <Label htmlFor="iitpNo" className="text-right">IITP No *</Label>
             <Input id="iitpNo" value={iitpNo} onChange={(e) => setIitpNo(e.target.value)} className="col-span-3" />
           </div>
            <div className="grid grid-cols-4 items-center gap-4">
