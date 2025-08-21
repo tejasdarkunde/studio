@@ -10,8 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { getRedirectLink } from '@/app/actions';
 
 
-export default function RegistrationPage({ params: { batchId } }: { params: { batchId: 'diploma' | 'advance-diploma' } }) {
+export default function RegistrationPage({ params }: { params: { batchId: 'diploma' | 'advance-diploma' } }) {
   const { toast } = useToast();
+  const { batchId } = params;
 
   if (batchId !== 'diploma' && batchId !== 'advance-diploma') {
     notFound();
@@ -80,7 +81,7 @@ export default function RegistrationPage({ params: { batchId } }: { params: { ba
         </div>
         <div className="text-center mt-8">
             <Link href="/" passHref>
-                <Button variant="link">Back to Home</Button>
+                <button className="text-primary hover:underline">Back to Home</button>
             </Link>
         </div>
       </div>
