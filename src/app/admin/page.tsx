@@ -5,15 +5,16 @@ import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
+import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle } from 'lucide-react';
+import { Pencil, PlusCircle, Trash } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { updateBatch, getBatches, createBatch } from '@/app/actions';
+import { updateBatch, getBatches, createBatch, deleteBatch } from '@/app/actions';
 
 export default function AdminPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -22,6 +23,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
+  const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -49,6 +51,10 @@ export default function AdminPage() {
 
   const handleEditBatch = (batch: Batch) => {
     setEditingBatch(batch);
+  };
+
+  const handleDeleteBatch = (batch: Batch) => {
+    setDeletingBatch(batch);
   };
   
   const handleSaveBatch = async (details: { name: string; startDate?: Date; time?: string; meetingLink: string }) => {
@@ -109,6 +115,27 @@ export default function AdminPage() {
     }
     setCreateDialogOpen(false);
   }
+
+  const confirmDeleteBatch = async () => {
+    if (!deletingBatch) return;
+
+    const result = await deleteBatch(deletingBatch.id);
+
+    if(result.success) {
+        toast({
+            title: "Batch Deleted",
+            description: `The batch "${deletingBatch.name}" has been permanently removed.`,
+        });
+        fetchBatches();
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: result.error || "Could not delete the batch."
+        });
+    }
+    setDeletingBatch(null);
+  }
   
   if (!isClient) {
     return null;
@@ -148,6 +175,12 @@ export default function AdminPage() {
 
   return (
     <>
+      <DeleteBatchDialog 
+        isOpen={!!deletingBatch}
+        onClose={() => setDeletingBatch(null)}
+        onConfirm={confirmDeleteBatch}
+        batchName={deletingBatch?.name || ''}
+      />
       {(editingBatch || isCreateDialogOpen) && (
         <EditBatchDialog
             isOpen={!!editingBatch || isCreateDialogOpen}
@@ -203,13 +236,20 @@ export default function AdminPage() {
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent>
-                                <div className="flex justify-end items-center pb-4">
+                                <div className="flex justify-end items-center pb-4 gap-2">
                                   <Button 
                                       variant="outline" 
                                       size="sm"
                                       onClick={() => handleEditBatch(batch)}
                                   >
                                       <Pencil className="mr-2 h-4 w-4" /> Edit Batch
+                                  </Button>
+                                  <Button 
+                                      variant="destructive" 
+                                      size="sm"
+                                      onClick={() => handleDeleteBatch(batch)}
+                                  >
+                                      <Trash className="mr-2 h-4 w-4" /> Delete Batch
                                   </Button>
                                 </div>
                                   <RegistrationsTable 

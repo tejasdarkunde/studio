@@ -2,9 +2,9 @@
 "use client";
 
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Calendar, Clock } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
 import { getBatches } from './actions';
@@ -56,13 +56,19 @@ const TrainingCard = ({ batch }: { batch: Batch }) => {
             )}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-grow flex flex-col justify-end">
+        <CardContent className="flex-grow">
+            <div className="text-sm text-muted-foreground flex items-center">
+                <Users className="h-4 w-4 mr-2" />
+                {batch.registrations.length} registration(s)
+            </div>
+        </CardContent>
+        <CardFooter>
           <Link href={`/register/${batch.id}`} passHref>
             <Button className="w-full" disabled={isPast}>
               {isPast ? 'View Details' : 'Register Now'} <ArrowRight className="ml-2" />
             </Button>
           </Link>
-        </CardContent>
+        </CardFooter>
     </Card>
   )
 };
@@ -88,6 +94,7 @@ const LoadingSkeleton = () => (
                     <Skeleton className="h-4 w-1/2" />
                 </CardHeader>
                 <CardContent>
+                    <Skeleton className="h-4 w-1/3 mb-4" />
                     <Skeleton className="h-10 w-full" />
                 </CardContent>
             </Card>

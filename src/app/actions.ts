@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc } from "firebase/firestore";
 import type { Registration, Batch, MeetingLinks } from "@/lib/types";
 
 const registrationSchema = z.object({
@@ -205,5 +205,29 @@ export async function getRedirectLink(batchId: string): Promise<{link: string | 
         }
     } catch(error) {
         return { link: null };
+    }
+}
+
+export async function deleteBatch(batchId: string): Promise<{ success: boolean, error?: string }> {
+    try {
+        const batchDocRef = doc(db, 'batches', batchId);
+        
+        // Optional: Delete subcollections first if they are large
+        const registrationsCollectionRef = collection(db, `batches/${batchId}/registrations`);
+        const regSnapshot = await getDocs(registrationsCollectionRef);
+        const deletePromises: Promise<void>[] = [];
+        regSnapshot.forEach(doc => {
+            deletePromises.push(deleteDoc(doc.ref));
+        });
+        await Promise.all(deletePromises);
+        
+        // Delete the main batch document
+        await deleteDoc(batchDocRef);
+        
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error deleting batch:", error);
+        return { success: false, error: "Could not delete the batch." };
     }
 }
