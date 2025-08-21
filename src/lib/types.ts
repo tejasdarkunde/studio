@@ -12,7 +12,8 @@ export type Batch = {
   id: string;
   name: string;
   startDate: string; // ISO 8601 string format
-  endDate: string; // ISO 8601 string format
+  endDate?: string; // Kept for backward compatibility
+  time?: string; // e.g., "10:00 AM"
   meetingLink: string;
   registrations: Registration[];
   createdAt: string; // ISO 8601 string format

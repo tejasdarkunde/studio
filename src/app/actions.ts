@@ -68,7 +68,6 @@ export async function getBatches(): Promise<Batch[]> {
             const batchData = batchDoc.data();
             const createdAt = batchData.createdAt as Timestamp;
             
-            // Handle potentially missing date fields for backward compatibility
             const startDate = batchData.startDate as Timestamp | undefined;
             const endDate = batchData.endDate as Timestamp | undefined;
 
@@ -90,8 +89,9 @@ export async function getBatches(): Promise<Batch[]> {
             batches.push({
                 id: batchId,
                 name: batchData.name || 'Unnamed Batch',
-                startDate: startDate?.toDate().toISOString() || '', // Default to empty string if not present
-                endDate: endDate?.toDate().toISOString() || '', // Default to empty string if not present
+                startDate: startDate?.toDate().toISOString() || '',
+                endDate: endDate?.toDate().toISOString(),
+                time: batchData.time || '',
                 meetingLink: batchData.meetingLink || '',
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 registrations,
@@ -124,10 +124,11 @@ export async function getBatchById(id: string): Promise<Batch | null> {
             id: batchDoc.id,
             name: batchData.name || 'Unnamed Batch',
             startDate: startDate?.toDate().toISOString() || '',
-            endDate: endDate?.toDate().toISOString() || '',
+            endDate: endDate?.toDate().toISOString(),
+            time: batchData.time || '',
             meetingLink: batchData.meetingLink || '',
             createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-            registrations: [], // Registrations not needed for this specific query
+            registrations: [], 
         };
     } catch (error) {
         console.error('Error fetching batch by ID:', error);
@@ -136,7 +137,7 @@ export async function getBatchById(id: string): Promise<Batch | null> {
 }
 
 
-export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'meetingLink' | 'startDate' | 'endDate'>>): Promise<{success: boolean, error?: string}> {
+export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'meetingLink' | 'startDate' | 'time'>>): Promise<{success: boolean, error?: string}> {
     if (!data.name || !data.name.trim()) {
         return { success: false, error: "Batch name cannot be empty." };
     }
@@ -146,13 +147,11 @@ export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'na
         const updateData: any = {
             name: data.name,
             meetingLink: data.meetingLink || '',
+            time: data.time || '',
         };
 
         if(data.startDate) {
             updateData.startDate = Timestamp.fromDate(new Date(data.startDate));
-        }
-        if(data.endDate) {
-            updateData.endDate = Timestamp.fromDate(new Date(data.endDate));
         }
 
         await setDoc(batchDocRef, updateData, { merge: true });
@@ -166,7 +165,7 @@ export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'na
 const createBatchSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   startDate: z.date(),
-  endDate: z.date(),
+  time: z.string().optional(),
   meetingLink: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
 });
 
@@ -177,12 +176,12 @@ export async function createBatch(data: z.infer<typeof createBatchSchema>): Prom
     }
 
     try {
-        const { name, startDate, endDate, meetingLink } = validatedFields.data;
+        const { name, startDate, time, meetingLink } = validatedFields.data;
         const batchesCollection = collection(db, "batches");
         await addDoc(batchesCollection, {
             name,
             startDate: Timestamp.fromDate(startDate),
-            endDate: Timestamp.fromDate(endDate),
+            time: time || '',
             meetingLink: meetingLink || '',
             createdAt: serverTimestamp(),
         });

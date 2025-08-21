@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Calendar, Video } from 'lucide-react';
+import { ArrowRight, Calendar, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
 import { getBatches } from './actions';
@@ -15,27 +15,51 @@ const TrainingCard = ({ batch }: { batch: Batch }) => {
     if (!dateString) return 'Date not set';
     return new Date(dateString).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }
-  const isPast = new Date(batch.endDate) < new Date();
+
+  const isPastEvent = () => {
+    if (batch.endDate) { // Handle old data model
+      return new Date(batch.endDate) < new Date();
+    }
+    if (batch.startDate) { // New model: single day event
+      const eventDate = new Date(batch.startDate);
+      const today = new Date();
+      today.setHours(0,0,0,0); // Compare dates only
+      eventDate.setHours(0,0,0,0);
+      return eventDate < today;
+    }
+    return false; // No date info, assume not past
+  }
+
+  const isPast = isPastEvent();
 
   return (
     <Card className="flex flex-col">
         <CardHeader>
           <CardTitle>{batch.name}</CardTitle>
-          {batch.startDate && batch.endDate ? (
-            <CardDescription className="flex items-center gap-2 pt-1">
-              <Calendar className="h-4 w-4" /> 
-              {formatDate(batch.startDate)} - {formatDate(batch.endDate)}
-            </CardDescription>
-          ) : (
-             <CardDescription className="flex items-center gap-2 pt-1">
-                (Dates not set)
-             </CardDescription>
-          )}
+          <CardDescription className="flex items-center gap-2 pt-1">
+            {batch.startDate ? (
+              <>
+                <Calendar className="h-4 w-4" /> 
+                <span>{formatDate(batch.startDate)}</span>
+                {batch.time && (
+                  <>
+                    <Clock className="h-4 w-4 ml-2" />
+                    <span>{batch.time}</span>
+                  </>
+                )}
+                {batch.endDate && !batch.time && (
+                   <span> - {formatDate(batch.endDate)}</span>
+                )}
+              </>
+            ) : (
+                <span>(Date not set)</span>
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow flex flex-col justify-end">
           <Link href={`/register/${batch.id}`} passHref>
-            <Button className="w-full" disabled={isPast && !!batch.endDate}>
-              {isPast && !!batch.endDate ? 'View Details' : 'Register Now'} <ArrowRight className="ml-2" />
+            <Button className="w-full" disabled={isPast}>
+              {isPast ? 'View Details' : 'Register Now'} <ArrowRight className="ml-2" />
             </Button>
           </Link>
         </CardContent>
@@ -86,11 +110,36 @@ export default function Home() {
   }, []);
 
   const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const getEventDate = (b: Batch) => new Date(new Date(b.startDate).getFullYear(), new Date(b.startDate).getMonth(), new Date(b.startDate).getDate());
+
+  const ongoing = batches.filter(b => {
+      if (!b.startDate) return false;
+      if (b.endDate) { // Legacy multi-day events
+          return new Date(b.startDate) <= now && new Date(b.endDate) >= now;
+      }
+      // Single-day events are "ongoing" on that day
+      return getEventDate(b).getTime() === today.getTime();
+  });
+
+  const upcoming = batches.filter(b => {
+      if (!b.startDate) return false;
+      // Exclude ongoing events from upcoming
+      if (ongoing.some(ongoingBatch => ongoingBatch.id === b.id)) return false;
+      return getEventDate(b) > today;
+  });
   
-  const ongoing = batches.filter(b => b.startDate && b.endDate && new Date(b.startDate) <= now && new Date(b.endDate) >= now);
-  const upcoming = batches.filter(b => b.startDate && new Date(b.startDate) > now);
-  const past = batches.filter(b => b.endDate && new Date(b.endDate) < now);
-  const legacy = batches.filter(b => !b.startDate || !b.endDate);
+  const past = batches.filter(b => {
+    if (!b.startDate) return false;
+    if (b.endDate) { // Legacy multi-day events
+      return new Date(b.endDate) < now;
+    }
+    // Single-day events are "past" the day after
+    return getEventDate(b) < today;
+  });
+
+  const legacy = batches.filter(b => !b.startDate);
 
 
   return (

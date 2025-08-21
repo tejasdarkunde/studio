@@ -26,26 +26,26 @@ import { format } from "date-fns"
 type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; startDate?: Date; endDate?: Date; meetingLink: string }) => void;
-  initialData?: { name: string; startDate?: string; endDate?: string; meetingLink: string; };
+  onSave: (details: { name: string; startDate?: Date; time?: string; meetingLink: string }) => void;
+  initialData?: { name: string; startDate?: string; time?: string; meetingLink: string; };
 };
 
 export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBatchDialogProps) {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState<Date | undefined>();
-  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [time, setTime] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
 
   useEffect(() => {
     setName(initialData?.name || '');
     setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
-    setEndDate(initialData?.endDate ? new Date(initialData.endDate) : undefined);
+    setTime(initialData?.time || '');
     setMeetingLink(initialData?.meetingLink || '');
   }, [initialData, isOpen]);
 
   const handleSave = () => {
     if (name.trim()) {
-      onSave({ name: name.trim(), startDate, endDate, meetingLink });
+      onSave({ name: name.trim(), startDate, time, meetingLink });
       onClose();
     }
   };
@@ -82,7 +82,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBa
                     <Button
                     variant={"outline"}
                     className={cn(
-                        "w-[280px] justify-start text-left font-normal",
+                        "w-[280px] justify-start text-left font-normal col-span-3",
                         !startDate && "text-muted-foreground"
                     )}
                     >
@@ -101,31 +101,16 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData }: EditBa
             </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">
-              End Date
+            <Label htmlFor="time" className="text-right">
+              Time
             </Label>
-             <Popover>
-                <PopoverTrigger asChild>
-                    <Button
-                    variant={"outline"}
-                    className={cn(
-                        "w-[280px] justify-start text-left font-normal",
-                        !endDate && "text-muted-foreground"
-                    )}
-                    >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                    <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    initialFocus
-                    />
-                </PopoverContent>
-            </Popover>
+            <Input
+              id="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="col-span-3"
+              placeholder="e.g., 10:00 AM"
+            />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="meeting-link" className="text-right">

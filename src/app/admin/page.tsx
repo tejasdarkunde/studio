@@ -51,13 +51,13 @@ export default function AdminPage() {
     setEditingBatch(batch);
   };
   
-  const handleSaveBatch = async (details: { name: string; startDate?: Date; endDate?: Date; meetingLink: string }) => {
+  const handleSaveBatch = async (details: { name: string; startDate?: Date; time?: string; meetingLink: string }) => {
     if (!editingBatch) return;
 
     const result = await updateBatch(editingBatch.id, {
         name: details.name,
         startDate: details.startDate?.toISOString(),
-        endDate: details.endDate?.toISOString(),
+        time: details.time,
         meetingLink: details.meetingLink,
     });
 
@@ -77,12 +77,12 @@ export default function AdminPage() {
     setEditingBatch(null);
   };
 
-  const handleCreateBatch = async (details: { name: string; startDate?: Date; endDate?: Date; meetingLink: string }) => {
-    if (!details.startDate || !details.endDate) {
+  const handleCreateBatch = async (details: { name: string; startDate?: Date; time?: string; meetingLink: string }) => {
+    if (!details.startDate) {
         toast({
             variant: "destructive",
-            title: "Missing Dates",
-            description: "Start date and end date are required to create a batch.",
+            title: "Missing Date",
+            description: "Start date is required to create a batch.",
         });
         return;
     }
@@ -90,7 +90,7 @@ export default function AdminPage() {
     const result = await createBatch({
         name: details.name,
         startDate: details.startDate,
-        endDate: details.endDate,
+        time: details.time,
         meetingLink: details.meetingLink,
     });
 
@@ -156,7 +156,7 @@ export default function AdminPage() {
             initialData={editingBatch ? {
                 name: editingBatch.name,
                 startDate: editingBatch.startDate,
-                endDate: editingBatch.endDate,
+                time: editingBatch.time,
                 meetingLink: editingBatch.meetingLink,
             } : undefined}
         />
