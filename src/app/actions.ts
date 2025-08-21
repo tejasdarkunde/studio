@@ -9,14 +9,14 @@ import type { Registration, Batch, MeetingLinks, Participant, Trainer } from "@/
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
-  mobile: z.string().min(10, { message: "A valid mobile number is required." }),
+  mobile: z.string().min(10, { message: "A valid mobile number is required." }).optional().or(z.literal('')),
   organization: z.string({
     required_error: "Please select an organization.",
-  }),
+  }).optional(),
   batchId: z.string().min(1, { message: "Batch ID is required." }),
 });
 
-export async function registerForMeeting(
+export async function registerParticipant(
   data: z.infer<typeof registrationSchema>
 ): Promise<{ success: true; registration: Registration } | { success: false; error: string }> {
   const validatedFields = registrationSchema.safeParse(data);
@@ -45,7 +45,10 @@ export async function registerForMeeting(
 
     const finalRegistration: Registration = {
         id: docRef.id,
-        ...registrationData,
+        name: registrationData.name,
+        iitpNo: registrationData.iitpNo,
+        mobile: registrationData.mobile || '',
+        organization: registrationData.organization || '',
         submissionTime: new Date().toISOString(), 
     };
 
@@ -55,6 +58,50 @@ export async function registerForMeeting(
     return { success: false, error: "Failed to register. Please check your Firestore security rules and configuration." };
   }
 }
+
+const joinMeetingSchema = z.object({
+  iitpNo: z.string().min(1, { message: "IITP No. is required." }),
+  batchId: z.string().min(1, { message: "Batch ID is required." }),
+});
+
+export async function joinMeeting(data: z.infer<typeof joinMeetingSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = joinMeetingSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    const { iitpNo, batchId } = validatedFields.data;
+
+    try {
+        const participantsCollection = collection(db, "participants");
+        const participantQuery = query(participantsCollection, where("iitpNo", "==", iitpNo));
+        const participantSnapshot = await getDocs(participantQuery);
+
+        if (participantSnapshot.empty) {
+            return { success: false, error: "No participant found with this IITP No. Please register or contact an admin." };
+        }
+        
+        const participantDoc = participantSnapshot.docs[0];
+        const participant = { id: participantDoc.id, ...participantDoc.data() } as Participant;
+        
+        const registrationData = {
+          name: participant.name,
+          iitpNo: participant.iitpNo,
+          mobile: participant.mobile || '',
+          organization: participant.organization || '',
+          submissionTime: serverTimestamp(),
+        };
+
+        const registrationsCollection = collection(db, `batches/${batchId}/registrations`);
+        await addDoc(registrationsCollection, registrationData);
+
+        return { success: true };
+    } catch(error) {
+        console.error("Error joining meeting:", error);
+        return { success: false, error: "Could not process your request due to a database error." };
+    }
+}
+
 
 export async function getBatches(): Promise<Batch[]> {
     try {

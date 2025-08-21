@@ -25,16 +25,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { registerForMeeting } from "@/app/actions";
+import { registerParticipant } from "@/app/actions";
 import type { Registration } from "@/lib/types";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
-  mobile: z.string().min(10, { message: "A valid 10-digit mobile number is required." }).max(10, { message: "A valid 10-digit mobile number is required." }),
-  organization: z.string({
-    required_error: "Please select an organization.",
-  }),
+  mobile: z.string().min(10, { message: "A valid 10-digit mobile number is required." }).max(10, { message: "A valid 10-digit mobile number is required." }).optional().or(z.literal('')),
+  organization: z.string().optional(),
 });
 
 type RegistrationFormProps = {
@@ -65,7 +63,7 @@ export function RegistrationForm({ batchId, onSuccess }: RegistrationFormProps) 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      const result = await registerForMeeting({ ...values, batchId });
+      const result = await registerParticipant({ ...values, batchId });
 
       if (result.success) {
         onSuccess();

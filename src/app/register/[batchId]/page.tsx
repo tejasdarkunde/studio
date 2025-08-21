@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Batch } from '@/lib/types';
-import { RegistrationForm } from '@/components/features/registration-form';
+import { JoinMeetingForm } from '@/components/features/join-meeting-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { getRedirectLink, getBatchById } from '@/app/actions';
@@ -35,10 +35,10 @@ export default function RegistrationPage() {
     fetchBatchDetails();
   }, [batchId]);
 
-  const handleRegistrationSuccess = async () => {
+  const handleJoinSuccess = async () => {
     toast({
-      title: "Registration Successful!",
-      description: "Your submission has been recorded. You will be redirected shortly.",
+      title: "Verification Successful!",
+      description: "You are being redirected to the meeting. Please wait.",
     });
 
     try {
@@ -96,10 +96,10 @@ export default function RegistrationPage() {
       <div className="w-full max-w-5xl">
         <div className="flex flex-col items-center justify-center text-center mb-8 md:mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-              {batch?.name || 'Training Registration'}
+              {batch?.name || 'Training Program'}
             </h1>
             <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-              Register for your event.
+              Enter your IITP No. to join the meeting.
             </p>
         </div>
         
@@ -107,13 +107,13 @@ export default function RegistrationPage() {
             <div className="w-full max-w-md">
                 <Card>
                     <CardHeader>
-                    <CardTitle>Register for Meeting</CardTitle>
-                    <CardDescription>Fill out the form below to register.</CardDescription>
+                    <CardTitle>Join Meeting</CardTitle>
+                    <CardDescription>Verify your identity to get the meeting link.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                    <RegistrationForm 
+                    <JoinMeetingForm 
                         batchId={batchId}
-                        onSuccess={handleRegistrationSuccess}
+                        onSuccess={handleJoinSuccess}
                     />
                     </CardContent>
                 </Card>
@@ -128,4 +128,3 @@ export default function RegistrationPage() {
     </main>
   );
 }
-
