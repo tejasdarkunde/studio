@@ -335,6 +335,37 @@ export async function getParticipants(): Promise<Participant[]> {
     }
 }
 
+
+export async function getParticipantByIitpNo(iitpNo: string): Promise<Participant | null> {
+    try {
+        const participantsCollection = collection(db, "participants");
+        const q = query(participantsCollection, where("iitpNo", "==", iitpNo));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            return null;
+        }
+
+        const participantDoc = querySnapshot.docs[0];
+        const data = participantDoc.data();
+        const createdAt = data.createdAt as Timestamp;
+
+        return {
+            id: participantDoc.id,
+            name: data.name,
+            iitpNo: data.iitpNo,
+            mobile: data.mobile,
+            organization: data.organization,
+            createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            enrolledCourses: data.enrolledCourses || [],
+        };
+    } catch (error) {
+        console.error("Error fetching participant by IITP No.:", error);
+        return null;
+    }
+}
+
+
 const participantSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
@@ -673,7 +704,7 @@ const studentLoginSchema = z.object({
   passkey: z.string().min(1, { message: "Passkey is required." }),
 });
 
-export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Promise<{ success: boolean; error?: string }> {
+export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Promise<{ success: boolean; iitpNo?: string; error?: string }> {
     const validatedFields = studentLoginSchema.safeParse(data);
     if (!validatedFields.success) {
         return { success: false, error: "Invalid login data." };
@@ -694,7 +725,7 @@ export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Pr
 
         // Passkey is the registered mobile number
         if (participant.mobile === passkey) {
-            return { success: true };
+            return { success: true, iitpNo: participant.iitpNo };
         } else {
             return { success: false, error: "Invalid IITP No. or Passkey." };
         }
@@ -704,3 +735,5 @@ export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Pr
         return { success: false, error: "An unexpected error occurred." };
     }
 }
+
+    

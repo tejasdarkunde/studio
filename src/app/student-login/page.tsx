@@ -11,12 +11,12 @@ export default function StudentLoginPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (iitpNo: string) => {
     toast({
       title: "Login Successful!",
       description: "Welcome back. Redirecting you to your courses...",
     });
-    router.push('/student/courses');
+    router.push(`/student/courses/${iitpNo}`);
   };
 
   return (
@@ -50,3 +50,5 @@ export default function StudentLoginPage() {
     </main>
   );
 }
+
+    

@@ -11,7 +11,7 @@ export default function StudentLayout({
     <div className="min-h-screen flex flex-col">
       <header className="bg-background border-b sticky top-0 z-10">
         <nav className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
-          <Link href="/student/courses" className="text-xl font-bold text-primary">
+          <Link href="/" className="text-xl font-bold text-primary">
             BSA Student Portal
           </Link>
           <Button variant="outline" asChild>
@@ -25,3 +25,5 @@ export default function StudentLayout({
     </div>
   );
 }
+
+    

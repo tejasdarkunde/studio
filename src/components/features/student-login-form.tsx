@@ -26,7 +26,7 @@ const formSchema = z.object({
 });
 
 type StudentLoginFormProps = {
-  onSuccess: () => void;
+  onSuccess: (iitpNo: string) => void;
 };
 
 export function StudentLoginForm({ onSuccess }: StudentLoginFormProps) {
@@ -46,8 +46,8 @@ export function StudentLoginForm({ onSuccess }: StudentLoginFormProps) {
     try {
       const result = await studentLogin(values);
 
-      if (result.success) {
-        onSuccess();
+      if (result.success && result.iitpNo) {
+        onSuccess(result.iitpNo);
         form.reset();
       } else {
         throw new Error(result.error);
@@ -112,3 +112,5 @@ export function StudentLoginForm({ onSuccess }: StudentLoginFormProps) {
     </Form>
   );
 }
+
+    
