@@ -350,17 +350,16 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                                                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={(e) => { e.stopPropagation(); setEditingUnitId(null);}}><XCircle className="h-4 w-4" /></Button>
                                                                 </div>
                                                              ) : (
-                                                                <>
-                                                                     <span className="font-medium text-base">{unit.title}</span>
-                                                                    <div className="flex items-center gap-1 pr-2">
-                                                                        <Button size="sm" variant="ghost" onClick={(e) => {e.stopPropagation(); setEditingUnitId(unit.id); setEditingUnitValue(unit.title);}}><Pencil className="h-4 w-4" /></Button>
-                                                                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={(e) => {e.stopPropagation(); setDeletingUnit({unit, subjectId: subject.id});}}><Trash className="h-4 w-4" /></Button>
-                                                                    </div>
-                                                                </>
+                                                                <span className="font-medium text-base">{unit.title}</span>
                                                              )}
                                                          </div>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pb-4">
+                                                        <div className="flex items-center gap-1 pb-2 justify-end">
+                                                            <Button size="sm" variant="ghost" onClick={(e) => {e.stopPropagation(); setEditingUnitId(unit.id); setEditingUnitValue(unit.title);}}><Pencil className="h-4 w-4 mr-1" />Edit Unit</Button>
+                                                            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={(e) => {e.stopPropagation(); setDeletingUnit({unit, subjectId: subject.id});}}><Trash className="h-4 w-4 mr-1" />Delete Unit</Button>
+                                                        </div>
+                                                        <Separator className="mb-4" />
                                                         <Button className="w-full mb-4" variant="outline" size="sm" onClick={() => setLessonDialogState({ isOpen: true, unit: unit, subjectId: subject.id })}>
                                                             <FileVideo className="mr-2 h-4 w-4" /> Add New Lesson to this Unit
                                                         </Button>
