@@ -323,24 +323,24 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                                             {activeSubject.units.map(unit => (
                                                 <AccordionItem value={unit.id} key={unit.id}>
                                                     <AccordionTrigger className="hover:no-underline">
-                                                        {editingUnit?.id === unit.id ? (
-                                                             <div className="flex w-full items-center gap-2 pr-6">
-                                                                <Input value={editingUnitValue} onChange={(e) => setEditingUnitValue(e.target.value)} className="h-8" />
-                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={(e) => {e.stopPropagation(); handleUpdateUnit();}}><Save className="h-4 w-4" /></Button>
-                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={(e) => {e.stopPropagation(); setEditingUnit(null);}}><XCircle className="h-4 w-4" /></Button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex w-full items-center justify-between group">
-                                                                <span className="font-medium">{unit.title}</span>
-                                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingUnit(unit); setEditingUnitValue(unit.title);}}><Pencil className="h-4 w-4" /></Button>
-                                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDeletingUnit(unit);}}><Trash className="h-4 w-4" /></Button>
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                      <span className="font-medium">{unit.title}</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent>
-                                                        <span className="text-xs text-muted-foreground">This unit has {unit.lessons.length} lesson(s). Select to view them.</span>
+                                                      {editingUnit?.id === unit.id ? (
+                                                          <div className="flex w-full items-center gap-2 pb-2">
+                                                              <Input value={editingUnitValue} onChange={(e) => setEditingUnitValue(e.target.value)} className="h-8" />
+                                                              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdateUnit}><Save className="h-4 w-4" /></Button>
+                                                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => setEditingUnit(null)}><XCircle className="h-4 w-4" /></Button>
+                                                          </div>
+                                                      ) : (
+                                                          <div className="flex items-center justify-between pb-2">
+                                                            <p className="text-xs text-muted-foreground">{unit.lessons.length} lesson(s). Select to view them.</p>
+                                                            <div className="flex items-center">
+                                                                <Button size="sm" variant="ghost" onClick={() => { setEditingUnit(unit); setEditingUnitValue(unit.title);}}><Pencil className="h-4 w-4 mr-2" /> Edit</Button>
+                                                                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeletingUnit(unit)}><Trash className="h-4 w-4 mr-2" /> Delete</Button>
+                                                            </div>
+                                                          </div>
+                                                      )}
                                                     </AccordionContent>
                                                 </AccordionItem>
                                             ))}
