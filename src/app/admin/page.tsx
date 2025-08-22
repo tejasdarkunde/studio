@@ -1012,7 +1012,7 @@ export default function AdminPage() {
 
           <TabsContent value="courses" className="mt-6">
              {courses.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-6">
                     {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
                         <CourseContentManager 
                             key={course.id}
