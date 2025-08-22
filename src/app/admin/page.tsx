@@ -1266,20 +1266,18 @@ export default function AdminPage() {
                      <Card className="border-dashed">
                         <CardHeader>
                             <CardTitle>Bulk Course Transfer</CardTitle>
-                            <CardDescription>Transfer all students from one course to another. This will add the new course to their enrollment list.</CardDescription>
+                            <CardDescription>Enroll all students from a source course into a destination course. Useful for fixing inconsistent course names.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                 <div className="space-y-2">
-                                    <Label htmlFor="source-course">From Course</Label>
-                                     <Select onValueChange={setSourceCourse} value={sourceCourse}>
-                                        <SelectTrigger id="source-course">
-                                            <SelectValue placeholder="Select source course" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {courses.map(course => <SelectItem key={course.id} value={course.name}>{course.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <Label htmlFor="source-course">From Course Name</Label>
+                                     <Input
+                                        id="source-course"
+                                        placeholder="Enter the exact source course name"
+                                        value={sourceCourse}
+                                        onChange={(e) => setSourceCourse(e.target.value)}
+                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="dest-course">To Course</Label>
