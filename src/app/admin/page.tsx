@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -304,28 +303,30 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                             <AccordionItem value={subject.id} key={subject.id} className="border rounded-lg">
                                 <AccordionTrigger className="p-4 hover:no-underline">
                                     <div className="flex items-center justify-between w-full">
-                                         {editingSubjectId === subject.id ? (
-                                            <div className="flex items-center gap-2 w-full pr-4">
-                                                <Input value={editingSubjectValue} onChange={(e) => setEditingSubjectValue(e.target.value)} className="h-8" onClick={(e) => e.stopPropagation()} />
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={(e) => { e.stopPropagation(); handleUpdateSubject();}}><Save className="h-4 w-4" /></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={(e) => { e.stopPropagation(); setEditingSubjectId(null);}}><XCircle className="h-4 w-4" /></Button>
-                                            </div>
-                                         ) : (
-                                            <>
-                                                <div className="flex items-center gap-4">
-                                                    <BookUser className="h-5 w-5 text-primary" />
-                                                    <span className="font-semibold text-lg">{subject.name}</span>
+                                        <div className="flex items-center gap-4">
+                                            <BookUser className="h-5 w-5 text-primary" />
+                                            {editingSubjectId === subject.id ? (
+                                                <div className="flex items-center gap-2 w-full">
+                                                    <Input value={editingSubjectValue} onChange={(e) => setEditingSubjectValue(e.target.value)} className="h-8" onClick={(e) => e.stopPropagation()} />
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={(e) => { e.stopPropagation(); handleUpdateSubject();}}><Save className="h-4 w-4" /></Button>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={(e) => { e.stopPropagation(); setEditingSubjectId(null);}}><XCircle className="h-4 w-4" /></Button>
                                                 </div>
-                                                <div className="flex items-center gap-1 pr-2">
-                                                    <Button size="sm" variant="ghost" onClick={(e) => {e.stopPropagation(); setEditingSubjectId(subject.id); setEditingSubjectValue(subject.name);}}><Pencil className="h-4 w-4" /></Button>
-                                                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={(e) => {e.stopPropagation(); setDeletingSubject(subject);}}><Trash className="h-4 w-4" /></Button>
-                                                </div>
-                                            </>
-                                         )}
+                                            ) : (
+                                                <span className="font-semibold text-lg">{subject.name}</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0 space-y-4">
                                     <Separator />
+                                     <div className="flex items-center gap-2 pt-2 justify-end">
+                                        <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); setEditingSubjectId(subject.id); setEditingSubjectValue(subject.name);}}>
+                                            <Pencil className="h-4 w-4 mr-2" /> Edit Name
+                                        </Button>
+                                        <Button size="sm" variant="destructive" onClick={(e) => {e.stopPropagation(); setDeletingSubject(subject);}}>
+                                            <Trash className="h-4 w-4 mr-2" /> Delete Subject
+                                        </Button>
+                                    </div>
                                     <div className="flex gap-2">
                                         <Input 
                                             placeholder="Enter new unit title..." 
