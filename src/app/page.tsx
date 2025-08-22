@@ -153,8 +153,8 @@ export default function Home() {
             <Link href="/student-login" passHref>
                 <Button variant="outline">Student Login</Button>
             </Link>
-            <Link href="/admin" passHref>
-                <Button variant="link">Admin Access</Button>
+            <Link href="/login" passHref>
+                <Button variant="link">Admin/Trainer Login</Button>
             </Link>
         </div>
 

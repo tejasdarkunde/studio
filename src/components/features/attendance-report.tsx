@@ -23,7 +23,7 @@ type AttendanceGrid = {
     }[];
 };
 
-const generateAttendanceGrid = (courseName: 'Diploma' | 'Advance Diploma', participants: Participant[], batches: Batch[]): AttendanceGrid => {
+const generateAttendanceGrid = (courseName: string, participants: Participant[], batches: Batch[]): AttendanceGrid => {
     // 1. Filter batches that belong to the course
     const courseBatches = batches
         .filter(b => b.course === courseName)
@@ -157,21 +157,35 @@ const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseNam
 
 
 export function AttendanceReport({ participants, batches }: AttendanceReportProps) {
-  const diplomaGrid = useMemo(() => generateAttendanceGrid('Diploma', participants, batches), [participants, batches]);
-  const advanceDiplomaGrid = useMemo(() => generateAttendanceGrid('Advance Diploma', participants, batches), [participants, batches]);
+  const uniqueCoursesInBatches = useMemo(() => {
+    const courseNames = new Set(batches.map(b => b.course));
+    return Array.from(courseNames).sort();
+  }, [batches]);
+
+  if (uniqueCoursesInBatches.length === 0) {
+      return (
+           <div className="flex flex-col items-center justify-center h-64 border rounded-md">
+                <p className="text-muted-foreground">No active training sessions to report on.</p>
+                <p className="text-muted-foreground text-sm mt-2">Assign a batch to a course to generate a report.</p>
+            </div>
+      )
+  }
 
   return (
-    <Tabs defaultValue="diploma" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="diploma">Diploma</TabsTrigger>
-        <TabsTrigger value="advance-diploma">Advance Diploma</TabsTrigger>
+    <Tabs defaultValue={uniqueCoursesInBatches[0]} className="w-full">
+      <TabsList>
+        {uniqueCoursesInBatches.map(courseName => (
+            <TabsTrigger key={courseName} value={courseName}>{courseName}</TabsTrigger>
+        ))}
       </TabsList>
-      <TabsContent value="diploma" className="mt-6">
-        <AttendanceTable grid={diplomaGrid} courseName="Diploma" />
-      </TabsContent>
-      <TabsContent value="advance-diploma" className="mt-6">
-        <AttendanceTable grid={advanceDiplomaGrid} courseName="Advance Diploma" />
-      </TabsContent>
+      {uniqueCoursesInBatches.map(courseName => {
+        const grid = generateAttendanceGrid(courseName, participants, batches);
+        return (
+            <TabsContent key={courseName} value={courseName} className="mt-6">
+                <AttendanceTable grid={grid} courseName={courseName} />
+            </TabsContent>
+        )
+      })}
     </Tabs>
   );
 }

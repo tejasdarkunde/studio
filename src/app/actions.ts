@@ -6,6 +6,52 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove } from "firebase/firestore";
 import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson } from "@/lib/types";
 
+// GENERAL LOGIN
+const loginSchema = z.object({
+  username: z.string().min(1, { message: "Username is required." }),
+  password: z.string().min(1, { message: "Password is required." }),
+});
+
+export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer'; trainerId?: string; error?: string }> {
+    const validatedFields = loginSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid login data." };
+    }
+    
+    const { username, password } = validatedFields.data;
+
+    // 1. Check for Superadmin
+    if (username === 'superadmin' && password === 'Bsa@123') {
+        return { success: true, role: 'superadmin' };
+    }
+
+    // 2. Check for Trainer
+    try {
+        const trainersCollection = collection(db, "trainers");
+        const q = query(trainersCollection, where("username", "==", username));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            return { success: false, error: "Invalid username or password." };
+        }
+        
+        const trainerDoc = querySnapshot.docs[0];
+        const trainer = trainerDoc.data() as Trainer;
+        
+        // In a real app, passwords should be hashed. For this prototype, we're comparing plain text.
+        if (trainer.password === password) {
+            return { success: true, role: 'trainer', trainerId: trainerDoc.id };
+        } else {
+            return { success: false, error: "Invalid username or password." };
+        }
+
+    } catch (error) {
+        console.error("Error during login:", error);
+        return { success: false, error: "An unexpected error occurred during login." };
+    }
+}
+
+
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
@@ -547,6 +593,8 @@ export async function transferStudents(data: z.infer<typeof transferStudentsSche
 const trainerSchema = z.object({
   name: z.string().min(2, "Trainer name must be at least 2 characters."),
   meetingLink: z.string().url("Must be a valid meeting URL."),
+  username: z.string().min(3, "Username must be at least 3 characters."),
+  password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
 });
 
 export async function getTrainers(): Promise<Trainer[]> {
@@ -562,6 +610,7 @@ export async function getTrainers(): Promise<Trainer[]> {
                 id: doc.id,
                 name: data.name,
                 meetingLink: data.meetingLink,
+                username: data.username,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
             };
         });
@@ -574,11 +623,23 @@ export async function getTrainers(): Promise<Trainer[]> {
 export async function addTrainer(data: z.infer<typeof trainerSchema>): Promise<{ success: boolean; error?: string }> {
     const validatedFields = trainerSchema.safeParse(data);
     if (!validatedFields.success) {
+        console.error(validatedFields.error.flatten().fieldErrors);
         return { success: false, error: "Invalid trainer data." };
+    }
+     if (!validatedFields.data.password) {
+        return { success: false, error: "Password is required for new trainers."};
     }
     
     try {
         const trainersCollection = collection(db, "trainers");
+        
+        // Check for duplicate username
+        const duplicateQuery = query(trainersCollection, where("username", "==", data.username));
+        const duplicateSnapshot = await getDocs(duplicateQuery);
+        if(!duplicateSnapshot.empty) {
+            return { success: false, error: "This username is already taken."};
+        }
+
         await addDoc(trainersCollection, {
             ...validatedFields.data,
             createdAt: serverTimestamp(),
@@ -598,12 +659,31 @@ export async function updateTrainer(data: z.infer<typeof updateTrainerSchema>): 
     const { id, ...trainerData } = data;
     const validatedFields = trainerSchema.safeParse(trainerData);
     if (!validatedFields.success) {
+        console.error(validatedFields.error.flatten().fieldErrors);
         return { success: false, error: "Invalid trainer data." };
     }
     
     try {
         const trainerDocRef = doc(db, 'trainers', id);
-        await updateDoc(trainerDocRef, validatedFields.data);
+        
+        // Check if username is being changed and if it's a duplicate
+        const originalDoc = await getDoc(trainerDocRef);
+        if (originalDoc.exists() && originalDoc.data().username !== validatedFields.data.username) {
+            const trainersCollection = collection(db, "trainers");
+            const duplicateQuery = query(trainersCollection, where("username", "==", validatedFields.data.username));
+            const duplicateSnapshot = await getDocs(duplicateQuery);
+            if(!duplicateSnapshot.empty) {
+                return { success: false, error: "This username is already taken."};
+            }
+        }
+
+        const updateData: any = { ...validatedFields.data };
+        if (!updateData.password) {
+            // Don't update password if it's empty
+            delete updateData.password;
+        }
+        
+        await updateDoc(trainerDocRef, updateData);
         return { success: true };
     } catch (error) {
         console.error("Error updating trainer:", error);

@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 const organizations = [
   "TE Connectivity, Shirwal",
@@ -465,43 +466,41 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
 
 
 export default function AdminPage() {
+  const router = useRouter();
+  // Data states
   const [batches, setBatches] = useState<Batch[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  
+  // Auth states
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [userRole, setUserRole] = useState<'superadmin' | 'trainer' | null>(null);
+  const [trainerId, setTrainerId] = useState<string | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  // Dialog states
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
-  
-  // State for the new edit form
+  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isAddParticipantOpen, setAddParticipantOpen] = useState(false);
+  const [isImportDialogOpen, setImportDialogOpen] = useState(false);
+  const [isAddTrainerOpen, setAddTrainerOpen] = useState(false);
+  const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
+  const [deletingTrainerId, setDeletingTrainerId] = useState<string | null>(null);
+  const [isAddCourseOpen, setAddCourseOpen] = useState(false);
+
+  // Form & Filter states
   const [searchIitpNo, setSearchIitpNo] = useState('');
   const [isFetchingParticipant, setIsFetchingParticipant] = useState(false);
   const [fetchedParticipant, setFetchedParticipant] = useState<Participant | null>(null);
   const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt' | 'completedLessons'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: []});
-
-
-  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
-  const [isAddParticipantOpen, setAddParticipantOpen] = useState(false);
-  const [isImportDialogOpen, setImportDialogOpen] = useState(false);
-  
-  // Trainer states
-  const [isAddTrainerOpen, setAddTrainerOpen] = useState(false);
-  const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
-  const [deletingTrainerId, setDeletingTrainerId] = useState<string | null>(null);
-
-  // Course states
-  const [isAddCourseOpen, setAddCourseOpen] = useState(false);
   const [newCourseName, setNewCourseName] = useState('');
   const [newCourseStatus, setNewCourseStatus] = useState<'active' | 'coming-soon' | 'deactivated'>('active');
-  
-  // Course Transfer states
   const [sourceCourse, setSourceCourse] = useState('');
   const [destinationCourse, setDestinationCourse] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
-
 
   const { toast } = useToast();
 
@@ -517,13 +516,25 @@ export default function AdminPage() {
     setTrainers(fetchedTrainers);
     setCourses(fetchedCourses);
   }, []);
-
+  
   useEffect(() => {
     setIsClient(true);
-    if (isAuthenticated) {
+    // Check session storage for auth state
+    const role = sessionStorage.getItem('userRole') as 'superadmin' | 'trainer' | null;
+    const id = sessionStorage.getItem('trainerId');
+
+    if(role) {
+        setIsAuthenticated(true);
+        setUserRole(role);
+        if(role === 'trainer' && id) {
+            setTrainerId(id);
+        }
         fetchAllData();
+    } else {
+        router.push('/login');
     }
-  }, [isAuthenticated, fetchAllData]);
+    setLoadingAuth(false);
+  }, [fetchAllData, router]);
 
   useEffect(() => {
     if (fetchedParticipant) {
@@ -542,12 +553,18 @@ export default function AdminPage() {
   }, [fetchedParticipant]);
 
 
+  const filteredBatches = useMemo(() => {
+    if (userRole === 'trainer' && trainerId) {
+        return batches.filter(batch => batch.trainerId === trainerId);
+    }
+    return batches;
+  }, [batches, userRole, trainerId]);
+
   const reportStats = useMemo(() => {
     const courseStats: { [courseName: string]: { enrollments: number; sessions: number; } } = {};
     let totalActiveEnrollments = 0;
     const organizationSet = new Set<string>();
     
-    // Initialize stats for all courses, not just active ones to handle session counts correctly
     courses.forEach(course => {
         courseStats[course.name] = { enrollments: 0, sessions: 0 };
     });
@@ -560,7 +577,6 @@ export default function AdminPage() {
         participant.enrolledCourses?.forEach(enrolledCourseName => {
             const course = courses.find(c => c.name.toLowerCase() === enrolledCourseName.toLowerCase());
             
-            // Only count enrollment if the course is active and access is not denied for the participant
             if (course && course.status === 'active' && !(participant.deniedCourses || []).includes(course.id)) {
                 if (courseStats[course.name]) {
                     courseStats[course.name].enrollments += 1;
@@ -571,14 +587,12 @@ export default function AdminPage() {
     });
 
     batches.forEach(batch => {
-        // Find the course object by name to ensure we're grouping correctly
         const course = courses.find(c => c.name === batch.course);
         if (course && courseStats[course.name]) {
             courseStats[course.name].sessions += 1;
         }
     });
     
-    // Filter out courses from the final stats object that have zero enrollments AND zero sessions
     const activeCourseStats = Object.entries(courseStats)
       .filter(([_, stats]) => stats.enrollments > 0 || stats.sessions > 0)
       .reduce((acc, [name, stats]) => {
@@ -596,16 +610,6 @@ export default function AdminPage() {
     };
   }, [participants, batches, trainers, courses]);
   
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === 'Bsa@123') {
-      setIsAuthenticated(true);
-      setError('');
-    } else {
-      setError('Incorrect password. Please try again.');
-    }
-  };
-
   const handleEditBatch = (batch: Batch) => {
     setEditingBatch(batch);
   };
@@ -827,7 +831,7 @@ export default function AdminPage() {
   };
   
   // Trainer Handlers
-  const handleSaveTrainer = async (details: { name: string, meetingLink: string }) => {
+  const handleSaveTrainer = async (details: { name: string, meetingLink: string, username: string, password?: string }) => {
     const action = editingTrainer ? updateTrainer : addTrainer;
     const payload = editingTrainer ? { ...details, id: editingTrainer.id } : details;
 
@@ -909,40 +913,26 @@ export default function AdminPage() {
   }
 
 
-  if (!isClient) {
-    return null;
+  if (!isClient || loadingAuth) {
+    return (
+        <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </main>
+    );
   }
 
   if (!isAuthenticated) {
+    // This should ideally not be seen as the useEffect redirects, but it's a fallback.
     return (
-      <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Admin Access</CardTitle>
-            <CardDescription>Please enter the password to view this page.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  autoFocus
-                />
-              </div>
-              {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-              <Button type="submit" className="w-full">
-                Login
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </main>
-    );
+        <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
+             <Card className="w-full max-w-md">
+                 <CardHeader>
+                     <CardTitle>Redirecting</CardTitle>
+                     <CardDescription>You are not authenticated. Redirecting to login...</CardDescription>
+                 </CardHeader>
+             </Card>
+        </main>
+    )
   }
   
   const handleCourseAccessChange = (courseId: string, status: 'granted' | 'denied') => {
@@ -963,6 +953,24 @@ export default function AdminPage() {
     return courses.filter(c => fetchedParticipant.enrolledCourses?.includes(c.name));
   };
 
+
+  const SuperAdminTabs = () => (
+    <TabsList className="grid w-full grid-cols-6">
+        <TabsTrigger value="reports">Reports</TabsTrigger>
+        <TabsTrigger value="trainings">Trainings</TabsTrigger>
+        <TabsTrigger value="courses">Courses</TabsTrigger>
+        <TabsTrigger value="users">All Users</TabsTrigger>
+        <TabsTrigger value="trainers">Trainers</TabsTrigger>
+        <TabsTrigger value="attendance">Attendance</TabsTrigger>
+    </TabsList>
+  );
+
+  const TrainerTabs = () => (
+    <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="trainings">My Trainings</TabsTrigger>
+        <TabsTrigger value="attendance">My Attendance</TabsTrigger>
+    </TabsList>
+  );
 
   return (
     <>
@@ -1051,107 +1059,103 @@ export default function AdminPage() {
         <div className="flex justify-between items-center mb-8 md:mb-12">
           <div className="flex flex-col">
               <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-                  Admin Dashboard
+                  {userRole === 'superadmin' ? 'Admin Dashboard' : 'Trainer Dashboard'}
               </h1>
               <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-                  Manage training batches, registrations, and participants.
+                   {userRole === 'superadmin' ? 'Manage training batches, registrations, and participants.' : 'Manage your assigned training batches.'}
               </p>
           </div>
-          <Link href="/" passHref>
-              <Button variant="outline">Back to Home</Button>
-          </Link>
+           <Button variant="outline" onClick={() => {
+                sessionStorage.clear();
+                router.push('/login');
+           }}>Logout</Button>
         </div>
 
         <Tabs defaultValue="reports" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="trainings">Trainings</TabsTrigger>
-            <TabsTrigger value="courses">Courses</TabsTrigger>
-            <TabsTrigger value="users">All Users</TabsTrigger>
-            <TabsTrigger value="trainers">Trainers</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-          </TabsList>
+          {userRole === 'superadmin' ? <SuperAdminTabs /> : <TrainerTabs />}
           
-          <TabsContent value="reports" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Reports</CardTitle>
-                <CardDescription>A high-level overview of your training statistics.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium text-primary">Student Enrollments</h3>
-                  <Separator className="my-2" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <Card className="p-4 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <Users className="h-8 w-8 text-primary" />
-                          <p className="text-2xl font-bold">{reportStats.totalActiveEnrollments}</p>
-                          <p className="text-sm text-muted-foreground">Total Active Enrollments</p>
-                        </div>
-                      </Card>
-                       {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
-                          stats.enrollments > 0 && (
-                            <Card key={courseName} className="p-4 text-center">
-                                <div className="flex flex-col items-center gap-2">
-                                <BookUser className="h-8 w-8 text-primary" />
-                                <p className="text-2xl font-bold">{stats.enrollments}</p>
-                                <p className="text-sm text-muted-foreground">{courseName} Students</p>
-                                </div>
-                            </Card>
-                          )
-                        ))}
-                  </div>
-                </div>
+          {userRole === 'superadmin' && (
+            <TabsContent value="reports" className="mt-6">
+                <Card>
+                <CardHeader>
+                    <CardTitle>Reports</CardTitle>
+                    <CardDescription>A high-level overview of your training statistics.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div>
+                    <h3 className="text-lg font-medium text-primary">Student Enrollments</h3>
+                    <Separator className="my-2" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="p-4 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                            <Users className="h-8 w-8 text-primary" />
+                            <p className="text-2xl font-bold">{reportStats.totalActiveEnrollments}</p>
+                            <p className="text-sm text-muted-foreground">Total Active Enrollments</p>
+                            </div>
+                        </Card>
+                        {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
+                            stats.enrollments > 0 && (
+                                <Card key={courseName} className="p-4 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                    <BookUser className="h-8 w-8 text-primary" />
+                                    <p className="text-2xl font-bold">{stats.enrollments}</p>
+                                    <p className="text-sm text-muted-foreground">{courseName} Students</p>
+                                    </div>
+                                </Card>
+                            )
+                            ))}
+                    </div>
+                    </div>
 
-                 <div>
-                  <h3 className="text-lg font-medium text-primary">Training Sessions</h3>
-                  <Separator className="my-2" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card className="p-4 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Presentation className="h-8 w-8 text-primary" />
-                        <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
-                        <p className="text-sm text-muted-foreground">Total Sessions</p>
-                      </div>
-                    </Card>
-                    {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
-                         stats.sessions > 0 && (
-                            <Card key={courseName} className="p-4 text-center">
-                                <div className="flex flex-col items-center gap-2">
-                                    <School className="h-8 w-8 text-primary" />
-                                    <p className="text-2xl font-bold">{stats.sessions}</p>
-                                    <p className="text-sm text-muted-foreground">{courseName} Sessions</p>
-                                </div>
-                            </Card>
-                         )
-                    ))}
-                  </div>
-                </div>
-                
-                 <div>
-                  <h3 className="text-lg font-medium text-primary">Other</h3>
-                  <Separator className="my-2" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card className="p-4 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Building className="h-8 w-8 text-primary" />
-                        <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
-                        <p className="text-sm text-muted-foreground">Total Organizations</p>
-                      </div>
-                    </Card>
-                    <Card className="p-4 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <UserCog className="h-8 w-8 text-primary" />
-                        <p className="text-2xl font-bold">{reportStats.totalTrainers}</p>
-                        <p className="text-sm text-muted-foreground">Total Trainers</p>
-                      </div>
-                    </Card>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    <div>
+                    <h3 className="text-lg font-medium text-primary">Training Sessions</h3>
+                    <Separator className="my-2" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="p-4 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                            <Presentation className="h-8 w-8 text-primary" />
+                            <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
+                            <p className="text-sm text-muted-foreground">Total Sessions</p>
+                        </div>
+                        </Card>
+                        {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
+                            stats.sessions > 0 && (
+                                <Card key={courseName} className="p-4 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <School className="h-8 w-8 text-primary" />
+                                        <p className="text-2xl font-bold">{stats.sessions}</p>
+                                        <p className="text-sm text-muted-foreground">{courseName} Sessions</p>
+                                    </div>
+                                </Card>
+                            )
+                        ))}
+                    </div>
+                    </div>
+                    
+                    <div>
+                    <h3 className="text-lg font-medium text-primary">Other</h3>
+                    <Separator className="my-2" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="p-4 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                            <Building className="h-8 w-8 text-primary" />
+                            <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
+                            <p className="text-sm text-muted-foreground">Total Organizations</p>
+                        </div>
+                        </Card>
+                        <Card className="p-4 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                            <UserCog className="h-8 w-8 text-primary" />
+                            <p className="text-2xl font-bold">{reportStats.totalTrainers}</p>
+                            <p className="text-sm text-muted-foreground">Total Trainers</p>
+                        </div>
+                        </Card>
+                    </div>
+                    </div>
+                </CardContent>
+                </Card>
+            </TabsContent>
+           )}
           
           <TabsContent value="trainings" className="mt-6">
             <Card>
@@ -1160,15 +1164,17 @@ export default function AdminPage() {
                     <CardTitle>Training Batches</CardTitle>
                     <CardDescription>View and manage all training batches and their registrations.</CardDescription>
                   </div>
-                  <Button onClick={() => setCreateDialogOpen(true)}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Create New Batch
-                  </Button>
+                  {userRole === 'superadmin' && (
+                    <Button onClick={() => setCreateDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create New Batch
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  {batches && batches.length > 0 ? (
+                  {filteredBatches && filteredBatches.length > 0 ? (
                     <Accordion type="multiple" className="w-full">
-                        {batches.map(batch => (
+                        {filteredBatches.map(batch => (
                             <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
                                 <AccordionTrigger>
                                     <div className="flex justify-between items-center w-full pr-4">
@@ -1186,22 +1192,24 @@ export default function AdminPage() {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
-                                  <div className="flex justify-end items-center pb-4 gap-2">
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm"
-                                        onClick={() => handleEditBatch(batch)}
-                                    >
-                                        <Pencil className="mr-2 h-4 w-4" /> Edit Batch
-                                    </Button>
-                                    <Button 
-                                        variant="destructive" 
-                                        size="sm"
-                                        onClick={() => handleDeleteBatch(batch)}
-                                    >
-                                        <Trash className="mr-2 h-4 w-4" /> Delete Batch
-                                    </Button>
-                                  </div>
+                                  {userRole === 'superadmin' && (
+                                    <div className="flex justify-end items-center pb-4 gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm"
+                                            onClick={() => handleEditBatch(batch)}
+                                        >
+                                            <Pencil className="mr-2 h-4 w-4" /> Edit Batch
+                                        </Button>
+                                        <Button 
+                                            variant="destructive" 
+                                            size="sm"
+                                            onClick={() => handleDeleteBatch(batch)}
+                                        >
+                                            <Trash className="mr-2 h-4 w-4" /> Delete Batch
+                                        </Button>
+                                    </div>
+                                  )}
                                     <RegistrationsTable 
                                         registrations={batch.registrations}
                                         batchName={batch.name}
@@ -1213,247 +1221,251 @@ export default function AdminPage() {
                   ) : (
                     <div className="text-center py-12 text-muted-foreground">
                       <p>No batches found.</p>
-                      <p>Click "Create New Batch" to get started.</p>
+                      {userRole === 'superadmin' && <p>Click "Create New Batch" to get started.</p>}
                     </div>
                   )}
                 </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="courses" className="mt-6">
-             <div className="flex justify-end mb-4">
-                <Button onClick={() => setAddCourseOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add New Course
-                </Button>
-            </div>
-             {courses.length > 0 ? (
-                <div className="space-y-6">
-                    {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
-                        <CourseContentManager 
-                            key={course.id}
-                            course={course}
-                            onContentUpdated={fetchAllData}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin mb-4" />
-                  <p>Loading course data...</p>
-                </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="users" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Participant Management</CardTitle>
-                <CardDescription>A central place to add, update, import, and view all participants.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="directory" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="directory">Directory</TabsTrigger>
-                    <TabsTrigger value="add">Add / Import</TabsTrigger>
-                    <TabsTrigger value="update">Update User</TabsTrigger>
-                    <TabsTrigger value="transfer">Course Transfer</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="directory" className="mt-6">
-                     <ParticipantsTable participants={participants} />
-                  </TabsContent>
-
-                  <TabsContent value="add" className="mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Add a New Participant</CardTitle>
-                          <CardDescription>Manually add a single participant to the directory.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <Button onClick={() => setAddParticipantOpen(true)} className="w-full">
-                              <UserPlus className="mr-2 h-4 w-4" />
-                              Add New Participant
-                          </Button>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Import from CSV</CardTitle>
-                          <CardDescription>Bulk upload participants from a CSV file.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex flex-col gap-4">
-                           <Button onClick={() => setImportDialogOpen(true)} className="w-full">
-                              <Upload className="mr-2 h-4 w-4" />
-                              Import from CSV
-                          </Button>
-                           <Button variant="outline" onClick={handleDownloadTemplate} className="w-full">
-                              <Download className="mr-2 h-4 w-4" />
-                              Download Template
-                          </Button>
-                        </CardContent>
-                      </Card>
+          {userRole === 'superadmin' && (
+            <>
+                <TabsContent value="courses" className="mt-6">
+                    <div className="flex justify-end mb-4">
+                        <Button onClick={() => setAddCourseOpen(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add New Course
+                        </Button>
                     </div>
-                  </TabsContent>
+                    {courses.length > 0 ? (
+                        <div className="space-y-6">
+                            {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
+                                <CourseContentManager 
+                                    key={course.id}
+                                    course={course}
+                                    onContentUpdated={fetchAllData}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-muted-foreground">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin mb-4" />
+                        <p>Loading course data...</p>
+                        </div>
+                    )}
+                </TabsContent>
 
-                  <TabsContent value="update" className="mt-6">
-                    <Card className="border-dashed">
-                      <CardHeader>
-                          <CardTitle>Update User Details</CardTitle>
-                          <CardDescription>Fetch a user by their IITP No. to edit their details and manage course access.</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                          <div className="flex items-center gap-2">
-                              <Label htmlFor="searchIitpNo" className="sr-only">IITP No</Label>
-                              <Input 
-                                id="searchIitpNo"
-                                placeholder="Enter IITP No to fetch details..."
-                                value={searchIitpNo}
-                                onChange={(e) => setSearchIitpNo(e.target.value)}
-                                className="max-w-xs"
-                              />
-                              <Button onClick={handleFetchParticipant} disabled={isFetchingParticipant}>
-                                  {isFetchingParticipant ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-4"/>}
-                                  Fetch Details
-                              </Button>
-                          </div>
-                          {fetchedParticipant && (
-                              <div className="border rounded-lg p-4 space-y-6">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div className="space-y-2">
-                                        <Label htmlFor="edit-name">Name</Label>
-                                        <Input id="edit-name" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
-                                      </div>
-                                      <div className="space-y-2">
-                                        <Label htmlFor="edit-iitpNo">IITP No</Label>
-                                        <Input id="edit-iitpNo" value={editFormData.iitpNo} onChange={e => setEditFormData({...editFormData, iitpNo: e.target.value})} />
-                                      </div>
-                                      <div className="space-y-2">
-                                        <Label htmlFor="edit-mobile">Mobile No</Label>
-                                        <Input id="edit-mobile" value={editFormData.mobile} onChange={e => setEditFormData({...editFormData, mobile: e.target.value})} />
-                                      </div>
-                                       <div className="space-y-2">
-                                        <Label htmlFor="edit-organization">Organization</Label>
-                                         <Select onValueChange={(value) => setEditFormData({...editFormData, organization: value})} value={editFormData.organization}>
-                                            <SelectTrigger id="edit-organization">
-                                                <SelectValue placeholder="Select an organization" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              {organizations.map((org) => (
-                                                <SelectItem key={org} value={org}>
-                                                  {org}
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div className="space-y-2 col-span-1 md:col-span-2">
-                                          <Label htmlFor="edit-courses">Enrolled Courses (comma-separated)</Label>
-                                          <Textarea 
-                                            id="edit-courses"
-                                            value={Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses.join(', ') : editFormData.enrolledCourses}
-                                            onChange={e => setEditFormData({...editFormData, enrolledCourses: e.target.value.split(',').map(c => c.trim())})}
-                                            placeholder="Course A, Course B, ..."
-                                          />
-                                      </div>
-                                  </div>
-                                  <Separator/>
-                                  <div className="space-y-4">
-                                      <Label className="text-base font-medium">Course Access</Label>
-                                      <div className="space-y-2">
-                                        {getEnrolledCoursesForParticipant().length > 0 ? getEnrolledCoursesForParticipant().map(course => (
-                                            <div key={course.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/50">
-                                                <p className="font-medium">{course.name}</p>
-                                                <Select
-                                                  value={editFormData.deniedCourses?.includes(course.id) ? 'denied' : 'granted'}
-                                                  onValueChange={(status: 'granted' | 'denied') => handleCourseAccessChange(course.id, status)}
-                                                >
-                                                  <SelectTrigger className="w-[180px]">
-                                                    <SelectValue placeholder="Set access" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                    <SelectItem value="granted"><div className="flex items-center gap-2"><Unlock className="h-4 w-4 text-green-600"/> Granted</div></SelectItem>
-                                                    <SelectItem value="denied"><div className="flex items-center gap-2"><Lock className="h-4 w-4 text-red-600"/> Denied</div></SelectItem>
-                                                  </SelectContent>
+                <TabsContent value="users" className="mt-6">
+                    <Card>
+                    <CardHeader>
+                        <CardTitle>Participant Management</CardTitle>
+                        <CardDescription>A central place to add, update, import, and view all participants.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Tabs defaultValue="directory" className="w-full">
+                        <TabsList className="grid w-full grid-cols-4">
+                            <TabsTrigger value="directory">Directory</TabsTrigger>
+                            <TabsTrigger value="add">Add / Import</TabsTrigger>
+                            <TabsTrigger value="update">Update User</TabsTrigger>
+                            <TabsTrigger value="transfer">Course Transfer</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="directory" className="mt-6">
+                            <ParticipantsTable participants={participants} />
+                        </TabsContent>
+
+                        <TabsContent value="add" className="mt-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Card>
+                                <CardHeader>
+                                <CardTitle>Add a New Participant</CardTitle>
+                                <CardDescription>Manually add a single participant to the directory.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                <Button onClick={() => setAddParticipantOpen(true)} className="w-full">
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Add New Participant
+                                </Button>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                <CardTitle>Import from CSV</CardTitle>
+                                <CardDescription>Bulk upload participants from a CSV file.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex flex-col gap-4">
+                                <Button onClick={() => setImportDialogOpen(true)} className="w-full">
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Import from CSV
+                                </Button>
+                                <Button variant="outline" onClick={handleDownloadTemplate} className="w-full">
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download Template
+                                </Button>
+                                </CardContent>
+                            </Card>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="update" className="mt-6">
+                            <Card className="border-dashed">
+                            <CardHeader>
+                                <CardTitle>Update User Details</CardTitle>
+                                <CardDescription>Fetch a user by their IITP No. to edit their details and manage course access.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="searchIitpNo" className="sr-only">IITP No</Label>
+                                    <Input 
+                                        id="searchIitpNo"
+                                        placeholder="Enter IITP No to fetch details..."
+                                        value={searchIitpNo}
+                                        onChange={(e) => setSearchIitpNo(e.target.value)}
+                                        className="max-w-xs"
+                                    />
+                                    <Button onClick={handleFetchParticipant} disabled={isFetchingParticipant}>
+                                        {isFetchingParticipant ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-4"/>}
+                                        Fetch Details
+                                    </Button>
+                                </div>
+                                {fetchedParticipant && (
+                                    <div className="border rounded-lg p-4 space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit-name">Name</Label>
+                                                <Input id="edit-name" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit-iitpNo">IITP No</Label>
+                                                <Input id="edit-iitpNo" value={editFormData.iitpNo} onChange={e => setEditFormData({...editFormData, iitpNo: e.target.value})} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit-mobile">Mobile No</Label>
+                                                <Input id="edit-mobile" value={editFormData.mobile} onChange={e => setEditFormData({...editFormData, mobile: e.target.value})} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="edit-organization">Organization</Label>
+                                                <Select onValueChange={(value) => setEditFormData({...editFormData, organization: value})} value={editFormData.organization}>
+                                                    <SelectTrigger id="edit-organization">
+                                                        <SelectValue placeholder="Select an organization" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                    {organizations.map((org) => (
+                                                        <SelectItem key={org} value={org}>
+                                                        {org}
+                                                        </SelectItem>
+                                                    ))}
+                                                    </SelectContent>
                                                 </Select>
                                             </div>
-                                        )) : <p className="text-sm text-muted-foreground">This user is not enrolled in any courses.</p>}
-                                      </div>
-                                  </div>
+                                            <div className="space-y-2 col-span-1 md:col-span-2">
+                                                <Label htmlFor="edit-courses">Enrolled Courses (comma-separated)</Label>
+                                                <Textarea 
+                                                    id="edit-courses"
+                                                    value={Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses.join(', ') : editFormData.enrolledCourses}
+                                                    onChange={e => setEditFormData({...editFormData, enrolledCourses: e.target.value.split(',').map(c => c.trim())})}
+                                                    placeholder="Course A, Course B, ..."
+                                                />
+                                            </div>
+                                        </div>
+                                        <Separator/>
+                                        <div className="space-y-4">
+                                            <Label className="text-base font-medium">Course Access</Label>
+                                            <div className="space-y-2">
+                                                {getEnrolledCoursesForParticipant().length > 0 ? getEnrolledCoursesForParticipant().map(course => (
+                                                    <div key={course.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/50">
+                                                        <p className="font-medium">{course.name}</p>
+                                                        <Select
+                                                        value={editFormData.deniedCourses?.includes(course.id) ? 'denied' : 'granted'}
+                                                        onValueChange={(status: 'granted' | 'denied') => handleCourseAccessChange(course.id, status)}
+                                                        >
+                                                        <SelectTrigger className="w-[180px]">
+                                                            <SelectValue placeholder="Set access" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="granted"><div className="flex items-center gap-2"><Unlock className="h-4 w-4 text-green-600"/> Granted</div></SelectItem>
+                                                            <SelectItem value="denied"><div className="flex items-center gap-2"><Lock className="h-4 w-4 text-red-600"/> Denied</div></SelectItem>
+                                                        </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )) : <p className="text-sm text-muted-foreground">This user is not enrolled in any courses.</p>}
+                                            </div>
+                                        </div>
 
-                                  <div className="col-span-1 md:col-span-2 flex justify-end gap-2 pt-4">
-                                    <Button variant="outline" onClick={() => {setFetchedParticipant(null); setSearchIitpNo('');}}>Cancel</Button>
-                                    <Button onClick={handleUpdateParticipant}>Update Details</Button>
-                                  </div>
-                              </div>
-                          )}
-                      </CardContent>
-                  </Card>
-                  </TabsContent>
-                  <TabsContent value="transfer">
-                     <Card className="border-dashed">
-                        <CardHeader>
-                            <CardTitle>Bulk Course Transfer</CardTitle>
-                            <CardDescription>Enroll all students from a source course into a destination course. Useful for fixing inconsistent course names.</CardDescription>
+                                        <div className="col-span-1 md:col-span-2 flex justify-end gap-2 pt-4">
+                                            <Button variant="outline" onClick={() => {setFetchedParticipant(null); setSearchIitpNo('');}}>Cancel</Button>
+                                            <Button onClick={handleUpdateParticipant}>Update Details</Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="transfer">
+                            <Card className="border-dashed">
+                                <CardHeader>
+                                    <CardTitle>Bulk Course Transfer</CardTitle>
+                                    <CardDescription>Enroll all students from a source course into a destination course. Useful for fixing inconsistent course names.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="source-course">From Course Name</Label>
+                                            <Input
+                                                id="source-course"
+                                                placeholder="Enter the exact source course name"
+                                                value={sourceCourse}
+                                                onChange={(e) => setSourceCourse(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="dest-course">To Course</Label>
+                                            <Select onValueChange={setDestinationCourse} value={destinationCourse}>
+                                                <SelectTrigger id="dest-course">
+                                                    <SelectValue placeholder="Select destination course" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                {courses.map(course => <SelectItem key={course.id} value={course.name}>{course.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <Button onClick={handleStudentTransfer} disabled={isTransferring || !sourceCourse || !destinationCourse}>
+                                            {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Replace className="mr-2 h-4 w-4"/>}
+                                            Transfer Students
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        </Tabs>
+                    </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="trainers" className="mt-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                            <CardTitle>Trainer Management</CardTitle>
+                            <CardDescription>Add, edit, or remove trainers from the system.</CardDescription>
+                            </div>
+                            <Button onClick={() => setAddTrainerOpen(true)}>
+                                <UserCog className="mr-2 h-4 w-4" />
+                                Add New Trainer
+                            </Button>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                                <div className="space-y-2">
-                                    <Label htmlFor="source-course">From Course Name</Label>
-                                     <Input
-                                        id="source-course"
-                                        placeholder="Enter the exact source course name"
-                                        value={sourceCourse}
-                                        onChange={(e) => setSourceCourse(e.target.value)}
-                                     />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="dest-course">To Course</Label>
-                                    <Select onValueChange={setDestinationCourse} value={destinationCourse}>
-                                        <SelectTrigger id="dest-course">
-                                            <SelectValue placeholder="Select destination course" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {courses.map(course => <SelectItem key={course.id} value={course.name}>{course.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <div className="flex justify-end">
-                                <Button onClick={handleStudentTransfer} disabled={isTransferring || !sourceCourse || !destinationCourse}>
-                                    {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Replace className="mr-2 h-4 w-4"/>}
-                                    Transfer Students
-                                </Button>
-                            </div>
+                        <CardContent>
+                            <TrainersTable 
+                                trainers={trainers}
+                                onEdit={(trainer) => setEditingTrainer(trainer)}
+                                onDelete={(trainer) => setDeletingTrainerId(trainer.id)}
+                            />
                         </CardContent>
-                     </Card>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="trainers" className="mt-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle>Trainer Management</CardTitle>
-                      <CardDescription>Add, edit, or remove trainers from the system.</CardDescription>
-                    </div>
-                     <Button onClick={() => setAddTrainerOpen(true)}>
-                        <UserCog className="mr-2 h-4 w-4" />
-                        Add New Trainer
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    <TrainersTable 
-                        trainers={trainers}
-                        onEdit={(trainer) => setEditingTrainer(trainer)}
-                        onDelete={(trainer) => setDeletingTrainerId(trainer.id)}
-                    />
-                </CardContent>
-              </Card>
-          </TabsContent>
+                    </Card>
+                </TabsContent>
+            </>
+          )}
 
           <TabsContent value="attendance" className="mt-6">
             <Card>
@@ -1464,7 +1476,7 @@ export default function AdminPage() {
                 <CardContent>
                     <AttendanceReport 
                         participants={participants}
-                        batches={batches}
+                        batches={filteredBatches}
                     />
                 </CardContent>
             </Card>

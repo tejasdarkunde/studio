@@ -14,32 +14,37 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
+import type { Trainer } from '@/lib/types';
 
 type AddTrainerDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; meetingLink: string }) => void;
-  initialData?: { name: string; meetingLink: string } | null;
+  onSave: (details: { name: string; meetingLink: string; username: string; password?: string; }) => void;
+  initialData?: Trainer | null;
 };
 
 export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTrainerDialogProps) {
   const [name, setName] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
       setName(initialData?.name || '');
       setMeetingLink(initialData?.meetingLink || '');
+      setUsername(initialData?.username || '');
+      setPassword(''); // Always clear password for security
     }
   }, [isOpen, initialData]);
 
   const handleSave = () => {
-    if (!name.trim() || !meetingLink.trim()) {
+    if (!name.trim() || !meetingLink.trim() || !username.trim()) {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description: "Trainer name and meeting link are required.",
+        description: "Trainer name, meeting link and username are required.",
       });
       return;
     }
@@ -54,12 +59,30 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
         });
         return;
     }
+
+    if (!initialData && !password) {
+        toast({
+            variant: "destructive",
+            title: "Password Required",
+            description: "A password is required for new trainers.",
+        });
+        return;
+    }
+
+    if (password && password.length < 6) {
+        toast({
+            variant: "destructive",
+            title: "Password Too Short",
+            description: "Password must be at least 6 characters.",
+        });
+        return;
+    }
     
-    onSave({ name, meetingLink });
+    onSave({ name, meetingLink, username, password });
   };
 
   const dialogTitle = initialData ? 'Edit Trainer' : 'Add New Trainer';
-  const dialogDescription = initialData ? "Update the trainer's name or meeting link." : "Enter the details for the new trainer.";
+  const dialogDescription = initialData ? "Update the trainer's details and credentials." : "Enter the details for the new trainer.";
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) onClose()}}>
@@ -76,6 +99,15 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="meetingLink" className="text-right">Meeting Link *</Label>
             <Input id="meetingLink" value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} className="col-span-3" placeholder="https://zoom.us/j/..." />
+          </div>
+          <hr className="col-span-4" />
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="username" className="text-right">Username *</Label>
+            <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="col-span-3" placeholder="trainer.john" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="password" className="text-right">Password</Label>
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" placeholder={initialData ? 'Leave blank to keep unchanged' : 'Min 6 characters'} />
           </div>
         </div>
         <DialogFooter>

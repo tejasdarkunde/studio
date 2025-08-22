@@ -13,6 +13,8 @@ export type Trainer = {
     id: string;
     name: string;
     meetingLink: string;
+    username: string;
+    password?: string;
     createdAt: string; // ISO 8601 string format
 };
 
