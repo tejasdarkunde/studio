@@ -148,8 +148,17 @@ export default function Home() {
 
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center min-h-screen">
-      <div className="w-full max-w-6xl">
-        <div className="flex flex-col items-center justify-center text-center mb-12">
+      <div className="w-full max-w-6xl relative">
+        <div className="absolute top-0 right-0 flex gap-4">
+            <Link href="#" passHref>
+                <Button variant="outline">Student Login</Button>
+            </Link>
+            <Link href="/admin" passHref>
+                <Button variant="link">Admin Access</Button>
+            </Link>
+        </div>
+
+        <div className="flex flex-col items-center justify-center text-center pt-16 mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
               BSA Training Academy, Pune
             </h1>
@@ -170,15 +179,6 @@ export default function Home() {
               {batches.length === 0 && !loading && <p>No training sessions found.</p>}
             </>
           )}
-        </div>
-
-        <div className="text-center mt-16 flex justify-center gap-4">
-            <Link href="#" passHref>
-                <Button variant="outline">Student Login</Button>
-            </Link>
-            <Link href="/admin" passHref>
-                <Button variant="link">Admin Access</Button>
-            </Link>
         </div>
       </div>
     </main>
