@@ -150,7 +150,7 @@ export default function Home() {
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center min-h-screen">
       <div className="w-full max-w-6xl relative">
         <div className="absolute top-0 right-0 flex gap-4">
-            <Link href="#" passHref>
+            <Link href="/student-login" passHref>
                 <Button variant="outline">Student Login</Button>
             </Link>
             <Link href="/admin" passHref>

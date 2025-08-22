@@ -665,3 +665,42 @@ export async function deleteSubject(data: z.infer<typeof deleteSubjectSchema>): 
         return { success: false, error: "Could not delete subject." };
     }
 }
+
+
+// STUDENT LOGIN
+const studentLoginSchema = z.object({
+  iitpNo: z.string().min(1, { message: "IITP No. is required." }),
+  passkey: z.string().min(1, { message: "Passkey is required." }),
+});
+
+export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = studentLoginSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid login data." };
+    }
+
+    try {
+        const { iitpNo, passkey } = validatedFields.data;
+        const participantsCollection = collection(db, "participants");
+        const q = query(participantsCollection, where("iitpNo", "==", iitpNo));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            return { success: false, error: "Invalid IITP No. or Passkey." };
+        }
+
+        const participantDoc = querySnapshot.docs[0];
+        const participant = participantDoc.data() as Participant;
+
+        // Passkey is the registered mobile number
+        if (participant.mobile === passkey) {
+            return { success: true };
+        } else {
+            return { success: false, error: "Invalid IITP No. or Passkey." };
+        }
+
+    } catch (error) {
+        console.error("Error during student login:", error);
+        return { success: false, error: "An unexpected error occurred." };
+    }
+}
