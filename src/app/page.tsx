@@ -172,7 +172,10 @@ export default function Home() {
           )}
         </div>
 
-        <div className="text-center mt-16">
+        <div className="text-center mt-16 flex justify-center gap-4">
+            <Link href="#" passHref>
+                <Button variant="outline">Student Login</Button>
+            </Link>
             <Link href="/admin" passHref>
                 <Button variant="link">Admin Access</Button>
             </Link>
