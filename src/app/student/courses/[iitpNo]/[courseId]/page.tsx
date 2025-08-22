@@ -1,18 +1,19 @@
 
 "use client";
 
-import { getCourseById, getParticipantByIitpNo } from '@/app/actions';
+import { getCourseById, getParticipantByIitpNo, markLessonAsComplete } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { Video, BookOpen, ChevronLeft } from 'lucide-react';
+import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Course, Lesson, Participant } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { VideoPlayer } from '@/components/features/video-player';
+import { useToast } from '@/hooks/use-toast';
 
 
 const CourseContentPageClient = () => {
@@ -21,6 +22,17 @@ const CourseContentPageClient = () => {
     const [participant, setParticipant] = useState<Participant | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+    const { toast } = useToast();
+    const [isPending, startTransition] = useTransition();
+
+    const fetchParticipantData = async () => {
+        const participantData = await getParticipantByIitpNo(params.iitpNo);
+         if (!participantData) {
+            notFound();
+        }
+        setParticipant(participantData);
+        return participantData;
+    };
 
     useEffect(() => {
         if (!params.courseId || !params.iitpNo) return;
@@ -51,6 +63,28 @@ const CourseContentPageClient = () => {
         fetchData();
     }, [params.courseId, params.iitpNo]);
 
+    const handleMarkAsComplete = (lessonId: string) => {
+        if (!participant) return;
+
+        startTransition(async () => {
+            const result = await markLessonAsComplete({ participantId: participant.id, lessonId });
+            if (result.success) {
+                toast({
+                    title: "Progress Saved!",
+                    description: "Lesson marked as complete."
+                });
+                // Re-fetch participant data to update UI
+                fetchParticipantData();
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: result.error,
+                });
+            }
+        });
+    }
+
     if (loading) {
         return (
              <main className="container mx-auto p-4 md:p-8">
@@ -72,6 +106,8 @@ const CourseContentPageClient = () => {
     if (!course || !participant) {
         return notFound();
     }
+
+    const completedLessonsSet = new Set(participant.completedLessons || []);
 
     return (
         <>
@@ -131,11 +167,28 @@ const CourseContentPageClient = () => {
                                                                 <li key={lesson.id} className="flex items-center justify-between p-3 rounded-md bg-background hover:bg-secondary/50 transition-colors">
                                                                     <div className="flex items-center gap-3">
                                                                         <Video className="h-5 w-5 text-muted-foreground" />
-                                                                        <span className="text-base">{lesson.title}</span>
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-base">{lesson.title}</span>
+                                                                            {lesson.duration && (
+                                                                                <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration} min</span>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                    <Button size="sm" variant="ghost" onClick={() => setSelectedLesson(lesson)}>
-                                                                        Watch Video
-                                                                    </Button>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Button size="sm" variant="ghost" onClick={() => setSelectedLesson(lesson)}>
+                                                                            Watch Video
+                                                                        </Button>
+                                                                        {completedLessonsSet.has(lesson.id) ? (
+                                                                            <div className="flex items-center gap-1 text-green-600 font-medium text-sm">
+                                                                                <CheckCircle2 className="h-5 w-5" />
+                                                                                <span>Completed</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <Button size="sm" variant="outline" onClick={() => handleMarkAsComplete(lesson.id)} disabled={isPending}>
+                                                                                Mark as Complete
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
                                                                 </li>
                                                             ))}
                                                             {unit.lessons.length === 0 && <p className="text-muted-foreground text-sm">No lessons in this unit yet.</p>}

@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,30 +43,27 @@ const ManageLessonDialog = ({
     onClose,
     onSave,
     initialData,
-    courseId,
-    subjectId,
-    unitId,
 } : {
     isOpen: boolean;
     onClose: () => void;
     onSave: (data: Omit<Lesson, 'id'>) => Promise<void>;
     initialData?: Lesson;
-    courseId: string;
-    subjectId: string;
-    unitId: string;
 }) => {
     const [title, setTitle] = useState('');
     const [videoUrl, setVideoUrl] = useState('');
+    const [duration, setDuration] = useState('');
 
     useEffect(() => {
         if(isOpen) {
             setTitle(initialData?.title || '');
             setVideoUrl(initialData?.videoUrl || '');
+            setDuration(initialData?.duration?.toString() || '');
         }
     }, [isOpen, initialData])
 
     const handleSave = () => {
-        onSave({ title, videoUrl });
+        const durationNumber = duration ? parseInt(duration, 10) : undefined;
+        onSave({ title, videoUrl, duration: durationNumber });
     }
 
     return (
@@ -84,6 +81,10 @@ const ManageLessonDialog = ({
                     <div className="space-y-2">
                         <Label htmlFor="lesson-url">Video URL (YouTube, Vimeo, etc.)</Label>
                         <Input id="lesson-url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="lesson-duration">Duration (minutes)</Label>
+                        <Input id="lesson-duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g., 45" />
                     </div>
                 </div>
                 <DialogFooter>
@@ -254,9 +255,6 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                     onClose={() => setLessonDialogState({isOpen: false})}
                     onSave={handleSaveLesson}
                     initialData={lessonDialogState.initialData}
-                    courseId={course.id}
-                    subjectId={activeSubject?.id || ''}
-                    unitId={lessonDialogState.unit.id}
                 />
             )}
             <Card>
@@ -352,11 +350,16 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                                         <ul className="space-y-2">
                                             {activeUnit.lessons.map(lesson => (
                                                 <li key={lesson.id} className="p-2 rounded-md bg-secondary/50 flex items-center justify-between group">
-                                                    <div className="flex items-center gap-2">
-                                                        <Video className="h-4 w-4 text-muted-foreground" />
-                                                        <span className="text-sm">{lesson.title}</span>
+                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                        <Video className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                                        <div className="flex-grow overflow-hidden">
+                                                            <p className="text-sm truncate">{lesson.title}</p>
+                                                            {lesson.duration && (
+                                                                <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{lesson.duration} min</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setLessonDialogState({ isOpen: true, initialData: lesson, unit: activeUnit })}><Pencil className="h-4 w-4" /></Button>
                                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeletingLesson(lesson)}><Trash className="h-4 w-4" /></Button>
                                                     </div>
@@ -391,7 +394,7 @@ export default function AdminPage() {
   const [searchIitpNo, setSearchIitpNo] = useState('');
   const [isFetchingParticipant, setIsFetchingParticipant] = useState(false);
   const [fetchedParticipant, setFetchedParticipant] = useState<Participant | null>(null);
-  const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: []});
+  const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt' | 'completedLessons'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: []});
 
 
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
@@ -593,7 +596,7 @@ export default function AdminPage() {
     setDeletingBatch(null);
   }
 
-  const handleAddParticipant = async (details: Omit<Participant, 'id' | 'createdAt'>) => {
+  const handleAddParticipant = async (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons'>) => {
     const result = await addParticipant(details);
     if(result.success) {
         toast({
@@ -644,7 +647,9 @@ export default function AdminPage() {
     
     const result = await updateParticipant({
       ...editFormData,
-      enrolledCourses: Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses : String(editFormData.enrolledCourses).split(',').map(c => c.trim()).filter(Boolean)
+      enrolledCourses: Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses : String(editFormData.enrolledCourses).split(',').map(c => c.trim()).filter(Boolean),
+      id: fetchedParticipant?.id || '',
+      completedLessons: fetchedParticipant?.completedLessons || [],
     });
     
     if (result.success) {
@@ -680,7 +685,7 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  const handleImportSave = async (importedParticipants: Omit<Participant, 'id'|'createdAt'>[]) => {
+  const handleImportSave = async (importedParticipants: Omit<Participant, 'id'|'createdAt'|'completedLessons'>[]) => {
     if (importedParticipants.length === 0) {
       toast({
         variant: 'destructive',

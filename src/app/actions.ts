@@ -324,6 +324,7 @@ export async function getParticipants(): Promise<Participant[]> {
                 organization: data.organization,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 enrolledCourses: data.enrolledCourses || [], 
+                completedLessons: data.completedLessons || [],
             };
         });
 
@@ -358,6 +359,7 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
             organization: data.organization,
             createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
             enrolledCourses: data.enrolledCourses || [],
+            completedLessons: data.completedLessons || [],
         };
     } catch (error) {
         console.error("Error fetching participant by IITP No.:", error);
@@ -372,6 +374,7 @@ const participantSchema = z.object({
   mobile: z.string().optional(),
   organization: z.string().optional(),
   enrolledCourses: z.array(z.string()).optional(),
+  completedLessons: z.array(z.string()).optional(),
 });
 
 
@@ -395,6 +398,7 @@ export async function addParticipant(data: z.infer<typeof participantSchema>): P
         await addDoc(participantsCollection, {
             ...validatedFields.data,
             createdAt: serverTimestamp(),
+            completedLessons: [], // Initialize empty
         });
         return { success: true };
     } catch (error) {
@@ -425,7 +429,7 @@ export async function updateParticipant(data: z.infer<typeof participantUpdateSc
   }
 }
 
-export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt'>[]): Promise<{ success: boolean; error?: string, skippedCount?: number }> {
+export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt' | 'completedLessons'>[]): Promise<{ success: boolean; error?: string, skippedCount?: number }> {
     const participantsCollection = collection(db, "participants");
     
     try {
@@ -456,6 +460,7 @@ export async function addParticipantsInBulk(participants: Omit<Participant, 'id'
             batch.set(newDocRef, {
                 ...validatedFields.data,
                 createdAt: serverTimestamp(),
+                completedLessons: [], // Initialize empty
             });
             iitpNosInCurrentUpload.add(iitpNo);
         }
@@ -872,14 +877,18 @@ const lessonSchema = z.object({
     unitId: z.string().min(1),
     lessonTitle: z.string().min(2, "Lesson title is required."),
     videoUrl: z.string().url("A valid video URL is required."),
+    duration: z.number().optional(),
 });
 
 export async function addLesson(data: z.infer<typeof lessonSchema>): Promise<{ success: boolean; error?: string }> {
     const validated = lessonSchema.safeParse(data);
-    if (!validated.success) return { success: false, error: "Invalid data." };
+    if (!validated.success) {
+      console.log(validated.error.flatten().fieldErrors);
+      return { success: false, error: "Invalid data." };
+    }
 
     try {
-        const { courseId, subjectId, unitId, lessonTitle, videoUrl } = validated.data;
+        const { courseId, subjectId, unitId, lessonTitle, videoUrl, duration } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -894,7 +903,8 @@ export async function addLesson(data: z.infer<typeof lessonSchema>): Promise<{ s
         const newLesson: Lesson = {
             id: doc(collection(db, '_')).id,
             title: lessonTitle,
-            videoUrl
+            videoUrl,
+            duration,
         };
         
         subjects[subjectIndex].units[unitIndex].lessons.push(newLesson);
@@ -914,7 +924,7 @@ export async function updateLesson(data: z.infer<typeof updateLessonSchema>): Pr
     if (!validated.success) return { success: false, error: "Invalid data." };
 
     try {
-        const { courseId, subjectId, unitId, lessonId, lessonTitle, videoUrl } = validated.data;
+        const { courseId, subjectId, unitId, lessonId, lessonTitle, videoUrl, duration } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -932,7 +942,8 @@ export async function updateLesson(data: z.infer<typeof updateLessonSchema>): Pr
         subjects[subjectIndex].units[unitIndex].lessons[lessonIndex] = {
             id: lessonId,
             title: lessonTitle,
-            videoUrl
+            videoUrl,
+            duration,
         };
 
         await updateDoc(courseDocRef, { subjects });
@@ -1013,5 +1024,31 @@ export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Pr
     } catch (error) {
         console.error("Error during student login:", error);
         return { success: false, error: "An unexpected error occurred." };
+    }
+}
+
+
+// PROGRESS TRACKING
+const markLessonCompleteSchema = z.object({
+    participantId: z.string().min(1),
+    lessonId: z.string().min(1),
+});
+
+export async function markLessonAsComplete(data: z.infer<typeof markLessonCompleteSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = markLessonCompleteSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data provided." };
+
+    try {
+        const { participantId, lessonId } = validated.data;
+        const participantDocRef = doc(db, 'participants', participantId);
+        
+        await updateDoc(participantDocRef, {
+            completedLessons: arrayUnion(lessonId)
+        });
+
+        return { success: true };
+    } catch(error) {
+        console.error("Error marking lesson as complete:", error);
+        return { success: false, error: "Could not update your progress." };
     }
 }

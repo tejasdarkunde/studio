@@ -43,12 +43,14 @@ export type Participant = {
     organization: string;
     createdAt: string; // ISO 8601 string format
     enrolledCourses?: string[];
+    completedLessons?: string[];
 }
 
 export type Lesson = {
   id: string;
   title: string;
   videoUrl: string;
+  duration?: number; // Duration in minutes
 }
 
 export type Unit = {
