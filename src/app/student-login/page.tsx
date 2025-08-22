@@ -35,7 +35,7 @@ export default function StudentLoginPage() {
             <CardHeader>
                 <CardTitle>Welcome Back</CardTitle>
                 <CardDescription>Enter your credentials to access the portal.</CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent>
                 <StudentLoginForm onSuccess={handleLoginSuccess} />
             </CardContent>
