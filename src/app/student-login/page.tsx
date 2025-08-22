@@ -14,9 +14,9 @@ export default function StudentLoginPage() {
   const handleLoginSuccess = () => {
     toast({
       title: "Login Successful!",
-      description: "Welcome back.",
+      description: "Welcome back. Redirecting you to your courses...",
     });
-    router.push('/');
+    router.push('/student/courses');
   };
 
   return (
@@ -35,7 +35,7 @@ export default function StudentLoginPage() {
             <CardHeader>
                 <CardTitle>Welcome Back</CardTitle>
                 <CardDescription>Enter your credentials to access the portal.</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent>
                 <StudentLoginForm onSuccess={handleLoginSuccess} />
             </CardContent>
