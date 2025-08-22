@@ -21,7 +21,7 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
     const { username, password } = validatedFields.data;
 
     // 1. Check for Superadmin
-    if (username === 'superadmin' && password === 'Bsa@123') {
+    if (username === '7020333927' && password === '11082000') {
         return { success: true, role: 'superadmin' };
     }
 
