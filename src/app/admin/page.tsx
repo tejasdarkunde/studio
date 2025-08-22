@@ -895,6 +895,7 @@ export default function AdminPage() {
         isOpen={isAddParticipantOpen}
         onClose={() => setAddParticipantOpen(false)}
         onSave={handleAddParticipant}
+        courses={courses}
       />
       <ImportParticipantsDialog
         isOpen={isImportDialogOpen}

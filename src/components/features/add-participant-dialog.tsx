@@ -14,15 +14,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Participant } from '@/lib/types';
+import type { Participant, Course } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '../ui/textarea';
+import { ScrollArea } from '../ui/scroll-area';
+import { Checkbox } from '../ui/checkbox';
 
 
 type AddParticipantDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: Omit<Participant, 'id' | 'createdAt'>) => void;
+  onSave: (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>) => void;
+  courses: Course[];
 };
 
 const organizations = [
@@ -32,12 +34,12 @@ const organizations = [
   "Other",
 ];
 
-export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipantDialogProps) {
+export function AddParticipantDialog({ isOpen, onClose, onSave, courses }: AddParticipantDialogProps) {
   const [name, setName] = useState('');
   const [iitpNo, setIitpNo] = useState('');
   const [mobile, setMobile] = useState('');
   const [organization, setOrganization] = useState('');
-  const [enrolledCourses, setEnrolledCourses] = useState('');
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
       setIitpNo('');
       setMobile('');
       setOrganization('');
-      setEnrolledCourses('');
+      setSelectedCourses([]);
     }
   }, [isOpen]);
 
@@ -60,10 +62,16 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
       return;
     }
     
-    const coursesArray = enrolledCourses.split(',').map(c => c.trim()).filter(c => c);
-    
-    onSave({ name, iitpNo, mobile, organization, enrolledCourses: coursesArray });
+    onSave({ name, iitpNo, mobile, organization, enrolledCourses: selectedCourses });
   };
+  
+  const handleCourseToggle = (courseName: string) => {
+    setSelectedCourses(prev => 
+        prev.includes(courseName) 
+            ? prev.filter(c => c !== courseName) 
+            : [...prev, courseName]
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) onClose()}}>
@@ -101,14 +109,24 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
             </Select>
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
-             <Label htmlFor="enrolledCourses" className="text-right pt-2">Enrolled Courses</Label>
-             <Textarea
-                id="enrolledCourses"
-                value={enrolledCourses}
-                onChange={(e) => setEnrolledCourses(e.target.value)}
-                className="col-span-3"
-                placeholder="Course A, Course B, ..."
-             />
+             <Label className="text-right pt-2">Enrolled Courses</Label>
+             <ScrollArea className="h-32 w-full col-span-3 rounded-md border p-2">
+                <div className="space-y-2">
+                    {courses.map(course => (
+                        <div key={course.id} className="flex items-center gap-2">
+                            <Checkbox 
+                                id={`course-${course.id}`}
+                                checked={selectedCourses.includes(course.name)}
+                                onCheckedChange={() => handleCourseToggle(course.name)}
+                            />
+                            <Label htmlFor={`course-${course.id}`} className="font-normal">{course.name}</Label>
+                        </div>
+                    ))}
+                    {courses.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center">No courses found.</p>
+                    )}
+                </div>
+             </ScrollArea>
           </div>
         </div>
         <DialogFooter>
@@ -119,5 +137,3 @@ export function AddParticipantDialog({ isOpen, onClose, onSave }: AddParticipant
     </Dialog>
   );
 }
-
-    
