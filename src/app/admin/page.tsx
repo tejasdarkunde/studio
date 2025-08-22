@@ -24,7 +24,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -428,6 +428,10 @@ export default function AdminPage() {
   const [isAddTrainerOpen, setAddTrainerOpen] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
   const [deletingTrainerId, setDeletingTrainerId] = useState<string | null>(null);
+
+  // Course states
+  const [isAddCourseOpen, setAddCourseOpen] = useState(false);
+  const [newCourseName, setNewCourseName] = useState('');
   
   // Course Transfer states
   const [sourceCourse, setSourceCourse] = useState('');
@@ -812,6 +816,22 @@ export default function AdminPage() {
     setIsTransferring(false);
   };
 
+  const handleAddCourse = async () => {
+      if(!newCourseName.trim()) {
+          toast({ variant: 'destructive', title: 'Course name required' });
+          return;
+      }
+      const result = await addCourse({ name: newCourseName });
+      if (result.success) {
+          toast({ title: "Course Added", description: `"${newCourseName}" has been created.` });
+          fetchAllData();
+          setNewCourseName('');
+          setAddCourseOpen(false);
+      } else {
+          toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+  }
+
 
   if (!isClient) {
     return null;
@@ -918,6 +938,22 @@ export default function AdminPage() {
           onConfirm={handleDeleteTrainer}
           batchName={`the trainer: ${trainers.find(t => t.id === deletingTrainerId)?.name || 'N/A'}`}
       />
+      <Dialog open={isAddCourseOpen} onOpenChange={setAddCourseOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Add New Course</DialogTitle>
+                  <DialogDescription>Enter a name for the new course.</DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                  <Label htmlFor="new-course-name">Course Name</Label>
+                  <Input id="new-course-name" value={newCourseName} onChange={(e) => setNewCourseName(e.target.value)} />
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setAddCourseOpen(false)}>Cancel</Button>
+                  <Button onClick={handleAddCourse}>Add Course</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
 
       <main className="container mx-auto p-4 md:p-8">
@@ -1090,6 +1126,11 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="courses" className="mt-6">
+             <div className="flex justify-end mb-4">
+                <Button onClick={() => setAddCourseOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add New Course
+                </Button>
+            </div>
              {courses.length > 0 ? (
                 <div className="space-y-6">
                     {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
@@ -1339,3 +1380,5 @@ export default function AdminPage() {
     </>
   );
 }
+
+    

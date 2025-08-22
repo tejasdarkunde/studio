@@ -637,22 +637,49 @@ export async function deleteTrainer(trainerId: string): Promise<{ success: boole
 // Helper to ensure 'courses' collection and docs exist
 async function initializeCourses() {
     const coursesCollectionRef = collection(db, "courses");
-    const diplomaDocRef = doc(coursesCollectionRef, 'diploma');
-    const advDiplomaDocRef = doc(coursesCollectionRef, 'advance-diploma');
+    const coursesSnapshot = await getDocs(coursesCollectionRef);
 
-    const diplomaDoc = await getDoc(diplomaDocRef);
-    const advDiplomaDoc = await getDoc(advDiplomaDocRef);
-
-    const batch = writeBatch(db);
-
-    if (!diplomaDoc.exists()) {
+    if (coursesSnapshot.empty) {
+        const batch = writeBatch(db);
+        const diplomaDocRef = doc(coursesCollectionRef, 'diploma');
+        const advDiplomaDocRef = doc(coursesCollectionRef, 'advance-diploma');
         batch.set(diplomaDocRef, { name: 'Diploma', subjects: [] });
-    }
-    if (!advDiplomaDoc.exists()) {
         batch.set(advDiplomaDocRef, { name: 'Advance Diploma', subjects: [] });
+        await batch.commit();
+    }
+}
+
+const addCourseSchema = z.object({
+  name: z.string().min(2, { message: "Course name must be at least 2 characters." }),
+});
+
+export async function addCourse(data: z.infer<typeof addCourseSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = addCourseSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid course name." };
     }
 
-    await batch.commit();
+    try {
+        const { name } = validatedFields.data;
+        const coursesCollection = collection(db, "courses");
+
+        // Optional: Check for duplicate course names
+        const duplicateQuery = query(coursesCollection, where("name", "==", name));
+        const duplicateSnapshot = await getDocs(duplicateQuery);
+        if (!duplicateSnapshot.empty) {
+            return { success: false, error: "A course with this name already exists." };
+        }
+
+        await addDoc(coursesCollection, {
+            name: name,
+            subjects: [],
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding course:", error);
+        return { success: false, error: "Could not add course." };
+    }
 }
 
 
@@ -1147,3 +1174,5 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
+
+    
