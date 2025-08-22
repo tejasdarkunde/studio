@@ -15,20 +15,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { VideoPlayer } from '@/components/features/video-player';
 
 
-type CourseContentPageProps = {
-    params: {
-        iitpNo: string;
-        courseId: string;
-    }
-};
-
-const CourseContentPageClient = ({ params }: CourseContentPageProps) => {
+const CourseContentPageClient = () => {
+    const params = useParams() as { iitpNo: string; courseId: string; };
     const [course, setCourse] = useState<Course | null>(null);
     const [participant, setParticipant] = useState<Participant | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
 
     useEffect(() => {
+        if (!params.courseId || !params.iitpNo) return;
+        
         const fetchData = async () => {
             setLoading(true);
             const [courseData, participantData] = await Promise.all([
@@ -167,8 +163,8 @@ const CourseContentPageClient = ({ params }: CourseContentPageProps) => {
 }
 
 
-export default function CourseContentPage({ params }: CourseContentPageProps) {
+export default function CourseContentPage() {
     // This wrapper is needed because this is a server component by default,
     // but we need client-side hooks like useState and useEffect for interactivity.
-    return <CourseContentPageClient params={params} />;
+    return <CourseContentPageClient />;
 }
