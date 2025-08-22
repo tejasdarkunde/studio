@@ -3,8 +3,8 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject } from "@/lib/types";
+import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove } from "firebase/firestore";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson } from "@/lib/types";
 
 const registrationSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -577,10 +577,10 @@ async function initializeCourses() {
     const batch = writeBatch(db);
 
     if (!diplomaDoc.exists()) {
-        batch.set(diplomaDocRef, { name: 'Diploma' });
+        batch.set(diplomaDocRef, { name: 'Diploma', subjects: [] });
     }
     if (!advDiplomaDoc.exists()) {
-        batch.set(advDiplomaDocRef, { name: 'Advance Diploma' });
+        batch.set(advDiplomaDocRef, { name: 'Advance Diploma', subjects: [] });
     }
 
     await batch.commit();
@@ -589,24 +589,25 @@ async function initializeCourses() {
 
 export async function getCourses(): Promise<Course[]> {
     try {
-        await initializeCourses(); // Ensure docs exist before fetching
+        await initializeCourses(); 
         const coursesSnapshot = await getDocs(collection(db, 'courses'));
         
         const courses: Course[] = [];
 
         for (const courseDoc of coursesSnapshot.docs) {
-            const subjectsCollectionRef = collection(courseDoc.ref, 'subjects');
-            const subjectsSnapshot = await getDocs(query(subjectsCollectionRef, orderBy('name')));
-            
-            const subjects: Subject[] = subjectsSnapshot.docs.map(subjectDoc => ({
-                id: subjectDoc.id,
-                name: subjectDoc.data().name,
+            const courseData = courseDoc.data();
+            const subjects: Subject[] = (courseData.subjects || []).map((subject: any) => ({
+                ...subject,
+                units: (subject.units || []).map((unit: any) => ({
+                    ...unit,
+                    lessons: unit.lessons || []
+                }))
             }));
 
             courses.push({
                 id: courseDoc.id,
-                name: courseDoc.data().name,
-                subjects: subjects,
+                name: courseData.name,
+                subjects: subjects.sort((a, b) => a.name.localeCompare(b.name)),
             });
         }
         
@@ -614,6 +615,35 @@ export async function getCourses(): Promise<Course[]> {
     } catch (error) {
         console.error("Error fetching courses:", error);
         return [];
+    }
+}
+
+export async function getCourseById(courseId: string): Promise<Course | null> {
+    try {
+        const courseDocRef = doc(db, 'courses', courseId);
+        const courseDoc = await getDoc(courseDocRef);
+
+        if (!courseDoc.exists()) {
+            return null;
+        }
+
+        const courseData = courseDoc.data();
+        const subjects: Subject[] = (courseData.subjects || []).map((subject: any) => ({
+            ...subject,
+            units: (subject.units || []).map((unit: any) => ({
+                ...unit,
+                lessons: unit.lessons || []
+            }))
+        }));
+
+        return {
+            id: courseDoc.id,
+            name: courseData.name,
+            subjects: subjects.sort((a, b) => a.name.localeCompare(b.name)),
+        };
+    } catch (error) {
+        console.error("Error fetching course by ID:", error);
+        return null;
     }
 }
 
@@ -631,17 +661,28 @@ export async function addSubject(data: z.infer<typeof addSubjectSchema>): Promis
 
     try {
         const { courseId, subjectName } = validatedFields.data;
-        const subjectsCollectionRef = collection(db, `courses/${courseId}/subjects`);
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
         
-        // Optional: Check for duplicate subject name within the same course
-        const duplicateQuery = query(subjectsCollectionRef, where("name", "==", subjectName));
-        const duplicateSnapshot = await getDocs(duplicateQuery);
-        if (!duplicateSnapshot.empty) {
-            return { success: false, error: "This subject already exists in this course." };
+        if(!courseDoc.exists()) {
+            return { success: false, error: "Course not found." };
         }
 
-        await addDoc(subjectsCollectionRef, {
+        const subjects = courseDoc.data().subjects || [];
+        const duplicate = subjects.some((s: Subject) => s.name.toLowerCase() === subjectName.toLowerCase());
+
+        if (duplicate) {
+             return { success: false, error: "This subject already exists in this course." };
+        }
+
+        const newSubject: Subject = {
+            id: doc(collection(db, '_')).id, // Generate a unique ID
             name: subjectName,
+            units: [],
+        };
+        
+        await updateDoc(courseDocRef, {
+            subjects: arrayUnion(newSubject)
         });
 
         return { success: true };
@@ -650,7 +691,6 @@ export async function addSubject(data: z.infer<typeof addSubjectSchema>): Promis
         return { success: false, error: "Could not add subject due to a database error." };
     }
 }
-
 
 const updateSubjectSchema = z.object({
   courseId: z.string().min(1),
@@ -666,8 +706,23 @@ export async function updateSubject(data: z.infer<typeof updateSubjectSchema>): 
 
     try {
         const { courseId, subjectId, newName } = validatedFields.data;
-        const subjectDocRef = doc(db, `courses/${courseId}/subjects/${subjectId}`);
-        await updateDoc(subjectDocRef, { name: newName });
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+
+        if(!courseDoc.exists()) {
+            return { success: false, error: "Course not found." };
+        }
+        
+        const subjects = courseDoc.data().subjects || [];
+        const subjectIndex = subjects.findIndex((s: Subject) => s.id === subjectId);
+
+        if (subjectIndex === -1) {
+            return { success: false, error: "Subject not found." };
+        }
+
+        subjects[subjectIndex].name = newName;
+        
+        await updateDoc(courseDocRef, { subjects: subjects });
         return { success: true };
     } catch (error) {
         console.error("Error updating subject:", error);
@@ -688,12 +743,237 @@ export async function deleteSubject(data: z.infer<typeof deleteSubjectSchema>): 
     
     try {
         const { courseId, subjectId } = validatedFields.data;
-        const subjectDocRef = doc(db, `courses/${courseId}/subjects/${subjectId}`);
-        await deleteDoc(subjectDocRef);
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+
+        if(!courseDoc.exists()) {
+            return { success: false, error: "Course not found." };
+        }
+        
+        const subjects = courseDoc.data().subjects || [];
+        const subjectToDelete = subjects.find((s: Subject) => s.id === subjectId);
+
+        if (!subjectToDelete) {
+             return { success: false, error: "Subject not found." };
+        }
+        
+        await updateDoc(courseDocRef, {
+            subjects: arrayRemove(subjectToDelete)
+        });
+
         return { success: true };
     } catch (error) {
         console.error("Error deleting subject:", error);
         return { success: false, error: "Could not delete subject." };
+    }
+}
+
+// UNIT ACTIONS
+const unitSchema = z.object({
+    courseId: z.string().min(1),
+    subjectId: z.string().min(1),
+    unitTitle: z.string().min(2, "Unit title must be at least 2 characters."),
+});
+
+export async function addUnit(data: z.infer<typeof unitSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = unitSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, subjectId, unitTitle } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const subjects: Subject[] = courseDoc.data().subjects || [];
+        const subjectIndex = subjects.findIndex(s => s.id === subjectId);
+        if (subjectIndex === -1) return { success: false, error: "Subject not found." };
+
+        const newUnit: Unit = {
+            id: doc(collection(db, '_')).id,
+            title: unitTitle,
+            lessons: []
+        };
+        
+        subjects[subjectIndex].units.push(newUnit);
+
+        await updateDoc(courseDocRef, { subjects });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding unit:", error);
+        return { success: false, error: "Could not add unit." };
+    }
+}
+
+const updateUnitSchema = unitSchema.extend({ unitId: z.string().min(1) });
+
+export async function updateUnit(data: z.infer<typeof updateUnitSchema>): Promise<{ success: boolean; error?: string }> {
+     const validated = updateUnitSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, subjectId, unitId, unitTitle } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const subjects: Subject[] = courseDoc.data().subjects || [];
+        const subjectIndex = subjects.findIndex(s => s.id === subjectId);
+        if (subjectIndex === -1) return { success: false, error: "Subject not found." };
+        
+        const unitIndex = subjects[subjectIndex].units.findIndex(u => u.id === unitId);
+        if (unitIndex === -1) return { success: false, error: "Unit not found." };
+
+        subjects[subjectIndex].units[unitIndex].title = unitTitle;
+
+        await updateDoc(courseDocRef, { subjects });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating unit:", error);
+        return { success: false, error: "Could not update unit." };
+    }
+}
+
+const deleteUnitSchema = z.object({
+    courseId: z.string().min(1),
+    subjectId: z.string().min(1),
+    unitId: z.string().min(1),
+});
+
+export async function deleteUnit(data: z.infer<typeof deleteUnitSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = deleteUnitSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, subjectId, unitId } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const subjects: Subject[] = courseDoc.data().subjects || [];
+        const subjectIndex = subjects.findIndex(s => s.id === subjectId);
+        if (subjectIndex === -1) return { success: false, error: "Subject not found." };
+
+        subjects[subjectIndex].units = subjects[subjectIndex].units.filter(u => u.id !== unitId);
+
+        await updateDoc(courseDocRef, { subjects });
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting unit:", error);
+        return { success: false, error: "Could not delete unit." };
+    }
+}
+
+
+// LESSON ACTIONS
+const lessonSchema = z.object({
+    courseId: z.string().min(1),
+    subjectId: z.string().min(1),
+    unitId: z.string().min(1),
+    lessonTitle: z.string().min(2, "Lesson title is required."),
+    videoUrl: z.string().url("A valid video URL is required."),
+});
+
+export async function addLesson(data: z.infer<typeof lessonSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = lessonSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, subjectId, unitId, lessonTitle, videoUrl } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const subjects: Subject[] = courseDoc.data().subjects || [];
+        const subjectIndex = subjects.findIndex(s => s.id === subjectId);
+        if (subjectIndex === -1) return { success: false, error: "Subject not found." };
+        
+        const unitIndex = subjects[subjectIndex].units.findIndex(u => u.id === unitId);
+        if (unitIndex === -1) return { success: false, error: "Unit not found." };
+
+        const newLesson: Lesson = {
+            id: doc(collection(db, '_')).id,
+            title: lessonTitle,
+            videoUrl
+        };
+        
+        subjects[subjectIndex].units[unitIndex].lessons.push(newLesson);
+
+        await updateDoc(courseDocRef, { subjects });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding lesson:", error);
+        return { success: false, error: "Could not add lesson." };
+    }
+}
+
+const updateLessonSchema = lessonSchema.extend({ lessonId: z.string().min(1) });
+
+export async function updateLesson(data: z.infer<typeof updateLessonSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = updateLessonSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, subjectId, unitId, lessonId, lessonTitle, videoUrl } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const subjects: Subject[] = courseDoc.data().subjects || [];
+        const subjectIndex = subjects.findIndex(s => s.id === subjectId);
+        if (subjectIndex === -1) return { success: false, error: "Subject not found." };
+        
+        const unitIndex = subjects[subjectIndex].units.findIndex(u => u.id === unitId);
+        if (unitIndex === -1) return { success: false, error: "Unit not found." };
+        
+        const lessonIndex = subjects[subjectIndex].units[unitIndex].lessons.findIndex(l => l.id === lessonId);
+        if (lessonIndex === -1) return { success: false, error: "Lesson not found." };
+        
+        subjects[subjectIndex].units[unitIndex].lessons[lessonIndex] = {
+            id: lessonId,
+            title: lessonTitle,
+            videoUrl
+        };
+
+        await updateDoc(courseDocRef, { subjects });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating lesson:", error);
+        return { success: false, error: "Could not update lesson." };
+    }
+}
+
+const deleteLessonSchema = z.object({
+    courseId: z.string().min(1),
+    subjectId: z.string().min(1),
+    unitId: z.string().min(1),
+    lessonId: z.string().min(1),
+});
+
+export async function deleteLesson(data: z.infer<typeof deleteLessonSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = deleteLessonSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, subjectId, unitId, lessonId } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const subjects: Subject[] = courseDoc.data().subjects || [];
+        const subjectIndex = subjects.findIndex(s => s.id === subjectId);
+        if (subjectIndex === -1) return { success: false, error: "Subject not found." };
+        
+        const unitIndex = subjects[subjectIndex].units.findIndex(u => u.id === unitId);
+        if (unitIndex === -1) return { success: false, error: "Unit not found." };
+        
+        subjects[subjectIndex].units[unitIndex].lessons = subjects[subjectIndex].units[unitIndex].lessons.filter(l => l.id !== lessonId);
+
+        await updateDoc(courseDocRef, { subjects });
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting lesson:", error);
+        return { success: false, error: "Could not delete lesson." };
     }
 }
 
@@ -735,5 +1015,3 @@ export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Pr
         return { success: false, error: "An unexpected error occurred." };
     }
 }
-
-    

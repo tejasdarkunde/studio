@@ -1,4 +1,5 @@
 
+
 export type Registration = {
   id: string;
   name: string;
@@ -44,9 +45,22 @@ export type Participant = {
     enrolledCourses?: string[];
 }
 
+export type Lesson = {
+  id: string;
+  title: string;
+  videoUrl: string;
+}
+
+export type Unit = {
+  id: string;
+  title: string;
+  lessons: Lesson[];
+}
+
 export type Subject = {
   id: string;
   name: string;
+  units: Unit[];
 };
 
 export type Course = {
