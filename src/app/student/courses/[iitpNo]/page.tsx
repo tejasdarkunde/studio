@@ -26,8 +26,8 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
     }
 
     const participantCourses = courses.filter(course =>
-      participant.enrolledCourses?.some(enrolled =>
-        course.name.toLowerCase().includes(enrolled.toLowerCase())
+      participant.enrolledCourses?.some(enrolledCourseName =>
+        course.name.toLowerCase() === enrolledCourseName.toLowerCase()
       )
     );
 
