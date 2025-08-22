@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -109,24 +108,23 @@ const ManageLessonDialog = ({
 }
 
 const CourseContentManager = ({ course, onContentUpdated }: { course: Course; onContentUpdated: () => void; }) => {
+    // Subject states
     const [newSubject, setNewSubject] = useState('');
     const [isAddingSubject, setIsAddingSubject] = useState(false);
-    const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+    const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
     const [editingSubjectValue, setEditingSubjectValue] = useState('');
     const [deletingSubject, setDeletingSubject] = useState<Subject | null>(null);
     
-    // States for units
-    const [activeSubject, setActiveSubject] = useState<Subject | null>(null);
-    const [newUnit, setNewUnit] = useState('');
-    const [isAddingUnit, setIsAddingUnit] = useState(false);
-    const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+    // Unit states
+    const [newUnitValues, setNewUnitValues] = useState<{ [subjectId: string]: string }>({});
+    const [isAddingUnit, setIsAddingUnit] = useState<string | null>(null);
+    const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
     const [editingUnitValue, setEditingUnitValue] = useState('');
-    const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null);
+    const [deletingUnit, setDeletingUnit] = useState<{unit: Unit, subjectId: string} | null>(null);
     
-    // States for lessons
-    const [activeUnit, setActiveUnit] = useState<Unit | null>(null);
-    const [lessonDialogState, setLessonDialogState] = useState<{isOpen: boolean, initialData?: Lesson, unit?: Unit}>({isOpen: false});
-    const [deletingLesson, setDeletingLesson] = useState<Lesson | null>(null);
+    // Lesson states
+    const [lessonDialogState, setLessonDialogState] = useState<{isOpen: boolean, initialData?: Lesson, unit?: Unit, subjectId?: string}>({isOpen: false});
+    const [deletingLesson, setDeletingLesson] = useState<{lesson: Lesson, unitId: string, subjectId: string} | null>(null);
 
     const { toast } = useToast();
 
@@ -146,15 +144,16 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     };
 
     const handleUpdateSubject = async () => {
-        if (!editingSubject || !editingSubjectValue.trim()) return;
-        const result = await updateSubject({ courseId: course.id, subjectId: editingSubject.id, newName: editingSubjectValue });
+        if (!editingSubjectId || !editingSubjectValue.trim()) return;
+        const result = await updateSubject({ courseId: course.id, subjectId: editingSubjectId, newName: editingSubjectValue });
         if (result.success) {
             toast({ title: 'Subject Updated' });
             onContentUpdated();
         } else {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
         }
-        setEditingSubject(null);
+        setEditingSubjectId(null);
+        setEditingSubjectValue('');
     };
 
     const handleDeleteSubject = async () => {
@@ -170,35 +169,37 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     };
 
     // Unit handlers
-    const handleAddUnit = async () => {
-        if (!activeSubject || !newUnit.trim()) return;
-        setIsAddingUnit(true);
-        const result = await addUnit({ courseId: course.id, subjectId: activeSubject.id, unitTitle: newUnit });
+    const handleAddUnit = async (subjectId: string) => {
+        const newUnitTitle = newUnitValues[subjectId];
+        if (!newUnitTitle || !newUnitTitle.trim()) return;
+        setIsAddingUnit(subjectId);
+        const result = await addUnit({ courseId: course.id, subjectId, unitTitle: newUnitTitle });
         if (result.success) {
             toast({ title: "Unit Added" });
-            setNewUnit('');
+            setNewUnitValues(prev => ({...prev, [subjectId]: ''}));
             onContentUpdated();
         } else {
             toast({ variant: 'destructive', title: "Error", description: result.error });
         }
-        setIsAddingUnit(false);
+        setIsAddingUnit(null);
     }
     
-    const handleUpdateUnit = async () => {
-        if (!activeSubject || !editingUnit || !editingUnitValue.trim()) return;
-        const result = await updateUnit({ courseId: course.id, subjectId: activeSubject.id, unitId: editingUnit.id, unitTitle: editingUnitValue });
+    const handleUpdateUnit = async (subjectId: string) => {
+        if (!editingUnitId || !editingUnitValue.trim()) return;
+        const result = await updateUnit({ courseId: course.id, subjectId: subjectId, unitId: editingUnitId, unitTitle: editingUnitValue });
         if (result.success) {
             toast({ title: "Unit Updated" });
             onContentUpdated();
         } else {
             toast({ variant: 'destructive', title: "Error", description: result.error });
         }
-        setEditingUnit(null);
+        setEditingUnitId(null);
+        setEditingUnitValue('');
     }
 
     const handleDeleteUnit = async () => {
-        if (!activeSubject || !deletingUnit) return;
-        const result = await deleteUnit({ courseId: course.id, subjectId: activeSubject.id, unitId: deletingUnit.id });
+        if (!deletingUnit) return;
+        const result = await deleteUnit({ courseId: course.id, subjectId: deletingUnit.subjectId, unitId: deletingUnit.unit.id });
         if (result.success) {
             toast({ title: "Unit Deleted" });
             onContentUpdated();
@@ -210,12 +211,12 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
 
     // Lesson Handlers
     const handleSaveLesson = async (data: Omit<Lesson, 'id'>) => {
-        if (!activeSubject || !lessonDialogState.unit) return;
+        if (!lessonDialogState.subjectId || !lessonDialogState.unit) return;
 
         const action = lessonDialogState.initialData ? updateLesson : addLesson;
         const payload = lessonDialogState.initialData
-            ? { ...data, lessonId: lessonDialogState.initialData.id, unitId: lessonDialogState.unit.id, subjectId: activeSubject.id, courseId: course.id, lessonTitle: data.title }
-            : { ...data, unitId: lessonDialogState.unit.id, subjectId: activeSubject.id, courseId: course.id, lessonTitle: data.title };
+            ? { ...data, lessonId: lessonDialogState.initialData.id, unitId: lessonDialogState.unit.id, subjectId: lessonDialogState.subjectId, courseId: course.id, lessonTitle: data.title }
+            : { ...data, unitId: lessonDialogState.unit.id, subjectId: lessonDialogState.subjectId, courseId: course.id, lessonTitle: data.title };
         
         const result = await action(payload as any);
         if (result.success) {
@@ -228,8 +229,9 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     }
     
     const handleDeleteLesson = async () => {
-        if (!activeSubject || !activeUnit || !deletingLesson) return;
-        const result = await deleteLesson({ courseId: course.id, subjectId: activeSubject.id, unitId: activeUnit.id, lessonId: deletingLesson.id });
+        if (!deletingLesson) return;
+        const { lesson, unitId, subjectId } = deletingLesson;
+        const result = await deleteLesson({ courseId: course.id, subjectId, unitId, lessonId: lesson.id });
         if (result.success) {
             toast({ title: "Lesson Deleted" });
             onContentUpdated();
@@ -239,150 +241,122 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
         setDeletingLesson(null);
     }
 
-    // When a subject is selected, update the active subject from the *latest* course data
-    useEffect(() => {
-        if (activeSubject) {
-            const updatedCourse = course.subjects.find(s => s.id === activeSubject.id);
-            setActiveSubject(updatedCourse || null);
-        }
-    }, [course, activeSubject]);
-    
-     useEffect(() => {
-        if (activeUnit) {
-            const updatedSubject = course.subjects.find(s => s.id === activeSubject?.id);
-            const updatedUnit = updatedSubject?.units.find(u => u.id === activeUnit.id);
-            setActiveUnit(updatedUnit || null);
-        }
-    }, [course, activeSubject, activeUnit]);
-
-
     return (
         <>
             <ConfirmDialog isOpen={!!deletingSubject} onClose={() => setDeletingSubject(null)} onConfirm={handleDeleteSubject} title="Delete Subject?" description={`Permanently delete "${deletingSubject?.name}". All units and lessons inside will also be deleted.`} />
-            <ConfirmDialog isOpen={!!deletingUnit} onClose={() => setDeletingUnit(null)} onConfirm={handleDeleteUnit} title="Delete Unit?" description={`Permanently delete "${deletingUnit?.title}". All lessons inside will also be deleted.`} />
-            <ConfirmDialog isOpen={!!deletingLesson} onClose={() => setDeletingLesson(null)} onConfirm={handleDeleteLesson} title="Delete Lesson?" description={`Permanently delete the lesson "${deletingLesson?.title}".`} />
-            {lessonDialogState.isOpen && lessonDialogState.unit && (
-                <ManageLessonDialog 
-                    isOpen={lessonDialogState.isOpen}
-                    onClose={() => setLessonDialogState({isOpen: false})}
-                    onSave={handleSaveLesson}
-                    initialData={lessonDialogState.initialData}
-                />
-            )}
+            <ConfirmDialog isOpen={!!deletingUnit} onClose={() => setDeletingUnit(null)} onConfirm={handleDeleteUnit} title="Delete Unit?" description={`Permanently delete "${deletingUnit?.unit.title}". All lessons inside will also be deleted.`} />
+            <ConfirmDialog isOpen={!!deletingLesson} onClose={() => setDeletingLesson(null)} onConfirm={handleDeleteLesson} title="Delete Lesson?" description={`Permanently delete the lesson "${deletingLesson?.lesson.title}".`} />
+            <ManageLessonDialog 
+                isOpen={lessonDialogState.isOpen}
+                onClose={() => setLessonDialogState({isOpen: false})}
+                onSave={handleSaveLesson}
+                initialData={lessonDialogState.initialData}
+            />
+
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><BookCopy /> {course.name}</CardTitle>
                     <CardDescription>Manage the curriculum for the {course.name.toLowerCase()}.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-3 gap-6">
-                        {/* Subjects Column */}
-                        <div className="col-span-1 border-r pr-4">
-                            <h4 className="font-semibold mb-2">Subjects</h4>
-                            <div className="flex gap-2 mb-4">
-                                <Input placeholder="New subject..." value={newSubject} onChange={(e) => setNewSubject(e.target.value)} disabled={isAddingSubject}/>
-                                <Button onClick={handleAddSubject} disabled={isAddingSubject} size="sm">{isAddingSubject ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Add'}</Button>
-                            </div>
-                            <ScrollArea className="h-96">
-                                <ul className="space-y-2">
-                                     {course.subjects.map(subject => (
-                                        <li key={subject.id} className={`p-2 rounded-md cursor-pointer ${activeSubject?.id === subject.id ? 'bg-primary/10' : 'hover:bg-secondary'}`} onClick={() => setActiveSubject(subject)}>
-                                           {editingSubject?.id === subject.id ? (
-                                                <div className="flex items-center gap-2">
-                                                    <Input value={editingSubjectValue} onChange={(e) => setEditingSubjectValue(e.target.value)} className="h-8" />
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdateSubject}><Save className="h-4 w-4" /></Button>
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => setEditingSubject(null)}><XCircle className="h-4 w-4" /></Button>
-                                                </div>
-                                           ) : (
-                                            <div className="flex items-center justify-between group">
-                                                <span className="font-medium">{subject.name}</span>
-                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingSubject(subject); setEditingSubjectValue(subject.name); }}><Pencil className="h-4 w-4" /></Button>
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDeletingSubject(subject);}}><Trash className="h-4 w-4" /></Button>
-                                                    <ChevronRight className="h-5 w-5 inline-block text-muted-foreground" />
-                                                </div>
+                <CardContent className="space-y-4">
+                    <div className="flex gap-2">
+                        <Input placeholder="Enter new subject name..." value={newSubject} onChange={(e) => setNewSubject(e.target.value)} disabled={isAddingSubject}/>
+                        <Button onClick={handleAddSubject} disabled={isAddingSubject} size="sm">{isAddingSubject ? <Loader2 className="h-4 w-4 animate-spin"/> : <><PlusCircle className="mr-2 h-4 w-4"/> Add Subject</>}</Button>
+                    </div>
+                     <Accordion type="multiple" className="w-full space-y-4">
+                        {course.subjects.map(subject => (
+                            <AccordionItem value={subject.id} key={subject.id} className="border rounded-lg">
+                                <AccordionTrigger className="p-4 hover:no-underline">
+                                    <div className="flex items-center justify-between w-full">
+                                         {editingSubjectId === subject.id ? (
+                                            <div className="flex items-center gap-2 w-full pr-4">
+                                                <Input value={editingSubjectValue} onChange={(e) => setEditingSubjectValue(e.target.value)} className="h-8" onClick={(e) => e.stopPropagation()} />
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={(e) => { e.stopPropagation(); handleUpdateSubject();}}><Save className="h-4 w-4" /></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={(e) => { e.stopPropagation(); setEditingSubjectId(null);}}><XCircle className="h-4 w-4" /></Button>
                                             </div>
-                                           )}
-                                        </li>
-                                     ))}
-                                </ul>
-                            </ScrollArea>
-                        </div>
-
-                        {/* Units Column */}
-                        <div className="col-span-1 border-r pr-4">
-                            <h4 className="font-semibold mb-2">Units {activeSubject ? `in ${activeSubject.name}` : ''}</h4>
-                            {activeSubject ? (
-                                <>
-                                    <div className="flex gap-2 mb-4">
-                                        <Input placeholder="New unit..." value={newUnit} onChange={e => setNewUnit(e.target.value)} disabled={isAddingUnit} />
-                                        <Button onClick={handleAddUnit} disabled={isAddingUnit} size="sm">{isAddingUnit ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Add'}</Button>
+                                         ) : (
+                                            <>
+                                                <div className="flex items-center gap-4">
+                                                    <BookUser className="h-5 w-5 text-primary" />
+                                                    <span className="font-semibold text-lg">{subject.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 pr-2">
+                                                    <Button size="sm" variant="ghost" onClick={(e) => {e.stopPropagation(); setEditingSubjectId(subject.id); setEditingSubjectValue(subject.name);}}><Pencil className="h-4 w-4" /></Button>
+                                                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={(e) => {e.stopPropagation(); setDeletingSubject(subject);}}><Trash className="h-4 w-4" /></Button>
+                                                </div>
+                                            </>
+                                         )}
                                     </div>
-                                    <ScrollArea className="h-96">
-                                        <Accordion type="single" collapsible className="w-full" onValueChange={unitId => setActiveUnit(activeSubject.units.find(u => u.id === unitId) || null)}>
-                                            {activeSubject.units.map(unit => (
-                                                <AccordionItem value={unit.id} key={unit.id}>
-                                                    <AccordionTrigger className="hover:no-underline">
-                                                      <span className="font-medium">{unit.title}</span>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-4 pt-0 space-y-4">
+                                    <Separator />
+                                    <div className="flex gap-2">
+                                        <Input 
+                                            placeholder="Enter new unit title..." 
+                                            value={newUnitValues[subject.id] || ''} 
+                                            onChange={(e) => setNewUnitValues(prev => ({ ...prev, [subject.id]: e.target.value }))}
+                                            disabled={isAddingUnit === subject.id}
+                                        />
+                                        <Button onClick={() => handleAddUnit(subject.id)} disabled={isAddingUnit === subject.id} size="sm">{isAddingUnit === subject.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <><FolderPlus className="mr-2 h-4 w-4"/> Add Unit</>}</Button>
+                                    </div>
+                                    {subject.units.length > 0 ? (
+                                        <Accordion type="multiple" className="space-y-2">
+                                            {subject.units.map(unit => (
+                                                 <AccordionItem value={unit.id} key={unit.id} className="border rounded-md px-4">
+                                                    <AccordionTrigger className="py-3 hover:no-underline">
+                                                         <div className="flex items-center justify-between w-full">
+                                                             {editingUnitId === unit.id ? (
+                                                                <div className="flex items-center gap-2 w-full pr-4">
+                                                                    <Input value={editingUnitValue} onChange={(e) => setEditingUnitValue(e.target.value)} className="h-8" onClick={(e) => e.stopPropagation()} />
+                                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={(e) => { e.stopPropagation(); handleUpdateUnit(subject.id);}}><Save className="h-4 w-4" /></Button>
+                                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={(e) => { e.stopPropagation(); setEditingUnitId(null);}}><XCircle className="h-4 w-4" /></Button>
+                                                                </div>
+                                                             ) : (
+                                                                <>
+                                                                     <span className="font-medium text-base">{unit.title}</span>
+                                                                    <div className="flex items-center gap-1 pr-2">
+                                                                        <Button size="sm" variant="ghost" onClick={(e) => {e.stopPropagation(); setEditingUnitId(unit.id); setEditingUnitValue(unit.title);}}><Pencil className="h-4 w-4" /></Button>
+                                                                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={(e) => {e.stopPropagation(); setDeletingUnit({unit, subjectId: subject.id});}}><Trash className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                </>
+                                                             )}
+                                                         </div>
                                                     </AccordionTrigger>
-                                                    <AccordionContent>
-                                                      {editingUnit?.id === unit.id ? (
-                                                          <div className="flex w-full items-center gap-2 pb-2">
-                                                              <Input value={editingUnitValue} onChange={(e) => setEditingUnitValue(e.target.value)} className="h-8" />
-                                                              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdateUnit}><Save className="h-4 w-4" /></Button>
-                                                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => setEditingUnit(null)}><XCircle className="h-4 w-4" /></Button>
-                                                          </div>
-                                                      ) : (
-                                                          <div className="flex items-center justify-between pb-2">
-                                                            <p className="text-xs text-muted-foreground">{unit.lessons.length} lesson(s). Select to view them.</p>
-                                                            <div className="flex items-center">
-                                                                <Button size="sm" variant="ghost" onClick={() => { setEditingUnit(unit); setEditingUnitValue(unit.title);}}><Pencil className="h-4 w-4 mr-2" /> Edit</Button>
-                                                                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeletingUnit(unit)}><Trash className="h-4 w-4 mr-2" /> Delete</Button>
-                                                            </div>
-                                                          </div>
-                                                      )}
+                                                    <AccordionContent className="pb-4">
+                                                        <Button className="w-full mb-4" variant="outline" size="sm" onClick={() => setLessonDialogState({ isOpen: true, unit: unit, subjectId: subject.id })}>
+                                                            <FileVideo className="mr-2 h-4 w-4" /> Add New Lesson to this Unit
+                                                        </Button>
+                                                        <ul className="space-y-2">
+                                                            {unit.lessons.map(lesson => (
+                                                                <li key={lesson.id} className="p-2 rounded-md bg-secondary/50 flex items-center justify-between group">
+                                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                                        <Video className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                                        <div className="flex-grow overflow-hidden">
+                                                                            <p className="text-sm truncate font-medium">{lesson.title}</p>
+                                                                            {lesson.duration && (
+                                                                                <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{lesson.duration} min</p>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setLessonDialogState({ isOpen: true, initialData: lesson, unit: unit, subjectId: subject.id })}><Pencil className="h-4 w-4" /></Button>
+                                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeletingLesson({lesson, unitId: unit.id, subjectId: subject.id})}><Trash className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                </li>
+                                                            ))}
+                                                             {unit.lessons.length === 0 && <p className="text-center text-xs text-muted-foreground py-2">No lessons in this unit yet.</p>}
+                                                        </ul>
                                                     </AccordionContent>
-                                                </AccordionItem>
+                                                 </AccordionItem>
                                             ))}
                                         </Accordion>
-                                    </ScrollArea>
-                                </>
-                            ) : <div className="text-center text-muted-foreground pt-16">Select a subject to see its units.</div>}
-                        </div>
-
-                        {/* Lessons Column */}
-                        <div className="col-span-1">
-                             <h4 className="font-semibold mb-2">Lessons {activeUnit ? `in ${activeUnit.title}` : ''}</h4>
-                             {activeUnit ? (
-                                <>
-                                    <Button className="w-full mb-4" onClick={() => setLessonDialogState({ isOpen: true, unit: activeUnit })}>
-                                        <FileVideo className="mr-2" /> Add New Lesson
-                                    </Button>
-                                    <ScrollArea className="h-96">
-                                        <ul className="space-y-2">
-                                            {activeUnit.lessons.map(lesson => (
-                                                <li key={lesson.id} className="p-2 rounded-md bg-secondary/50 flex items-center justify-between group">
-                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                        <Video className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                                        <div className="flex-grow overflow-hidden">
-                                                            <p className="text-sm truncate font-medium">{lesson.title}</p>
-                                                            {lesson.duration && (
-                                                                <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{lesson.duration} min</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setLessonDialogState({ isOpen: true, initialData: lesson, unit: activeUnit })}><Pencil className="h-4 w-4" /></Button>
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeletingLesson(lesson)}><Trash className="h-4 w-4" /></Button>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </ScrollArea>
-                                </>
-                             ) : <div className="text-center text-muted-foreground pt-16">Select a unit to see its lessons.</div>}
-                        </div>
-                    </div>
+                                    ) : (
+                                        <p className="text-center text-sm text-muted-foreground py-4">No units have been added to this subject yet.</p>
+                                    )}
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
                 </CardContent>
             </Card>
         </>
