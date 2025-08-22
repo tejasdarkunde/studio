@@ -72,4 +72,5 @@ export type Course = {
   id: string;
   name: string;
   subjects: Subject[];
+  status?: 'active' | 'coming-soon';
 };

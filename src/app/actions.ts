@@ -643,14 +643,15 @@ async function initializeCourses() {
         const batch = writeBatch(db);
         const diplomaDocRef = doc(coursesCollectionRef, 'diploma');
         const advDiplomaDocRef = doc(coursesCollectionRef, 'advance-diploma');
-        batch.set(diplomaDocRef, { name: 'Diploma', subjects: [] });
-        batch.set(advDiplomaDocRef, { name: 'Advance Diploma', subjects: [] });
+        batch.set(diplomaDocRef, { name: 'Diploma', subjects: [], status: 'active' });
+        batch.set(advDiplomaDocRef, { name: 'Advance Diploma', subjects: [], status: 'active' });
         await batch.commit();
     }
 }
 
 const addCourseSchema = z.object({
   name: z.string().min(2, { message: "Course name must be at least 2 characters." }),
+  status: z.enum(['active', 'coming-soon']),
 });
 
 export async function addCourse(data: z.infer<typeof addCourseSchema>): Promise<{ success: boolean; error?: string }> {
@@ -660,7 +661,7 @@ export async function addCourse(data: z.infer<typeof addCourseSchema>): Promise<
     }
 
     try {
-        const { name } = validatedFields.data;
+        const { name, status } = validatedFields.data;
         const coursesCollection = collection(db, "courses");
 
         // Optional: Check for duplicate course names
@@ -671,7 +672,8 @@ export async function addCourse(data: z.infer<typeof addCourseSchema>): Promise<
         }
 
         await addDoc(coursesCollection, {
-            name: name,
+            name,
+            status,
             subjects: [],
             createdAt: serverTimestamp(),
         });
@@ -704,6 +706,7 @@ export async function getCourses(): Promise<Course[]> {
                 id: courseDoc.id,
                 name: courseData.name,
                 subjects: subjects.sort((a, b) => a.name.localeCompare(b.name)),
+                status: courseData.status || 'active',
             });
         }
         
@@ -736,6 +739,7 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
             id: courseDoc.id,
             name: courseData.name,
             subjects: subjects.sort((a, b) => a.name.localeCompare(b.name)),
+            status: courseData.status || 'active',
         };
     } catch (error) {
         console.error("Error fetching course by ID:", error);
@@ -764,6 +768,29 @@ export async function updateCourseName(data: z.infer<typeof updateCourseNameSche
         return { success: false, error: "Could not update course name." };
     }
 }
+
+const updateCourseStatusSchema = z.object({
+  courseId: z.string().min(1),
+  status: z.enum(['active', 'coming-soon']),
+});
+
+export async function updateCourseStatus(data: z.infer<typeof updateCourseStatusSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = updateCourseStatusSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    try {
+        const { courseId, status } = validatedFields.data;
+        const courseDocRef = doc(db, 'courses', courseId);
+        await updateDoc(courseDocRef, { status: status });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating course status:", error);
+        return { success: false, error: "Could not update course status." };
+    }
+}
+
 
 
 const addSubjectSchema = z.object({

@@ -20,11 +20,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -150,6 +150,17 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
         setIsEditingCourseName(false);
     };
 
+    const handleUpdateStatus = async (status: 'active' | 'coming-soon') => {
+        const result = await updateCourseStatus({ courseId: course.id, status });
+        if (result.success) {
+            toast({ title: "Course Status Updated" });
+            onContentUpdated();
+        } else {
+             toast({ variant: 'destructive', title: 'Error', description: result.error });
+        }
+    };
+
+
     // Subject Handlers
     const handleAddSubject = async () => {
         if (!newSubject.trim()) return;
@@ -263,6 +274,8 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
         setDeletingLesson(null);
     }
 
+    const courseStatus = course.status || 'active';
+
     return (
         <>
             <ConfirmDialog isOpen={!!deletingSubject} onClose={() => setDeletingSubject(null)} onConfirm={handleDeleteSubject} title="Delete Subject?" description={`Permanently delete "${deletingSubject?.name}". All units and lessons inside will also be deleted.`} />
@@ -277,20 +290,36 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
 
             <Card>
                 <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <BookCopy className="h-6 w-6 text-primary" />
-                        {isEditingCourseName ? (
-                            <div className="flex items-center gap-2 w-full">
-                                <Input value={editingCourseNameValue} onChange={(e) => setEditingCourseNameValue(e.target.value)} className="h-9 text-xl font-bold" />
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdateCourseName}><Save className="h-4 w-4" /></Button>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => { setIsEditingCourseName(false); setEditingCourseNameValue(course.name); }}><XCircle className="h-4 w-4" /></Button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <CardTitle>{course.name}</CardTitle>
-                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditingCourseName(true)}><Pencil className="h-4 w-4" /></Button>
-                            </div>
-                        )}
+                    <div className='flex justify-between items-start'>
+                        <div className="flex items-center gap-2">
+                            <BookCopy className="h-6 w-6 text-primary" />
+                            {isEditingCourseName ? (
+                                <div className="flex items-center gap-2 w-full">
+                                    <Input value={editingCourseNameValue} onChange={(e) => setEditingCourseNameValue(e.target.value)} className="h-9 text-xl font-bold" />
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdateCourseName}><Save className="h-4 w-4" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => { setIsEditingCourseName(false); setEditingCourseNameValue(course.name); }}><XCircle className="h-4 w-4" /></Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <CardTitle>{course.name}</CardTitle>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditingCourseName(true)}><Pencil className="h-4 w-4" /></Button>
+                                </div>
+                            )}
+                        </div>
+                        <div className='flex items-center gap-2'>
+                             <Badge variant={courseStatus === 'active' ? 'default' : 'secondary'}>
+                                {courseStatus === 'active' ? 'Active' : 'Coming Soon'}
+                            </Badge>
+                             <Select onValueChange={(value: 'active' | 'coming-soon') => handleUpdateStatus(value)} value={courseStatus}>
+                                <SelectTrigger className='w-[150px] h-8 text-xs'>
+                                    <SelectValue placeholder="Change status"/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active"><div className='flex items-center gap-2'><CircleDot className="text-green-500"/> Active</div></SelectItem>
+                                    <SelectItem value="coming-soon"><div className='flex items-center gap-2'><Circle className="text-orange-500"/> Coming Soon</div></SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                     <CardDescription>Manage the curriculum for the {course.name.toLowerCase()}.</CardDescription>
                 </CardHeader>
@@ -432,6 +461,7 @@ export default function AdminPage() {
   // Course states
   const [isAddCourseOpen, setAddCourseOpen] = useState(false);
   const [newCourseName, setNewCourseName] = useState('');
+  const [newCourseStatus, setNewCourseStatus] = useState<'active' | 'coming-soon'>('active');
   
   // Course Transfer states
   const [sourceCourse, setSourceCourse] = useState('');
@@ -491,13 +521,12 @@ export default function AdminPage() {
         if (participant.organization) {
             organizationSet.add(participant.organization);
         }
-
-        const deniedCourseIds = new Set(participant.deniedCourses || []);
         
         participant.enrolledCourses?.forEach(enrolledCourseName => {
             const course = courses.find(c => c.name.toLowerCase() === enrolledCourseName.toLowerCase());
             
-            if (course && !deniedCourseIds.has(course.id)) {
+            // Only count if course exists and access is not denied
+            if (course && !(participant.deniedCourses || []).includes(course.id)) {
                 if (courseStats[course.name]) {
                     courseStats[course.name].enrollments += 1;
                 }
@@ -507,8 +536,10 @@ export default function AdminPage() {
     });
 
     batches.forEach(batch => {
-        if (courseStats[batch.course]) {
-            courseStats[batch.course].sessions += 1;
+        // Find the course object by name to ensure we're grouping correctly
+        const course = courses.find(c => c.name === batch.course);
+        if (course && courseStats[course.name]) {
+            courseStats[course.name].sessions += 1;
         }
     });
 
@@ -821,11 +852,12 @@ export default function AdminPage() {
           toast({ variant: 'destructive', title: 'Course name required' });
           return;
       }
-      const result = await addCourse({ name: newCourseName });
+      const result = await addCourse({ name: newCourseName, status: newCourseStatus });
       if (result.success) {
           toast({ title: "Course Added", description: `"${newCourseName}" has been created.` });
           fetchAllData();
           setNewCourseName('');
+          setNewCourseStatus('active');
           setAddCourseOpen(false);
       } else {
           toast({ variant: 'destructive', title: 'Error', description: result.error });
@@ -942,11 +974,25 @@ export default function AdminPage() {
           <DialogContent>
               <DialogHeader>
                   <DialogTitle>Add New Course</DialogTitle>
-                  <DialogDescription>Enter a name for the new course.</DialogDescription>
+                  <DialogDescription>Enter a name and set the initial status for the new course.</DialogDescription>
               </DialogHeader>
-              <div className="py-4">
-                  <Label htmlFor="new-course-name">Course Name</Label>
-                  <Input id="new-course-name" value={newCourseName} onChange={(e) => setNewCourseName(e.target.value)} />
+              <div className="py-4 space-y-4">
+                  <div>
+                      <Label htmlFor="new-course-name">Course Name</Label>
+                      <Input id="new-course-name" value={newCourseName} onChange={(e) => setNewCourseName(e.target.value)} />
+                  </div>
+                   <div>
+                      <Label htmlFor="new-course-status">Status</Label>
+                      <Select onValueChange={(value: 'active' | 'coming-soon') => setNewCourseStatus(value)} value={newCourseStatus}>
+                          <SelectTrigger id="new-course-status">
+                              <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="coming-soon">Coming Soon</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
               </div>
               <DialogFooter>
                   <Button variant="outline" onClick={() => setAddCourseOpen(false)}>Cancel</Button>
@@ -1381,4 +1427,3 @@ export default function AdminPage() {
   );
 }
 
-    

@@ -2,7 +2,7 @@
 import { getCourses, getParticipantByIitpNo } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, User, Building, Lock } from 'lucide-react';
+import { ArrowRight, User, Building, Lock, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
@@ -34,7 +34,9 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
 
     // 2. Filter out courses where access is denied
     const deniedCourseIds = new Set(participant.deniedCourses || []);
-    const accessibleCourses = enrolledCourses.filter(course => !deniedCourseIds.has(course.id));
+    const accessibleCourses = enrolledCourses.filter(course => !deniedCourseIds.has(course.id) && course.status === 'active');
+    const comingSoonCourses = enrolledCourses.filter(course => !deniedCourseIds.has(course.id) && course.status === 'coming-soon');
+    const deniedCourses = enrolledCourses.filter(course => deniedCourseIds.has(course.id));
 
 
     return (
@@ -96,20 +98,39 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
                 </div>
             ) : (
                 <div className="text-center text-muted-foreground py-16 border rounded-lg">
-                    <h3 className="text-xl font-semibold text-foreground">No Courses Found</h3>
-                    <p className="mt-2">You are not currently enrolled in any courses with active access.</p>
-                    <p>Please contact an administrator if you believe this is an error.</p>
-                     <Button asChild variant="link" className="mt-4">
-                        <Link href="/">Back to Home</Link>
-                    </Button>
+                    <h3 className="text-xl font-semibold text-foreground">No Active Courses Found</h3>
+                    <p className="mt-2">You are not currently enrolled in any active courses.</p>
+                    <p>Check the "Coming Soon" section below or contact an administrator.</p>
                 </div>
             )}
-             {deniedCourseIds.size > 0 && (
+            
+            {comingSoonCourses.length > 0 && (
+                <div className="mt-12">
+                    <h2 className="text-2xl font-semibold text-primary">Coming Soon</h2>
+                    <p className="text-muted-foreground mt-2">These courses will be available soon. Stay tuned!</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+                         {comingSoonCourses.map(course => (
+                              <Card key={course.id} className="border-dashed">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-muted-foreground"><Clock className="h-5 w-5" />{course.name}</CardTitle>
+                                    <CardDescription>This course is not yet available. Content will be unlocked soon.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground">Contains {course.subjects.length} subjects planned, including: {course.subjects.slice(0,2).map(s => s.name).join(', ')}...</p>
+                                </CardContent>
+                            </Card>
+                         ))}
+                    </div>
+                </div>
+            )}
+
+
+             {deniedCourses.length > 0 && (
                 <div className="mt-12">
                     <h2 className="text-2xl font-semibold text-destructive">Access Denied</h2>
                     <p className="text-muted-foreground mt-2">Access to the following enrolled courses has been revoked by an administrator:</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
-                         {enrolledCourses.filter(c => deniedCourseIds.has(c.id)).map(course => (
+                         {deniedCourses.map(course => (
                               <Card key={course.id} className="border-destructive/50">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 text-destructive"><Lock className="h-5 w-5" />{course.name}</CardTitle>
