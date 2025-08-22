@@ -223,7 +223,7 @@ export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'na
 
 const createBatchSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  course: z.enum(['Diploma', 'Advance Diploma', 'Other']),
+  course: z.any(),
   startDate: z.date(),
   startTime: z.string(),
   endTime: z.string(),
@@ -1147,5 +1147,3 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
-
-    

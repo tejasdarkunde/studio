@@ -476,45 +476,47 @@ export default function AdminPage() {
 
 
   const reportStats = useMemo(() => {
-    // Participant-based stats
-    let totalRegistrations = 0;
-    let diplomaEnrollments = 0;
-    let advanceDiplomaEnrollments = 0;
+    const courseStats: { [courseName: string]: { enrollments: number; sessions: number; } } = {};
+    let totalActiveEnrollments = 0;
     const organizationSet = new Set<string>();
 
-    participants.forEach(participant => {
-      if (participant.organization) {
-        organizationSet.add(participant.organization);
-      }
-      if (participant.enrolledCourses && participant.enrolledCourses.length > 0) {
-        totalRegistrations += participant.enrolledCourses.length;
-        participant.enrolledCourses.forEach(course => {
-          const courseName = course.toLowerCase();
-          if (courseName.includes('advance diploma')) {
-            advanceDiplomaEnrollments++;
-          } else if (courseName.includes('diploma') && !courseName.includes('advance diploma')) {
-            diplomaEnrollments++;
-          }
-        });
-      }
+    courses.forEach(course => {
+        courseStats[course.name] = { enrollments: 0, sessions: 0 };
     });
 
-    // Batch-based stats
-    const totalSessions = batches.length;
-    const diplomaSessions = batches.filter(b => b.course === 'Diploma').length;
-    const advanceDiplomaSessions = batches.filter(b => b.course === 'Advance Diploma').length;
+    participants.forEach(participant => {
+        if (participant.organization) {
+            organizationSet.add(participant.organization);
+        }
+
+        const deniedCourseIds = new Set(participant.deniedCourses || []);
+        
+        participant.enrolledCourses?.forEach(enrolledCourseName => {
+            const course = courses.find(c => c.name.toLowerCase() === enrolledCourseName.toLowerCase());
+            
+            if (course && !deniedCourseIds.has(course.id)) {
+                if (courseStats[course.name]) {
+                    courseStats[course.name].enrollments += 1;
+                }
+                totalActiveEnrollments += 1;
+            }
+        });
+    });
+
+    batches.forEach(batch => {
+        if (courseStats[batch.course]) {
+            courseStats[batch.course].sessions += 1;
+        }
+    });
 
     return {
-      totalRegistrations,
-      diplomaEnrollments,
-      advanceDiplomaEnrollments,
-      totalSessions,
-      diplomaSessions,
-      advanceDiplomaSessions,
-      totalOrganizations: organizationSet.size,
-      totalTrainers: trainers.length,
+        courseStats,
+        totalActiveEnrollments,
+        totalSessions: batches.length,
+        totalOrganizations: organizationSet.size,
+        totalTrainers: trainers.length,
     };
-  }, [participants, batches, trainers]);
+  }, [participants, batches, trainers, courses]);
   
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -562,7 +564,7 @@ export default function AdminPage() {
     setEditingBatch(null);
   };
 
-  const handleCreateBatch = async (details: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
+  const handleCreateBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
     if (!details.startDate) {
         toast({
             variant: "destructive",
@@ -889,6 +891,7 @@ export default function AdminPage() {
                 trainerId: editingBatch.trainerId,
             } : undefined}
             trainers={trainers}
+            courses={courses}
         />
       )}
        <AddParticipantDialog 
@@ -951,73 +954,63 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium text-primary">Students</h3>
+                  <h3 className="text-lg font-medium text-primary">Student Enrollments</h3>
                   <Separator className="my-2" />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                      <Card className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Card className="p-4 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <Users className="h-8 w-8 text-primary" />
-                          <p className="text-2xl font-bold">{reportStats.totalRegistrations}</p>
-                          <p className="text-sm text-muted-foreground">Total Enrollments</p>
+                          <p className="text-2xl font-bold">{reportStats.totalActiveEnrollments}</p>
+                          <p className="text-sm text-muted-foreground">Total Active Enrollments</p>
                         </div>
                       </Card>
-                      <Card className="p-4">
-                        <div className="flex flex-col items-center gap-2">
-                          <BookUser className="h-8 w-8 text-primary" />
-                          <p className="text-2xl font-bold">{reportStats.diplomaEnrollments}</p>
-                          <p className="text-sm text-muted-foreground">Diploma Enrollments</p>
-                        </div>
-                      </Card>
-                      <Card className="p-4">
-                        <div className="flex flex-col items-center gap-2">
-                          <BookUp className="h-8 w-8 text-primary" />
-                          <p className="text-2xl font-bold">{reportStats.advanceDiplomaEnrollments}</p>
-                          <p className="text-sm text-muted-foreground">Adv. Diploma Enrollments</p>
-                        </div>
-                      </Card>
+                       {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
+                          <Card key={courseName} className="p-4 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                              <BookUser className="h-8 w-8 text-primary" />
+                              <p className="text-2xl font-bold">{stats.enrollments}</p>
+                              <p className="text-sm text-muted-foreground">{courseName} Students</p>
+                            </div>
+                          </Card>
+                        ))}
                   </div>
                 </div>
 
                  <div>
                   <h3 className="text-lg font-medium text-primary">Training Sessions</h3>
                   <Separator className="my-2" />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <Card className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card className="p-4 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Presentation className="h-8 w-8 text-primary" />
                         <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
                         <p className="text-sm text-muted-foreground">Total Sessions</p>
                       </div>
                     </Card>
-                    <Card className="p-4">
-                      <div className="flex flex-col items-center gap-2">
-                        <School className="h-8 w-8 text-primary" />
-                        <p className="text-2xl font-bold">{reportStats.diplomaSessions}</p>
-                        <p className="text-sm text-muted-foreground">Diploma Sessions</p>
-                      </div>
-                    </Card>
-                    <Card className="p-4">
-                      <div className="flex flex-col items-center gap-2">
-                        <BookUp className="h-8 w-8 text-primary" />
-                        <p className="text-2xl font-bold">{reportStats.advanceDiplomaSessions}</p>
-                        <p className="text-sm text-muted-foreground">Adv. Diploma Sessions</p>
-                      </div>
-                    </Card>
+                    {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
+                        <Card key={courseName} className="p-4 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                                <School className="h-8 w-8 text-primary" />
+                                <p className="text-2xl font-bold">{stats.sessions}</p>
+                                <p className="text-sm text-muted-foreground">{courseName} Sessions</p>
+                            </div>
+                        </Card>
+                    ))}
                   </div>
                 </div>
                 
                  <div>
                   <h3 className="text-lg font-medium text-primary">Other</h3>
                   <Separator className="my-2" />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <Card className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card className="p-4 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Building className="h-8 w-8 text-primary" />
                         <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
                         <p className="text-sm text-muted-foreground">Total Organizations</p>
                       </div>
                     </Card>
-                    <Card className="p-4">
+                    <Card className="p-4 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <UserCog className="h-8 w-8 text-primary" />
                         <p className="text-2xl font-bold">{reportStats.totalTrainers}</p>

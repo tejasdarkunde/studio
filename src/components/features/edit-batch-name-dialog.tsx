@@ -29,15 +29,16 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import type { Trainer, Batch } from '@/lib/types';
+import type { Trainer, Batch, Course } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => void;
+  onSave: (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => void;
   initialData?: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: string; startTime: string; endTime: string; trainerId?: string; };
   trainers: Trainer[];
+  courses: Course[];
 };
 
 const generateTimeOptions = () => {
@@ -58,11 +59,11 @@ const generateTimeOptions = () => {
     return options;
 }
 const timeOptions = generateTimeOptions();
-const courseOptions: Batch['course'][] = ['Diploma', 'Advance Diploma', 'Other'];
 
-export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers }: EditBatchDialogProps) {
+
+export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers, courses }: EditBatchDialogProps) {
   const [name, setName] = useState('');
-  const [course, setCourse] = useState<Batch['course'] | ''>('');
+  const [course, setCourse] = useState<string | ''>('');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -118,16 +119,17 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
             <Label htmlFor="course-select" className="text-right">
               Course
             </Label>
-             <Select onValueChange={(value) => setCourse(value as Batch['course'])} value={course}>
+             <Select onValueChange={(value) => setCourse(value)} value={course}>
                 <SelectTrigger id="course-select" className="col-span-3">
                     <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
                 <SelectContent>
-                    {courseOptions.map(courseOpt => (
-                        <SelectItem key={courseOpt} value={courseOpt}>
-                            {courseOpt}
+                    {courses.map(courseOpt => (
+                        <SelectItem key={courseOpt.id} value={courseOpt.name}>
+                            {courseOpt.name}
                         </SelectItem>
                     ))}
+                     <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
             </Select>
           </div>
