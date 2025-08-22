@@ -514,13 +514,22 @@ export async function transferStudents(data: z.infer<typeof transferStudentsSche
 
         snapshot.docs.forEach(doc => {
             const participant = doc.data() as Participant;
-            // Add the new course only if they aren't already enrolled
-            if (!participant.enrolledCourses?.includes(destinationCourseName)) {
+            const alreadyInDest = participant.enrolledCourses?.includes(destinationCourseName);
+
+            // Update only if they are not already in the destination course
+            if (!alreadyInDest) {
                  batch.update(doc.ref, {
                     enrolledCourses: arrayUnion(destinationCourseName)
                 });
-                transferredCount++;
             }
+
+            // Remove the source course regardless
+            batch.update(doc.ref, {
+                enrolledCourses: arrayRemove(sourceCourseName)
+            });
+
+            // We count a transfer if the source course existed, even if they were already in the destination
+            transferredCount++;
         });
 
         await batch.commit();
@@ -1138,3 +1147,5 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
+
+    
