@@ -39,6 +39,8 @@ type EditBatchDialogProps = {
   initialData?: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: string; startTime: string; endTime: string; trainerId?: string; };
   trainers: Trainer[];
   courses: Course[];
+  userRole: 'superadmin' | 'trainer' | null;
+  currentTrainerId?: string | null;
 };
 
 const generateTimeOptions = () => {
@@ -61,7 +63,7 @@ const generateTimeOptions = () => {
 const timeOptions = generateTimeOptions();
 
 
-export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers, courses }: EditBatchDialogProps) {
+export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers, courses, userRole, currentTrainerId }: EditBatchDialogProps) {
   const [name, setName] = useState('');
   const [course, setCourse] = useState<string | ''>('');
   const [startDate, setStartDate] = useState<Date | undefined>();
@@ -71,13 +73,21 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
   const { toast } = useToast();
 
   useEffect(() => {
-    setName(initialData?.name || '');
-    setCourse(initialData?.course || '');
-    setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
-    setStartTime(initialData?.startTime || '');
-    setEndTime(initialData?.endTime || '');
-    setTrainerId(initialData?.trainerId || '');
-  }, [initialData, isOpen]);
+    if (isOpen) {
+        setName(initialData?.name || '');
+        setCourse(initialData?.course || '');
+        setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
+        setStartTime(initialData?.startTime || '');
+        setEndTime(initialData?.endTime || '');
+        
+        if (userRole === 'trainer' && !initialData) {
+            // For a trainer creating a new batch, lock it to their ID
+            setTrainerId(currentTrainerId || '');
+        } else {
+            setTrainerId(initialData?.trainerId || '');
+        }
+    }
+  }, [initialData, isOpen, userRole, currentTrainerId]);
 
   const handleSave = () => {
     if (!name.trim() || !course || !startTime || !endTime || !trainerId) {
@@ -94,6 +104,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
 
   const dialogTitle = initialData ? 'Edit Batch' : 'Create New Batch';
   const dialogDescription = initialData ? "Change the details for your batch." : "Fill in the details for the new training batch.";
+  const isTrainerCreating = userRole === 'trainer' && !initialData;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) onClose()}}>
@@ -198,7 +209,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
             <Label htmlFor="trainer-select" className="text-right">
               Trainer
             </Label>
-             <Select onValueChange={setTrainerId} value={trainerId}>
+             <Select onValueChange={setTrainerId} value={trainerId} disabled={isTrainerCreating}>
                 <SelectTrigger id="trainer-select" className="col-span-3">
                     <SelectValue placeholder="Select a trainer" />
                 </SelectTrigger>

@@ -562,13 +562,16 @@ export default function AdminPage() {
 
   const reportStats = useMemo(() => {
     const courseStats: { [courseName: string]: { enrollments: number; sessions: number; } } = {};
+    
+    courses.forEach(course => {
+        if(course.status === 'active') {
+            courseStats[course.name] = { enrollments: 0, sessions: 0 };
+        }
+    });
+
     let totalActiveEnrollments = 0;
     const organizationSet = new Set<string>();
     
-    courses.forEach(course => {
-        courseStats[course.name] = { enrollments: 0, sessions: 0 };
-    });
-
     participants.forEach(participant => {
         if (participant.organization) {
             organizationSet.add(participant.organization);
@@ -581,10 +584,21 @@ export default function AdminPage() {
                 if (courseStats[course.name]) {
                     courseStats[course.name].enrollments += 1;
                 }
-                totalActiveEnrollments += 1;
             }
         });
     });
+
+    const activeEnrollments = new Set<string>();
+    participants.forEach(p => {
+        p.enrolledCourses?.forEach(enrolledCourseName => {
+            const course = courses.find(c => c.name.toLowerCase() === enrolledCourseName.toLowerCase());
+             if (course && course.status === 'active' && !(p.deniedCourses || []).includes(course.id)) {
+                activeEnrollments.add(`${p.id}-${course.id}`);
+            }
+        })
+    });
+    totalActiveEnrollments = activeEnrollments.size;
+
 
     batches.forEach(batch => {
         const course = courses.find(c => c.name === batch.course);
@@ -618,7 +632,7 @@ export default function AdminPage() {
     setDeletingBatch(batch);
   };
   
-  const handleSaveBatch = async (details: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
+  const handleSaveBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
     if (!editingBatch) return;
 
     const result = await updateBatch(editingBatch.id, {
@@ -995,6 +1009,8 @@ export default function AdminPage() {
             } : undefined}
             trainers={trainers}
             courses={courses}
+            userRole={userRole}
+            currentTrainerId={trainerId}
         />
       )}
        <AddParticipantDialog 
@@ -1164,7 +1180,7 @@ export default function AdminPage() {
                     <CardTitle>Training Batches</CardTitle>
                     <CardDescription>View and manage all training batches and their registrations.</CardDescription>
                   </div>
-                  {userRole === 'superadmin' && (
+                  {(userRole === 'superadmin' || userRole === 'trainer') && (
                     <Button onClick={() => setCreateDialogOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Create New Batch
@@ -1221,7 +1237,7 @@ export default function AdminPage() {
                   ) : (
                     <div className="text-center py-12 text-muted-foreground">
                       <p>No batches found.</p>
-                      {userRole === 'superadmin' && <p>Click "Create New Batch" to get started.</p>}
+                      {(userRole === 'superadmin' || userRole === 'trainer') && <p>Click "Create New Batch" to get started.</p>}
                     </div>
                   )}
                 </CardContent>
@@ -1359,7 +1375,7 @@ export default function AdminPage() {
                                             </div>
                                             <div className="space-y-2 col-span-1 md:col-span-2">
                                                 <Label htmlFor="edit-courses">Enrolled Courses (comma-separated)</Label>
-                                                <Textarea 
+                                                <Input
                                                     id="edit-courses"
                                                     value={Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses.join(', ') : editFormData.enrolledCourses}
                                                     onChange={e => setEditFormData({...editFormData, enrolledCourses: e.target.value.split(',').map(c => c.trim())})}
