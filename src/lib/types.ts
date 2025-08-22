@@ -69,6 +69,6 @@ export type Subject = {
 
 export type Course = {
   id: string;
-  name: 'Diploma' | 'Advance Diploma';
+  name: string;
   subjects: Subject[];
 };

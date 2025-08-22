@@ -652,6 +652,28 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
     }
 }
 
+const updateCourseNameSchema = z.object({
+  courseId: z.string().min(1),
+  newName: z.string().min(2, { message: "Course name must be at least 2 characters." }),
+});
+
+export async function updateCourseName(data: z.infer<typeof updateCourseNameSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = updateCourseNameSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    try {
+        const { courseId, newName } = validatedFields.data;
+        const courseDocRef = doc(db, 'courses', courseId);
+        await updateDoc(courseDocRef, { name: newName });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating course name:", error);
+        return { success: false, error: "Could not update course name." };
+    }
+}
+
 
 const addSubjectSchema = z.object({
   courseId: z.string().min(1),

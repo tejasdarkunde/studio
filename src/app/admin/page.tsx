@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -23,7 +24,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson } from '@/app/actions';
+import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -108,6 +109,10 @@ const ManageLessonDialog = ({
 }
 
 const CourseContentManager = ({ course, onContentUpdated }: { course: Course; onContentUpdated: () => void; }) => {
+    // Course states
+    const [isEditingCourseName, setIsEditingCourseName] = useState(false);
+    const [editingCourseNameValue, setEditingCourseNameValue] = useState(course.name);
+    
     // Subject states
     const [newSubject, setNewSubject] = useState('');
     const [isAddingSubject, setIsAddingSubject] = useState(false);
@@ -127,6 +132,23 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     const [deletingLesson, setDeletingLesson] = useState<{lesson: Lesson, unitId: string, subjectId: string} | null>(null);
 
     const { toast } = useToast();
+
+    // Course Handlers
+    const handleUpdateCourseName = async () => {
+        if (editingCourseNameValue.trim() === course.name || !editingCourseNameValue.trim()) {
+            setIsEditingCourseName(false);
+            return;
+        }
+        const result = await updateCourseName({ courseId: course.id, newName: editingCourseNameValue });
+        if (result.success) {
+            toast({ title: 'Course Name Updated' });
+            onContentUpdated();
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error });
+            setEditingCourseNameValue(course.name); // Revert on error
+        }
+        setIsEditingCourseName(false);
+    };
 
     // Subject Handlers
     const handleAddSubject = async () => {
@@ -255,7 +277,21 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><BookCopy /> {course.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                        <BookCopy className="h-6 w-6 text-primary" />
+                        {isEditingCourseName ? (
+                            <div className="flex items-center gap-2 w-full">
+                                <Input value={editingCourseNameValue} onChange={(e) => setEditingCourseNameValue(e.target.value)} className="h-9 text-xl font-bold" />
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdateCourseName}><Save className="h-4 w-4" /></Button>
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => { setIsEditingCourseName(false); setEditingCourseNameValue(course.name); }}><XCircle className="h-4 w-4" /></Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <CardTitle>{course.name}</CardTitle>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditingCourseName(true)}><Pencil className="h-4 w-4" /></Button>
+                            </div>
+                        )}
+                    </div>
                     <CardDescription>Manage the curriculum for the {course.name.toLowerCase()}.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
