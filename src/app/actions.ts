@@ -651,7 +651,7 @@ async function initializeCourses() {
 
 const addCourseSchema = z.object({
   name: z.string().min(2, { message: "Course name must be at least 2 characters." }),
-  status: z.enum(['active', 'coming-soon']),
+  status: z.enum(['active', 'coming-soon', 'deactivated']),
 });
 
 export async function addCourse(data: z.infer<typeof addCourseSchema>): Promise<{ success: boolean; error?: string }> {
@@ -771,7 +771,7 @@ export async function updateCourseName(data: z.infer<typeof updateCourseNameSche
 
 const updateCourseStatusSchema = z.object({
   courseId: z.string().min(1),
-  status: z.enum(['active', 'coming-soon']),
+  status: z.enum(['active', 'coming-soon', 'deactivated']),
 });
 
 export async function updateCourseStatus(data: z.infer<typeof updateCourseStatusSchema>): Promise<{ success: boolean; error?: string }> {
@@ -1201,5 +1201,3 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
-
-    

@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -150,7 +150,7 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
         setIsEditingCourseName(false);
     };
 
-    const handleUpdateStatus = async (status: 'active' | 'coming-soon') => {
+    const handleUpdateStatus = async (status: 'active' | 'coming-soon' | 'deactivated') => {
         const result = await updateCourseStatus({ courseId: course.id, status });
         if (result.success) {
             toast({ title: "Course Status Updated" });
@@ -275,6 +275,18 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     }
 
     const courseStatus = course.status || 'active';
+    
+    const statusBadgeVariant = {
+        'active': 'default',
+        'coming-soon': 'secondary',
+        'deactivated': 'destructive',
+    } as const;
+
+    const statusText = {
+        'active': 'Active',
+        'coming-soon': 'Coming Soon',
+        'deactivated': 'Deactivated'
+    };
 
     return (
         <>
@@ -307,16 +319,17 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                             )}
                         </div>
                         <div className='flex items-center gap-2'>
-                             <Badge variant={courseStatus === 'active' ? 'default' : 'secondary'}>
-                                {courseStatus === 'active' ? 'Active' : 'Coming Soon'}
+                             <Badge variant={statusBadgeVariant[courseStatus]}>
+                                {statusText[courseStatus]}
                             </Badge>
-                             <Select onValueChange={(value: 'active' | 'coming-soon') => handleUpdateStatus(value)} value={courseStatus}>
+                             <Select onValueChange={(value: 'active' | 'coming-soon' | 'deactivated') => handleUpdateStatus(value)} value={courseStatus}>
                                 <SelectTrigger className='w-[150px] h-8 text-xs'>
                                     <SelectValue placeholder="Change status"/>
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="active"><div className='flex items-center gap-2'><CircleDot className="text-green-500"/> Active</div></SelectItem>
                                     <SelectItem value="coming-soon"><div className='flex items-center gap-2'><Circle className="text-orange-500"/> Coming Soon</div></SelectItem>
+                                    <SelectItem value="deactivated"><div className='flex items-center gap-2'><CircleSlash className="text-red-500"/> Deactivated</div></SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -461,7 +474,7 @@ export default function AdminPage() {
   // Course states
   const [isAddCourseOpen, setAddCourseOpen] = useState(false);
   const [newCourseName, setNewCourseName] = useState('');
-  const [newCourseStatus, setNewCourseStatus] = useState<'active' | 'coming-soon'>('active');
+  const [newCourseStatus, setNewCourseStatus] = useState<'active' | 'coming-soon' | 'deactivated'>('active');
   
   // Course Transfer states
   const [sourceCourse, setSourceCourse] = useState('');
@@ -512,8 +525,10 @@ export default function AdminPage() {
     const courseStats: { [courseName: string]: { enrollments: number; sessions: number; } } = {};
     let totalActiveEnrollments = 0;
     const organizationSet = new Set<string>();
+    
+    const activeCourses = courses.filter(c => c.status === 'active');
 
-    courses.forEach(course => {
+    activeCourses.forEach(course => {
         courseStats[course.name] = { enrollments: 0, sessions: 0 };
     });
 
@@ -523,7 +538,7 @@ export default function AdminPage() {
         }
         
         participant.enrolledCourses?.forEach(enrolledCourseName => {
-            const course = courses.find(c => c.name.toLowerCase() === enrolledCourseName.toLowerCase());
+            const course = activeCourses.find(c => c.name.toLowerCase() === enrolledCourseName.toLowerCase());
             
             // Only count if course exists and access is not denied
             if (course && !(participant.deniedCourses || []).includes(course.id)) {
@@ -983,13 +998,14 @@ export default function AdminPage() {
                   </div>
                    <div>
                       <Label htmlFor="new-course-status">Status</Label>
-                      <Select onValueChange={(value: 'active' | 'coming-soon') => setNewCourseStatus(value)} value={newCourseStatus}>
+                      <Select onValueChange={(value: 'active' | 'coming-soon' | 'deactivated') => setNewCourseStatus(value)} value={newCourseStatus}>
                           <SelectTrigger id="new-course-status">
                               <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                               <SelectItem value="active">Active</SelectItem>
                               <SelectItem value="coming-soon">Coming Soon</SelectItem>
+                              <SelectItem value="deactivated">Deactivated</SelectItem>
                           </SelectContent>
                       </Select>
                   </div>
@@ -1426,4 +1442,3 @@ export default function AdminPage() {
     </>
   );
 }
-

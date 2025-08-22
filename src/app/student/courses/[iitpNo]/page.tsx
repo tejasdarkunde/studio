@@ -147,5 +147,3 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
         </main>
     );
 }
-
-    
