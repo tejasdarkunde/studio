@@ -747,6 +747,27 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
     }
 }
 
+const deleteCourseSchema = z.object({
+    courseId: z.string().min(1),
+});
+
+export async function deleteCourse(data: z.infer<typeof deleteCourseSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = deleteCourseSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    try {
+        const { courseId } = validatedFields.data;
+        const courseDocRef = doc(db, 'courses', courseId);
+        await deleteDoc(courseDocRef);
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting course:", error);
+        return { success: false, error: "Could not delete course." };
+    }
+}
+
 const updateCourseNameSchema = z.object({
   courseId: z.string().min(1),
   newName: z.string().min(2, { message: "Course name must be at least 2 characters." }),

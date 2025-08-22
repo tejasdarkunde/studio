@@ -24,7 +24,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -112,7 +112,8 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     // Course states
     const [isEditingCourseName, setIsEditingCourseName] = useState(false);
     const [editingCourseNameValue, setEditingCourseNameValue] = useState(course.name);
-    
+    const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
+
     // Subject states
     const [newSubject, setNewSubject] = useState('');
     const [isAddingSubject, setIsAddingSubject] = useState(false);
@@ -148,6 +149,18 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
             setEditingCourseNameValue(course.name); // Revert on error
         }
         setIsEditingCourseName(false);
+    };
+
+    const handleDeleteCourse = async () => {
+        if (!deletingCourse) return;
+        const result = await deleteCourse({ courseId: deletingCourse.id });
+        if (result.success) {
+            toast({ title: 'Course Deleted' });
+            onContentUpdated(); // This will refresh the list, removing the deleted course
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error });
+        }
+        setDeletingCourse(null);
     };
 
     const handleUpdateStatus = async (status: 'active' | 'coming-soon' | 'deactivated') => {
@@ -290,6 +303,7 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
 
     return (
         <>
+            <ConfirmDialog isOpen={!!deletingCourse} onClose={() => setDeletingCourse(null)} onConfirm={handleDeleteCourse} title="Delete Course?" description={`Permanently delete "${deletingCourse?.name}". This action cannot be undone.`} />
             <ConfirmDialog isOpen={!!deletingSubject} onClose={() => setDeletingSubject(null)} onConfirm={handleDeleteSubject} title="Delete Subject?" description={`Permanently delete "${deletingSubject?.name}". All units and lessons inside will also be deleted.`} />
             <ConfirmDialog isOpen={!!deletingUnit} onClose={() => setDeletingUnit(null)} onConfirm={handleDeleteUnit} title="Delete Unit?" description={`Permanently delete "${deletingUnit?.unit.title}". All lessons inside will also be deleted.`} />
             <ConfirmDialog isOpen={!!deletingLesson} onClose={() => setDeletingLesson(null)} onConfirm={handleDeleteLesson} title="Delete Lesson?" description={`Permanently delete the lesson "${deletingLesson?.lesson.title}".`} />
@@ -334,7 +348,14 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                             </Select>
                         </div>
                     </div>
-                    <CardDescription>Manage the curriculum for the {course.name.toLowerCase()}.</CardDescription>
+                    <CardDescription>
+                        <div className="flex justify-between items-center">
+                            <span>Manage the curriculum for the {course.name.toLowerCase()}.</span>
+                            <Button variant="destructive" size="sm" onClick={() => setDeletingCourse(course)}>
+                                <Trash className="mr-2 h-4 w-4"/> Delete Course
+                            </Button>
+                        </div>
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex gap-2">
@@ -526,9 +547,8 @@ export default function AdminPage() {
     let totalActiveEnrollments = 0;
     const organizationSet = new Set<string>();
     
-    const activeCourses = courses.filter(c => c.status === 'active');
-
-    activeCourses.forEach(course => {
+    // Initialize stats for all courses, not just active ones to handle session counts correctly
+    courses.forEach(course => {
         courseStats[course.name] = { enrollments: 0, sessions: 0 };
     });
 
@@ -538,10 +558,10 @@ export default function AdminPage() {
         }
         
         participant.enrolledCourses?.forEach(enrolledCourseName => {
-            const course = activeCourses.find(c => c.name.toLowerCase() === enrolledCourseName.toLowerCase());
+            const course = courses.find(c => c.name.toLowerCase() === enrolledCourseName.toLowerCase());
             
-            // Only count if course exists and access is not denied
-            if (course && !(participant.deniedCourses || []).includes(course.id)) {
+            // Only count enrollment if the course is active and access is not denied for the participant
+            if (course && course.status === 'active' && !(participant.deniedCourses || []).includes(course.id)) {
                 if (courseStats[course.name]) {
                     courseStats[course.name].enrollments += 1;
                 }
@@ -557,9 +577,18 @@ export default function AdminPage() {
             courseStats[course.name].sessions += 1;
         }
     });
+    
+    // Filter out courses from the final stats object that have zero enrollments AND zero sessions
+    const activeCourseStats = Object.entries(courseStats)
+      .filter(([_, stats]) => stats.enrollments > 0 || stats.sessions > 0)
+      .reduce((acc, [name, stats]) => {
+          acc[name] = stats;
+          return acc;
+      }, {} as typeof courseStats);
+
 
     return {
-        courseStats,
+        courseStats: activeCourseStats,
         totalActiveEnrollments,
         totalSessions: batches.length,
         totalOrganizations: organizationSet.size,
@@ -1062,13 +1091,15 @@ export default function AdminPage() {
                         </div>
                       </Card>
                        {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
-                          <Card key={courseName} className="p-4 text-center">
-                            <div className="flex flex-col items-center gap-2">
-                              <BookUser className="h-8 w-8 text-primary" />
-                              <p className="text-2xl font-bold">{stats.enrollments}</p>
-                              <p className="text-sm text-muted-foreground">{courseName} Students</p>
-                            </div>
-                          </Card>
+                          stats.enrollments > 0 && (
+                            <Card key={courseName} className="p-4 text-center">
+                                <div className="flex flex-col items-center gap-2">
+                                <BookUser className="h-8 w-8 text-primary" />
+                                <p className="text-2xl font-bold">{stats.enrollments}</p>
+                                <p className="text-sm text-muted-foreground">{courseName} Students</p>
+                                </div>
+                            </Card>
+                          )
                         ))}
                   </div>
                 </div>
@@ -1085,13 +1116,15 @@ export default function AdminPage() {
                       </div>
                     </Card>
                     {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
-                        <Card key={courseName} className="p-4 text-center">
-                            <div className="flex flex-col items-center gap-2">
-                                <School className="h-8 w-8 text-primary" />
-                                <p className="text-2xl font-bold">{stats.sessions}</p>
-                                <p className="text-sm text-muted-foreground">{courseName} Sessions</p>
-                            </div>
-                        </Card>
+                         stats.sessions > 0 && (
+                            <Card key={courseName} className="p-4 text-center">
+                                <div className="flex flex-col items-center gap-2">
+                                    <School className="h-8 w-8 text-primary" />
+                                    <p className="text-2xl font-bold">{stats.sessions}</p>
+                                    <p className="text-sm text-muted-foreground">{courseName} Sessions</p>
+                                </div>
+                            </Card>
+                         )
                     ))}
                   </div>
                 </div>
