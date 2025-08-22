@@ -20,10 +20,17 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
     
     const { username, password } = validatedFields.data;
 
-    // 1. Check for Superadmin
-    if (username === '7020333927' && password === '11082000') {
+    // 1. Check for Superadmin using Environment Variables
+    const superadminUsername = process.env.SUPERADMIN_USERNAME;
+    const superadminPassword = process.env.SUPERADMIN_PASSWORD;
+
+    if (!superadminUsername || !superadminPassword) {
+        console.error("Superadmin credentials are not set in environment variables.");
+        // Fall through to trainer check, but don't expose this error to the client
+    } else if (username === superadminUsername && password === superadminPassword) {
         return { success: true, role: 'superadmin' };
     }
+
 
     // 2. Check for Trainer
     try {
@@ -1302,3 +1309,5 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
+
+    
