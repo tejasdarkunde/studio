@@ -52,39 +52,51 @@ const ManageLessonDialog = ({
     const [title, setTitle] = useState('');
     const [videoUrl, setVideoUrl] = useState('');
     const [duration, setDuration] = useState('');
+    const [description, setDescription] = useState('');
+    const [documentUrl, setDocumentUrl] = useState('');
 
     useEffect(() => {
         if(isOpen) {
             setTitle(initialData?.title || '');
             setVideoUrl(initialData?.videoUrl || '');
             setDuration(initialData?.duration?.toString() || '');
+            setDescription(initialData?.description || '');
+            setDocumentUrl(initialData?.documentUrl || '');
         }
     }, [isOpen, initialData])
 
     const handleSave = () => {
         const durationNumber = duration ? parseInt(duration, 10) : undefined;
-        onSave({ title, videoUrl, duration: durationNumber });
+        onSave({ title, videoUrl, duration: durationNumber, description, documentUrl });
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[520px]">
                 <DialogHeader>
                     <DialogTitle>{initialData ? 'Edit Lesson' : 'Add New Lesson'}</DialogTitle>
                     <DialogDescription>Fill in the details for this lesson.</DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                     <div className="space-y-2">
-                        <Label htmlFor="lesson-title">Lesson Title</Label>
+                        <Label htmlFor="lesson-title">Lesson Title *</Label>
                         <Input id="lesson-title" value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="lesson-url">Video URL (YouTube, Vimeo, etc.)</Label>
+                        <Label htmlFor="lesson-url">Video URL * (YouTube, Vimeo, etc.)</Label>
                         <Input id="lesson-url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="lesson-duration">Duration (minutes)</Label>
                         <Input id="lesson-duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g., 45" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="lesson-desc">Description</Label>
+                        <Textarea id="lesson-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short description, key points, or reference links..." />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="lesson-doc-url">Document URL (Optional)</Label>
+                        <Input id="lesson-doc-url" value={documentUrl} onChange={(e) => setDocumentUrl(e.target.value)} placeholder="e.g., link to a Google Drive PPT" />
                     </div>
                 </div>
                 <DialogFooter>
@@ -353,7 +365,7 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                                                     <div className="flex items-center gap-2 overflow-hidden">
                                                         <Video className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                                         <div className="flex-grow overflow-hidden">
-                                                            <p className="text-sm truncate">{lesson.title}</p>
+                                                            <p className="text-sm truncate font-medium">{lesson.title}</p>
                                                             {lesson.duration && (
                                                                 <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{lesson.duration} min</p>
                                                             )}

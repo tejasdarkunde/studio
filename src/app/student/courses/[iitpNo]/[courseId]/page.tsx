@@ -6,14 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock } from 'lucide-react';
+import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Course, Lesson, Participant } from '@/lib/types';
 import { useEffect, useState, useTransition } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { VideoPlayer } from '@/components/features/video-player';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
 
 const CourseContentPageClient = () => {
@@ -74,7 +76,11 @@ const CourseContentPageClient = () => {
                     description: "Lesson marked as complete."
                 });
                 // Re-fetch participant data to update UI
-                fetchParticipantData();
+                const updatedParticipant = await fetchParticipantData();
+                // Close dialog if the completed lesson was the selected one
+                if (selectedLesson && updatedParticipant?.completedLessons?.includes(selectedLesson.id)) {
+                    // Do nothing, let user see the completed state in dialog
+                }
             } else {
                 toast({
                     variant: 'destructive',
@@ -108,6 +114,7 @@ const CourseContentPageClient = () => {
     }
 
     const completedLessonsSet = new Set(participant.completedLessons || []);
+    const isLessonCompleted = selectedLesson ? completedLessonsSet.has(selectedLesson.id) : false;
 
     return (
         <>
@@ -115,10 +122,50 @@ const CourseContentPageClient = () => {
                 <DialogContent className="max-w-4xl h-auto">
                     <DialogHeader>
                         <DialogTitle>{selectedLesson?.title}</DialogTitle>
+                         {selectedLesson?.duration && (
+                            <DialogDescription className="flex items-center gap-1"><Clock className="h-4 w-4" /> {selectedLesson.duration} min</DialogDescription>
+                        )}
                     </DialogHeader>
-                    {selectedLesson?.videoUrl && (
-                       <VideoPlayer url={selectedLesson.videoUrl} />
-                    )}
+                    <div className="grid gap-4">
+                        {selectedLesson?.videoUrl && (
+                           <VideoPlayer url={selectedLesson.videoUrl} />
+                        )}
+                        {(selectedLesson?.description || selectedLesson?.documentUrl) && (
+                            <div className="p-4 bg-secondary/50 rounded-md max-h-48">
+                                <ScrollArea className="h-full">
+                                    {selectedLesson.description && (
+                                        <>
+                                            <h4 className="font-semibold mb-2 flex items-center gap-2"><FileText className="h-4 w-4"/> Lesson Details</h4>
+                                            <p className="text-sm whitespace-pre-wrap">{selectedLesson.description}</p>
+                                        </>
+                                    )}
+                                </ScrollArea>
+                            </div>
+                        )}
+                    </div>
+                     <DialogFooter className="sm:justify-between items-center">
+                        <div>
+                        {selectedLesson?.documentUrl && (
+                            <Button asChild variant="outline">
+                                <Link href={selectedLesson.documentUrl} target="_blank" download>
+                                    <Download className="mr-2"/> Download Document
+                                </Link>
+                            </Button>
+                        )}
+                        </div>
+                        <div>
+                        {isLessonCompleted ? (
+                             <div className="flex items-center gap-2 text-green-600 font-semibold text-sm pr-4">
+                                <CheckCircle2 className="h-5 w-5" />
+                                <span>Completed</span>
+                            </div>
+                        ) : (
+                             <Button onClick={() => selectedLesson && handleMarkAsComplete(selectedLesson.id)} disabled={isPending}>
+                                {isPending ? 'Saving...' : 'Mark as Complete'}
+                            </Button>
+                        )}
+                        </div>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
@@ -164,34 +211,29 @@ const CourseContentPageClient = () => {
                                                     <AccordionContent className="pb-0">
                                                         <ul className="space-y-3 pt-2">
                                                             {unit.lessons.map(lesson => (
-                                                                <li key={lesson.id} className="flex items-center justify-between p-3 rounded-md bg-background hover:bg-secondary/50 transition-colors">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Video className="h-5 w-5 text-muted-foreground" />
-                                                                        <div className="flex flex-col">
-                                                                            <span className="text-base">{lesson.title}</span>
-                                                                            {lesson.duration && (
-                                                                                <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration} min</span>
-                                                                            )}
+                                                                <li key={lesson.id}>
+                                                                     <button 
+                                                                        className="w-full flex items-center justify-between p-3 rounded-md bg-background hover:bg-secondary/50 transition-colors text-left"
+                                                                        onClick={() => setSelectedLesson(lesson)}
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Video className="h-5 w-5 text-muted-foreground" />
+                                                                            <div className="flex flex-col items-start">
+                                                                                <span className="text-base font-medium">{lesson.title}</span>
+                                                                                {lesson.duration && (
+                                                                                    <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration} min</span>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Button size="sm" variant="ghost" onClick={() => setSelectedLesson(lesson)}>
-                                                                            Watch Video
-                                                                        </Button>
-                                                                        {completedLessonsSet.has(lesson.id) ? (
+                                                                        {completedLessonsSet.has(lesson.id) && (
                                                                             <div className="flex items-center gap-1 text-green-600 font-medium text-sm">
                                                                                 <CheckCircle2 className="h-5 w-5" />
-                                                                                <span>Completed</span>
                                                                             </div>
-                                                                        ) : (
-                                                                            <Button size="sm" variant="outline" onClick={() => handleMarkAsComplete(lesson.id)} disabled={isPending}>
-                                                                                Mark as Complete
-                                                                            </Button>
                                                                         )}
-                                                                    </div>
+                                                                    </button>
                                                                 </li>
                                                             ))}
-                                                            {unit.lessons.length === 0 && <p className="text-muted-foreground text-sm">No lessons in this unit yet.</p>}
+                                                            {unit.lessons.length === 0 && <p className="text-muted-foreground text-sm p-3">No lessons in this unit yet.</p>}
                                                         </ul>
                                                     </AccordionContent>
                                                 </AccordionItem>

@@ -50,6 +50,8 @@ export type Lesson = {
   id: string;
   title: string;
   videoUrl: string;
+  description?: string;
+  documentUrl?: string;
   duration?: number; // Duration in minutes
 }
 

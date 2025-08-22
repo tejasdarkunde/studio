@@ -877,6 +877,8 @@ const lessonSchema = z.object({
     unitId: z.string().min(1),
     lessonTitle: z.string().min(2, "Lesson title is required."),
     videoUrl: z.string().url("A valid video URL is required."),
+    description: z.string().optional(),
+    documentUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
     duration: z.number().optional(),
 });
 
@@ -888,7 +890,7 @@ export async function addLesson(data: z.infer<typeof lessonSchema>): Promise<{ s
     }
 
     try {
-        const { courseId, subjectId, unitId, lessonTitle, videoUrl, duration } = validated.data;
+        const { courseId, subjectId, unitId, lessonTitle, videoUrl, duration, description, documentUrl } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -905,6 +907,8 @@ export async function addLesson(data: z.infer<typeof lessonSchema>): Promise<{ s
             title: lessonTitle,
             videoUrl,
             duration,
+            description,
+            documentUrl,
         };
         
         subjects[subjectIndex].units[unitIndex].lessons.push(newLesson);
@@ -921,10 +925,13 @@ const updateLessonSchema = lessonSchema.extend({ lessonId: z.string().min(1) });
 
 export async function updateLesson(data: z.infer<typeof updateLessonSchema>): Promise<{ success: boolean; error?: string }> {
     const validated = updateLessonSchema.safeParse(data);
-    if (!validated.success) return { success: false, error: "Invalid data." };
+    if (!validated.success) {
+        console.log(validated.error.flatten().fieldErrors);
+        return { success: false, error: "Invalid data." };
+    }
 
     try {
-        const { courseId, subjectId, unitId, lessonId, lessonTitle, videoUrl, duration } = validated.data;
+        const { courseId, subjectId, unitId, lessonId, lessonTitle, videoUrl, duration, description, documentUrl } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -944,6 +951,8 @@ export async function updateLesson(data: z.infer<typeof updateLessonSchema>): Pr
             title: lessonTitle,
             videoUrl,
             duration,
+            description,
+            documentUrl,
         };
 
         await updateDoc(courseDocRef, { subjects });
