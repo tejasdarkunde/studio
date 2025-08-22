@@ -325,6 +325,7 @@ export async function getParticipants(): Promise<Participant[]> {
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 enrolledCourses: data.enrolledCourses || [], 
                 completedLessons: data.completedLessons || [],
+                deniedCourses: data.deniedCourses || [],
             };
         });
 
@@ -360,6 +361,7 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
             createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
             enrolledCourses: data.enrolledCourses || [],
             completedLessons: data.completedLessons || [],
+            deniedCourses: data.deniedCourses || [],
         };
     } catch (error) {
         console.error("Error fetching participant by IITP No.:", error);
@@ -375,6 +377,7 @@ const participantSchema = z.object({
   organization: z.string().optional(),
   enrolledCourses: z.array(z.string()).optional(),
   completedLessons: z.array(z.string()).optional(),
+  deniedCourses: z.array(z.string()).optional(),
 });
 
 
@@ -399,6 +402,7 @@ export async function addParticipant(data: z.infer<typeof participantSchema>): P
             ...validatedFields.data,
             createdAt: serverTimestamp(),
             completedLessons: [], // Initialize empty
+            deniedCourses: [], // Initialize empty
         });
         return { success: true };
     } catch (error) {
@@ -429,7 +433,7 @@ export async function updateParticipant(data: z.infer<typeof participantUpdateSc
   }
 }
 
-export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt' | 'completedLessons'>[]): Promise<{ success: boolean; error?: string, skippedCount?: number }> {
+export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>[]): Promise<{ success: boolean; error?: string, skippedCount?: number }> {
     const participantsCollection = collection(db, "participants");
     
     try {
@@ -461,6 +465,7 @@ export async function addParticipantsInBulk(participants: Omit<Participant, 'id'
                 ...validatedFields.data,
                 createdAt: serverTimestamp(),
                 completedLessons: [], // Initialize empty
+                deniedCourses: [], // Initialize empty
             });
             iitpNosInCurrentUpload.add(iitpNo);
         }
@@ -478,6 +483,56 @@ export async function addParticipantsInBulk(participants: Omit<Participant, 'id'
         return { success: false, error: "Could not add participants due to a database error." };
     }
 }
+
+const transferStudentsSchema = z.object({
+  sourceCourseName: z.string().min(1, "Source course is required."),
+  destinationCourseName: z.string().min(1, "Destination course is required."),
+});
+
+export async function transferStudents(data: z.infer<typeof transferStudentsSchema>): Promise<{ success: boolean; error?: string; transferredCount?: number }> {
+    const validated = transferStudentsSchema.safeParse(data);
+    if(!validated.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    const { sourceCourseName, destinationCourseName } = validated.data;
+    if (sourceCourseName === destinationCourseName) {
+        return { success: false, error: "Source and destination courses cannot be the same." };
+    }
+
+    try {
+        const participantsCollection = collection(db, "participants");
+        const q = query(participantsCollection, where("enrolledCourses", "array-contains", sourceCourseName));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            return { success: true, transferredCount: 0, error: "No students found in the source course to transfer." };
+        }
+
+        const batch = writeBatch(db);
+        let transferredCount = 0;
+
+        snapshot.docs.forEach(doc => {
+            const participant = doc.data() as Participant;
+            // Add the new course only if they aren't already enrolled
+            if (!participant.enrolledCourses?.includes(destinationCourseName)) {
+                 batch.update(doc.ref, {
+                    enrolledCourses: arrayUnion(destinationCourseName)
+                });
+                transferredCount++;
+            }
+        });
+
+        await batch.commit();
+
+        return { success: true, transferredCount };
+
+    } catch (error) {
+        console.error("Error transferring students:", error);
+        return { success: false, error: "A database error occurred during the transfer." };
+    }
+}
+
 
 // TRAINER ACTIONS
 const trainerSchema = z.object({

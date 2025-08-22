@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -19,11 +20,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson } from '@/app/actions';
+import { updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -417,7 +418,7 @@ export default function AdminPage() {
   const [searchIitpNo, setSearchIitpNo] = useState('');
   const [isFetchingParticipant, setIsFetchingParticipant] = useState(false);
   const [fetchedParticipant, setFetchedParticipant] = useState<Participant | null>(null);
-  const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt' | 'completedLessons'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: []});
+  const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt' | 'completedLessons'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: []});
 
 
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
@@ -428,6 +429,11 @@ export default function AdminPage() {
   const [isAddTrainerOpen, setAddTrainerOpen] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
   const [deletingTrainerId, setDeletingTrainerId] = useState<string | null>(null);
+  
+  // Course Transfer states
+  const [sourceCourse, setSourceCourse] = useState('');
+  const [destinationCourse, setDestinationCourse] = useState('');
+  const [isTransferring, setIsTransferring] = useState(false);
 
 
   const { toast } = useToast();
@@ -461,9 +467,10 @@ export default function AdminPage() {
         mobile: fetchedParticipant.mobile || '',
         organization: fetchedParticipant.organization || '',
         enrolledCourses: fetchedParticipant.enrolledCourses || [],
+        deniedCourses: fetchedParticipant.deniedCourses || [],
       });
     } else {
-       setEditFormData({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: []});
+       setEditFormData({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: []});
     }
   }, [fetchedParticipant]);
 
@@ -619,7 +626,7 @@ export default function AdminPage() {
     setDeletingBatch(null);
   }
 
-  const handleAddParticipant = async (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons'>) => {
+  const handleAddParticipant = async (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>) => {
     const result = await addParticipant(details);
     if(result.success) {
         toast({
@@ -673,6 +680,7 @@ export default function AdminPage() {
       enrolledCourses: Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses : String(editFormData.enrolledCourses).split(',').map(c => c.trim()).filter(Boolean),
       id: fetchedParticipant?.id || '',
       completedLessons: fetchedParticipant?.completedLessons || [],
+      deniedCourses: editFormData.deniedCourses || [],
     });
     
     if (result.success) {
@@ -708,7 +716,7 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  const handleImportSave = async (importedParticipants: Omit<Participant, 'id'|'createdAt'|'completedLessons'>[]) => {
+  const handleImportSave = async (importedParticipants: Omit<Participant, 'id'|'createdAt'|'completedLessons'|'deniedCourses'>[]) => {
     if (importedParticipants.length === 0) {
       toast({
         variant: 'destructive',
@@ -782,6 +790,28 @@ export default function AdminPage() {
     setDeletingTrainerId(null);
   }
 
+  const handleStudentTransfer = async () => {
+    if (!sourceCourse || !destinationCourse) {
+        toast({ variant: 'destructive', title: 'Selection Required', description: 'Please select both a source and a destination course.' });
+        return;
+    }
+    setIsTransferring(true);
+    const result = await transferStudents({ sourceCourseName: sourceCourse, destinationCourseName: destinationCourse });
+    if (result.success) {
+        toast({
+            title: "Transfer Complete",
+            description: `${result.transferredCount || 0} student(s) were enrolled in ${destinationCourse}.`
+        });
+        fetchAllData(); // Refresh data to reflect changes
+        setSourceCourse('');
+        setDestinationCourse('');
+    } else {
+        toast({ variant: 'destructive', title: 'Transfer Failed', description: result.error });
+    }
+    setIsTransferring(false);
+  };
+
+
   if (!isClient) {
     return null;
   }
@@ -817,6 +847,25 @@ export default function AdminPage() {
       </main>
     );
   }
+  
+  const handleCourseAccessChange = (courseId: string, status: 'granted' | 'denied') => {
+    const currentDenied = editFormData.deniedCourses || [];
+    if (status === 'denied') {
+        // Add to denied list if not already there
+        if (!currentDenied.includes(courseId)) {
+            setEditFormData(prev => ({...prev, deniedCourses: [...currentDenied, courseId]}));
+        }
+    } else {
+        // Remove from denied list
+        setEditFormData(prev => ({...prev, deniedCourses: currentDenied.filter(id => id !== courseId)}));
+    }
+  };
+
+  const getEnrolledCoursesForParticipant = () => {
+    if (!fetchedParticipant?.enrolledCourses) return [];
+    return courses.filter(c => fetchedParticipant.enrolledCourses?.includes(c.name));
+  };
+
 
   return (
     <>
@@ -1074,10 +1123,11 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="directory" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="directory">Directory</TabsTrigger>
                     <TabsTrigger value="add">Add / Import</TabsTrigger>
                     <TabsTrigger value="update">Update User</TabsTrigger>
+                    <TabsTrigger value="transfer">Course Transfer</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="directory" className="mt-6">
@@ -1121,7 +1171,7 @@ export default function AdminPage() {
                     <Card className="border-dashed">
                       <CardHeader>
                           <CardTitle>Update User Details</CardTitle>
-                          <CardDescription>Fetch a user by their IITP No. to edit their details.</CardDescription>
+                          <CardDescription>Fetch a user by their IITP No. to edit their details and manage course access.</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
                           <div className="flex items-center gap-2">
@@ -1139,44 +1189,70 @@ export default function AdminPage() {
                               </Button>
                           </div>
                           {fetchedParticipant && (
-                              <div className="border rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-name">Name</Label>
-                                    <Input id="edit-name" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
+                              <div className="border rounded-lg p-4 space-y-6">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <Label htmlFor="edit-name">Name</Label>
+                                        <Input id="edit-name" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label htmlFor="edit-iitpNo">IITP No</Label>
+                                        <Input id="edit-iitpNo" value={editFormData.iitpNo} onChange={e => setEditFormData({...editFormData, iitpNo: e.target.value})} />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label htmlFor="edit-mobile">Mobile No</Label>
+                                        <Input id="edit-mobile" value={editFormData.mobile} onChange={e => setEditFormData({...editFormData, mobile: e.target.value})} />
+                                      </div>
+                                       <div className="space-y-2">
+                                        <Label htmlFor="edit-organization">Organization</Label>
+                                         <Select onValueChange={(value) => setEditFormData({...editFormData, organization: value})} value={editFormData.organization}>
+                                            <SelectTrigger id="edit-organization">
+                                                <SelectValue placeholder="Select an organization" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {organizations.map((org) => (
+                                                <SelectItem key={org} value={org}>
+                                                  {org}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="space-y-2 col-span-1 md:col-span-2">
+                                          <Label htmlFor="edit-courses">Enrolled Courses (comma-separated)</Label>
+                                          <Textarea 
+                                            id="edit-courses"
+                                            value={Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses.join(', ') : editFormData.enrolledCourses}
+                                            onChange={e => setEditFormData({...editFormData, enrolledCourses: e.target.value.split(',').map(c => c.trim())})}
+                                            placeholder="Course A, Course B, ..."
+                                          />
+                                      </div>
                                   </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-iitpNo">IITP No</Label>
-                                    <Input id="edit-iitpNo" value={editFormData.iitpNo} onChange={e => setEditFormData({...editFormData, iitpNo: e.target.value})} />
+                                  <Separator/>
+                                  <div className="space-y-4">
+                                      <Label className="text-base font-medium">Course Access</Label>
+                                      <div className="space-y-2">
+                                        {getEnrolledCoursesForParticipant().length > 0 ? getEnrolledCoursesForParticipant().map(course => (
+                                            <div key={course.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/50">
+                                                <p className="font-medium">{course.name}</p>
+                                                <Select
+                                                  value={editFormData.deniedCourses?.includes(course.id) ? 'denied' : 'granted'}
+                                                  onValueChange={(status: 'granted' | 'denied') => handleCourseAccessChange(course.id, status)}
+                                                >
+                                                  <SelectTrigger className="w-[180px]">
+                                                    <SelectValue placeholder="Set access" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="granted"><div className="flex items-center gap-2"><Unlock className="h-4 w-4 text-green-600"/> Granted</div></SelectItem>
+                                                    <SelectItem value="denied"><div className="flex items-center gap-2"><Lock className="h-4 w-4 text-red-600"/> Denied</div></SelectItem>
+                                                  </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )) : <p className="text-sm text-muted-foreground">This user is not enrolled in any courses.</p>}
+                                      </div>
                                   </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-mobile">Mobile No</Label>
-                                    <Input id="edit-mobile" value={editFormData.mobile} onChange={e => setEditFormData({...editFormData, mobile: e.target.value})} />
-                                  </div>
-                                   <div className="space-y-2">
-                                    <Label htmlFor="edit-organization">Organization</Label>
-                                     <Select onValueChange={(value) => setEditFormData({...editFormData, organization: value})} value={editFormData.organization}>
-                                        <SelectTrigger id="edit-organization">
-                                            <SelectValue placeholder="Select an organization" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {organizations.map((org) => (
-                                            <SelectItem key={org} value={org}>
-                                              {org}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div className="space-y-2 col-span-1 md:col-span-2">
-                                      <Label htmlFor="edit-courses">Enrolled Courses (comma-separated)</Label>
-                                      <Textarea 
-                                        id="edit-courses"
-                                        value={Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses.join(', ') : editFormData.enrolledCourses}
-                                        onChange={e => setEditFormData({...editFormData, enrolledCourses: e.target.value.split(',').map(c => c.trim())})}
-                                        placeholder="Course A, Course B, ..."
-                                      />
-                                  </div>
-                                  <div className="col-span-1 md:col-span-2 flex justify-end gap-2">
+
+                                  <div className="col-span-1 md:col-span-2 flex justify-end gap-2 pt-4">
                                     <Button variant="outline" onClick={() => {setFetchedParticipant(null); setSearchIitpNo('');}}>Cancel</Button>
                                     <Button onClick={handleUpdateParticipant}>Update Details</Button>
                                   </div>
@@ -1184,6 +1260,46 @@ export default function AdminPage() {
                           )}
                       </CardContent>
                   </Card>
+                  </TabsContent>
+                  <TabsContent value="transfer">
+                     <Card className="border-dashed">
+                        <CardHeader>
+                            <CardTitle>Bulk Course Transfer</CardTitle>
+                            <CardDescription>Transfer all students from one course to another. This will add the new course to their enrollment list.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                <div className="space-y-2">
+                                    <Label htmlFor="source-course">From Course</Label>
+                                     <Select onValueChange={setSourceCourse} value={sourceCourse}>
+                                        <SelectTrigger id="source-course">
+                                            <SelectValue placeholder="Select source course" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {courses.map(course => <SelectItem key={course.id} value={course.name}>{course.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="dest-course">To Course</Label>
+                                    <Select onValueChange={setDestinationCourse} value={destinationCourse}>
+                                        <SelectTrigger id="dest-course">
+                                            <SelectValue placeholder="Select destination course" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {courses.map(course => <SelectItem key={course.id} value={course.name}>{course.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="flex justify-end">
+                                <Button onClick={handleStudentTransfer} disabled={isTransferring || !sourceCourse || !destinationCourse}>
+                                    {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Replace className="mr-2 h-4 w-4"/>}
+                                    Transfer Students
+                                </Button>
+                            </div>
+                        </CardContent>
+                     </Card>
                   </TabsContent>
                 </Tabs>
               </CardContent>

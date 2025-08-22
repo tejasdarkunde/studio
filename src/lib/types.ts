@@ -44,6 +44,7 @@ export type Participant = {
     createdAt: string; // ISO 8601 string format
     enrolledCourses?: string[];
     completedLessons?: string[];
+    deniedCourses?: string[]; // Array of course IDs
 }
 
 export type Lesson = {

@@ -2,7 +2,7 @@
 import { getCourses, getParticipantByIitpNo } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, User, Building } from 'lucide-react';
+import { ArrowRight, User, Building, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
@@ -16,7 +16,7 @@ type StudentCoursesPageProps = {
 
 export default async function StudentCoursesPage({ params }: StudentCoursesPageProps) {
     const { iitpNo } = params;
-    const [courses, participant] = await Promise.all([
+    const [allCourses, participant] = await Promise.all([
         getCourses(),
         getParticipantByIitpNo(iitpNo),
     ]);
@@ -24,12 +24,18 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
     if (!participant) {
         notFound();
     }
-
-    const participantCourses = courses.filter(course =>
+    
+    // 1. Get all courses the student is enrolled in
+    const enrolledCourses = allCourses.filter(course =>
       participant.enrolledCourses?.some(enrolledCourseName =>
         course.name.toLowerCase() === enrolledCourseName.toLowerCase()
       )
     );
+
+    // 2. Filter out courses where access is denied
+    const deniedCourseIds = new Set(participant.deniedCourses || []);
+    const accessibleCourses = enrolledCourses.filter(course => !deniedCourseIds.has(course.id));
+
 
     return (
         <main className="container mx-auto p-4 md:p-8">
@@ -61,9 +67,9 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
                 <p className="text-muted-foreground mt-2 text-lg">Here are the courses you are currently enrolled in.</p>
             </div>
 
-            {participantCourses.length > 0 ? (
+            {accessibleCourses.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {participantCourses.sort((a,b) => a.name.localeCompare(b.name)).map((course) => (
+                    {accessibleCourses.sort((a,b) => a.name.localeCompare(b.name)).map((course) => (
                         <Card key={course.id}>
                             <CardHeader>
                                 <CardTitle>{course.name}</CardTitle>
@@ -91,11 +97,30 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
             ) : (
                 <div className="text-center text-muted-foreground py-16 border rounded-lg">
                     <h3 className="text-xl font-semibold text-foreground">No Courses Found</h3>
-                    <p className="mt-2">You are not currently enrolled in any courses.</p>
+                    <p className="mt-2">You are not currently enrolled in any courses with active access.</p>
                     <p>Please contact an administrator if you believe this is an error.</p>
                      <Button asChild variant="link" className="mt-4">
                         <Link href="/">Back to Home</Link>
                     </Button>
+                </div>
+            )}
+             {deniedCourseIds.size > 0 && (
+                <div className="mt-12">
+                    <h2 className="text-2xl font-semibold text-destructive">Access Denied</h2>
+                    <p className="text-muted-foreground mt-2">Access to the following enrolled courses has been revoked by an administrator:</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+                         {enrolledCourses.filter(c => deniedCourseIds.has(c.id)).map(course => (
+                              <Card key={course.id} className="border-destructive/50">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-destructive"><Lock className="h-5 w-5" />{course.name}</CardTitle>
+                                    <CardDescription>Your access to this course content has been denied.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground">Please contact an administrator if you have questions about your enrollment status.</p>
+                                </CardContent>
+                            </Card>
+                         ))}
+                    </div>
                 </div>
             )}
         </main>
