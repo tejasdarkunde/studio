@@ -28,10 +28,11 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
 
         if (!saSnapshot.empty) {
             const superadminDoc = saSnapshot.docs[0];
-            const superadmin = superadminDoc.data();
-            if (superadmin.password === password) {
-                 const { password, ...user } = superadmin;
-                 return { success: true, role: 'superadmin', user: {id: superadminDoc.id, ...user} as SuperAdmin };
+            const superadminData = superadminDoc.data();
+            if (superadminData.password === password) {
+                 const { password, ...user } = superadminData;
+                 const createdAt = user.createdAt as Timestamp;
+                 return { success: true, role: 'superadmin', user: {id: superadminDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as SuperAdmin };
             }
         }
         
@@ -1455,4 +1456,5 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
     }
 }
 
+    
     
