@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson } from '@/lib/types';
+import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
@@ -20,17 +20,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const organizations = [
   "TE Connectivity, Shirwal",
@@ -478,6 +479,7 @@ export default function AdminPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
   
   // Auth states
   const [isClient, setIsClient] = useState(false);
@@ -495,7 +497,9 @@ export default function AdminPage() {
   const [isAddTrainerOpen, setAddTrainerOpen] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
   const [deletingTrainerId, setDeletingTrainerId] = useState<string | null>(null);
+  const [deletingAdminId, setDeletingAdminId] = useState<string | null>(null);
   const [isAddCourseOpen, setAddCourseOpen] = useState(false);
+  const [isAddAdminOpen, setAddAdminOpen] = useState(false);
 
   // Form & Filter states
   const [searchIitpNo, setSearchIitpNo] = useState('');
@@ -504,6 +508,8 @@ export default function AdminPage() {
   const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt' | 'completedLessons'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: []});
   const [newCourseName, setNewCourseName] = useState('');
   const [newCourseStatus, setNewCourseStatus] = useState<'active' | 'coming-soon' | 'deactivated'>('active');
+  const [newAdminUsername, setNewAdminUsername] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
   const [sourceCourse, setSourceCourse] = useState('');
   const [destinationCourse, setDestinationCourse] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
@@ -512,16 +518,19 @@ export default function AdminPage() {
   const { toast } = useToast();
 
   const fetchAllData = useCallback(async () => {
-    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses] = await Promise.all([
-      getBatches(),
-      getParticipants(),
-      getTrainers(),
-      getCourses()
-    ]);
+    const role = sessionStorage.getItem('userRole');
+    const actions: Promise<any>[] = [getBatches(), getParticipants(), getTrainers(), getCourses()];
+    if (role === 'superadmin') {
+        actions.push(getSuperAdmins());
+    }
+    
+    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, fetchedAdmins] = await Promise.all(actions);
+
     setBatches(fetchedBatches);
     setParticipants(fetchedParticipants);
     setTrainers(fetchedTrainers);
     setCourses(fetchedCourses);
+    if(fetchedAdmins) setSuperAdmins(fetchedAdmins);
   }, []);
   
   useEffect(() => {
@@ -935,6 +944,35 @@ export default function AdminPage() {
       }
   }
 
+  const handleAddAdmin = async () => {
+    if (!newAdminUsername.trim() || !newAdminPassword.trim()) {
+        toast({ variant: 'destructive', title: 'All fields required' });
+        return;
+    }
+    const result = await addSuperAdmin({ username: newAdminUsername, password: newAdminPassword });
+    if (result.success) {
+        toast({ title: "Admin Added", description: `Superadmin "${newAdminUsername}" has been created.` });
+        fetchAllData();
+        setNewAdminUsername('');
+        setNewAdminPassword('');
+        setAddAdminOpen(false);
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+    }
+  }
+  
+  const handleDeleteAdmin = async () => {
+    if (!deletingAdminId) return;
+    const result = await deleteSuperAdmin(deletingAdminId);
+    if (result.success) {
+        toast({ title: "Admin Deleted" });
+        fetchAllData();
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+    }
+    setDeletingAdminId(null);
+  }
+
 
   if (!isClient || loadingAuth) {
     return (
@@ -978,12 +1016,13 @@ export default function AdminPage() {
 
 
   const SuperAdminTabs = () => (
-    <TabsList className="grid w-full grid-cols-6">
+    <TabsList className="grid w-full grid-cols-7">
         <TabsTrigger value="reports">Reports</TabsTrigger>
         <TabsTrigger value="trainings">Trainings</TabsTrigger>
         <TabsTrigger value="courses">Courses</TabsTrigger>
         <TabsTrigger value="users">All Users</TabsTrigger>
         <TabsTrigger value="trainers">Trainers</TabsTrigger>
+        <TabsTrigger value="admins">Admins</TabsTrigger>
         <TabsTrigger value="attendance">Attendance</TabsTrigger>
     </TabsList>
   );
@@ -997,6 +1036,7 @@ export default function AdminPage() {
 
   return (
     <>
+      <ConfirmDialog isOpen={!!deletingAdminId} onClose={() => setDeletingAdminId(null)} onConfirm={handleDeleteAdmin} title="Delete Superadmin?" description={`This will permanently delete the admin account. This action cannot be undone.`} />
       <DeleteBatchDialog 
         isOpen={!!deletingBatch}
         onClose={() => setDeletingBatch(null)}
@@ -1075,6 +1115,28 @@ export default function AdminPage() {
               <DialogFooter>
                   <Button variant="outline" onClick={() => setAddCourseOpen(false)}>Cancel</Button>
                   <Button onClick={handleAddCourse}>Add Course</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+      <Dialog open={isAddAdminOpen} onOpenChange={setAddAdminOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Add New Superadmin</DialogTitle>
+                  <DialogDescription>Create a new user with full administrative privileges.</DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                  <div>
+                      <Label htmlFor="new-admin-username">Username</Label>
+                      <Input id="new-admin-username" value={newAdminUsername} onChange={(e) => setNewAdminUsername(e.target.value)} />
+                  </div>
+                   <div>
+                      <Label htmlFor="new-admin-password">Password</Label>
+                      <Input id="new-admin-password" type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setAddAdminOpen(false)}>Cancel</Button>
+                  <Button onClick={handleAddAdmin}>Add Superadmin</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -1491,6 +1553,46 @@ export default function AdminPage() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+
+                 <TabsContent value="admins" className="mt-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle>Superadmin Management</CardTitle>
+                                <CardDescription>Manage users with full administrative privileges.</CardDescription>
+                            </div>
+                            <Button onClick={() => setAddAdminOpen(true)}>
+                                <ShieldCheck className="mr-2 h-4 w-4" /> Add Superadmin
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="border rounded-lg">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Username</TableHead>
+                                            <TableHead>Date Added</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {superAdmins.map(admin => (
+                                            <TableRow key={admin.id}>
+                                                <TableCell className="font-medium">{admin.username}</TableCell>
+                                                <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeletingAdminId(admin.id)}>
+                                                        <Trash className="h-4 w-4"/>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                 </TabsContent>
             </>
           )}
 

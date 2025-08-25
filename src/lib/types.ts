@@ -9,6 +9,13 @@ export type Registration = {
   submissionTime: string; // ISO 8601 string format
 };
 
+export type SuperAdmin = {
+    id: string;
+    username: string;
+    password?: string;
+    createdAt: string; // ISO 8601 string format
+};
+
 export type Trainer = {
     id: string;
     name: string;

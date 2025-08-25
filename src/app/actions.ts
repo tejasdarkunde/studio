@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -20,8 +20,7 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
     
     const { username, password } = validatedFields.data;
 
-    // 1. Check for Superadmin
-    // For a production app, these should be stored securely in environment variables.
+    // 1. Check for Superadmin (hardcoded fallback)
     const superadminUsername = "7020333927";
     const superadminPassword = "11082000";
 
@@ -29,20 +28,32 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
         return { success: true, role: 'superadmin' };
     }
 
-    // 2. Check for Trainer
     try {
-        const trainersCollection = collection(db, "trainers");
-        const q = query(trainersCollection, where("username", "==", username));
-        const querySnapshot = await getDocs(q);
+        // 2. Check for Superadmin in DB
+        const superadminsCollection = collection(db, "superadmins");
+        const saQuery = query(superadminsCollection, where("username", "==", username));
+        const saSnapshot = await getDocs(saQuery);
 
-        if (querySnapshot.empty) {
+        if (!saSnapshot.empty) {
+            const superadminDoc = saSnapshot.docs[0];
+            const superadmin = superadminDoc.data();
+            if (superadmin.password === password) {
+                 return { success: true, role: 'superadmin' };
+            }
+        }
+        
+        // 3. Check for Trainer
+        const trainersCollection = collection(db, "trainers");
+        const tQuery = query(trainersCollection, where("username", "==", username));
+        const tSnapshot = await getDocs(tQuery);
+
+        if (tSnapshot.empty) {
             return { success: false, error: "Invalid username or password." };
         }
         
-        const trainerDoc = querySnapshot.docs[0];
+        const trainerDoc = tSnapshot.docs[0];
         const trainer = trainerDoc.data() as Trainer;
         
-        // In a real app, passwords should be hashed. For this prototype, we're comparing plain text.
         if (trainer.password === password) {
             return { success: true, role: 'trainer', trainerId: trainerDoc.id };
         } else {
@@ -598,6 +609,72 @@ export async function transferStudents(data: z.infer<typeof transferStudentsSche
         return { success: false, error: "A database error occurred during the transfer." };
     }
 }
+
+// SUPERADMIN ACTIONS
+const superAdminSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters."),
+  password: z.string().min(6, "Password must be at least 6 characters."),
+});
+
+export async function getSuperAdmins(): Promise<SuperAdmin[]> {
+    try {
+        const superAdminsCollectionRef = collection(db, "superadmins");
+        const q = query(superAdminsCollectionRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+            return {
+                id: doc.id,
+                username: data.username,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching superadmins:", error);
+        return [];
+    }
+}
+
+export async function addSuperAdmin(data: z.infer<typeof superAdminSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = superAdminSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+    
+    try {
+        const superAdminsCollection = collection(db, "superadmins");
+        
+        const duplicateQuery = query(superAdminsCollection, where("username", "==", data.username));
+        const duplicateSnapshot = await getDocs(duplicateQuery);
+        if(!duplicateSnapshot.empty) {
+            return { success: false, error: "This username is already taken."};
+        }
+
+        await addDoc(superAdminsCollection, {
+            ...validatedFields.data,
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding superadmin:", error);
+        return { success: false, error: "Could not add superadmin." };
+    }
+}
+
+export async function deleteSuperAdmin(id: string): Promise<{ success: boolean; error?: string }> {
+    if (!id) return { success: false, error: "Invalid ID." };
+    try {
+        const adminDocRef = doc(db, 'superadmins', id);
+        await deleteDoc(adminDocRef);
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting superadmin:", error);
+        return { success: false, error: "Could not delete the superadmin." };
+    }
+}
+
 
 
 // TRAINER ACTIONS
