@@ -47,10 +47,20 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
         }
         
         const trainerDoc = tSnapshot.docs[0];
-        const trainer = trainerDoc.data() as Trainer;
+        const trainerData = trainerDoc.data();
         
-        if (trainer.password === password) {
-            return { success: true, role: 'trainer', trainerId: trainerDoc.id };
+        if (trainerData.password === password) {
+            const createdAt = trainerData.createdAt as Timestamp;
+            const trainer: Trainer = {
+                id: trainerDoc.id,
+                name: trainerData.name,
+                username: trainerData.username,
+                mobile: trainerData.mobile || '',
+                meetingLink: trainerData.meetingLink,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            };
+            // Return a serializable user object for trainer as well
+            return { success: true, role: 'trainer', trainerId: trainerDoc.id, user: trainer as any };
         } else {
             return { success: false, error: "Invalid username or password." };
         }
@@ -543,7 +553,7 @@ export async function addParticipantsInBulk(participants: Omit<Participant, 'id'
 
     } catch (error) {
         console.error("Error adding participants in bulk:", error);
-        return { success: false, error: "Could not add participants due to a database error." };
+        return { success: false, error: "Could not add participants in bulk due to a database error." };
     }
 }
 
@@ -607,6 +617,8 @@ export async function transferStudents(data: z.infer<typeof transferStudentsSche
 
 // SUPERADMIN ACTIONS
 const superAdminSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  mobile: z.string().optional(),
   username: z.string().min(3, "Username must be at least 3 characters."),
   password: z.string().min(6, "Password must be at least 6 characters."),
   canManageAdmins: z.boolean().optional(),
@@ -624,6 +636,8 @@ export async function getSuperAdmins(): Promise<SuperAdmin[]> {
             const createdAt = data.createdAt as Timestamp;
             return {
                 id: doc.id,
+                name: data.name,
+                mobile: data.mobile || '',
                 username: data.username,
                 canManageAdmins: data.canManageAdmins || false,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
@@ -639,6 +653,7 @@ export async function getSuperAdmins(): Promise<SuperAdmin[]> {
 export async function addSuperAdmin(data: z.infer<typeof superAdminSchema>): Promise<{ success: boolean; error?: string }> {
     const validatedFields = superAdminSchema.safeParse(data);
     if (!validatedFields.success) {
+        console.log(validatedFields.error.flatten().fieldErrors);
         return { success: false, error: "Invalid data." };
     }
     
@@ -683,7 +698,8 @@ export async function deleteSuperAdmin(id: string): Promise<{ success: boolean; 
 }
 
 const updateSuperAdminSchema = superAdminSchema.extend({
-    id: z.string().min(1)
+    id: z.string().min(1),
+    password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
 }).partial().required({ id: true });
 
 
@@ -691,12 +707,19 @@ export async function updateSuperAdmin(data: z.infer<typeof updateSuperAdminSche
     const { id, ...adminData } = data;
     const validatedFields = updateSuperAdminSchema.safeParse(data);
     if (!validatedFields.success) {
+        console.log(validatedFields.error.flatten().fieldErrors)
         return { success: false, error: "Invalid data." };
     }
 
     try {
         const adminDocRef = doc(db, 'superadmins', id);
         const updateData: any = {};
+        if (adminData.name) {
+            updateData.name = adminData.name;
+        }
+        if (adminData.mobile) {
+            updateData.mobile = adminData.mobile;
+        }
         if (adminData.username) {
             // Check for duplicate username if it's being changed
             const originalDoc = await getDoc(adminDocRef);
@@ -754,6 +777,7 @@ export async function isPrimaryAdmin(id: string): Promise<{ isPrimary: boolean }
 // TRAINER ACTIONS
 const trainerSchema = z.object({
   name: z.string().min(2, "Trainer name must be at least 2 characters."),
+  mobile: z.string().optional(),
   meetingLink: z.string().url("Must be a valid meeting URL."),
   username: z.string().min(3, "Username must be at least 3 characters."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
@@ -771,6 +795,7 @@ export async function getTrainers(): Promise<Trainer[]> {
             return {
                 id: doc.id,
                 name: data.name,
+                mobile: data.mobile || '',
                 meetingLink: data.meetingLink,
                 username: data.username,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
@@ -1464,3 +1489,5 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
+
+    

@@ -16,16 +16,18 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import type { Trainer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { Separator } from '../ui/separator';
 
 type AddTrainerDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; meetingLink: string; username: string; password?: string; }) => Promise<void>;
+  onSave: (details: { id?: string; name: string; mobile?: string; meetingLink: string; username: string; password?: string; }) => Promise<void>;
   initialData?: Trainer | null;
 };
 
 export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTrainerDialogProps) {
   const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +37,7 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
   useEffect(() => {
     if (isOpen) {
       setName(initialData?.name || '');
+      setMobile(initialData?.mobile || '');
       setMeetingLink(initialData?.meetingLink || '');
       setUsername(initialData?.username || '');
       setPassword(''); // Always clear password for security
@@ -82,7 +85,7 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
     }
     
     setIsSaving(true);
-    await onSave({ name, meetingLink, username, password });
+    await onSave({ id: initialData?.id, name, mobile, meetingLink, username, password: password || undefined });
     setIsSaving(false);
   };
 
@@ -101,11 +104,15 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
             <Label htmlFor="name" className="text-right">Name *</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="e.g., John Smith" />
           </div>
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="mobile" className="text-right">Mobile</Label>
+            <Input id="mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} className="col-span-3" placeholder="e.g., 9876543210" />
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="meetingLink" className="text-right">Meeting Link *</Label>
             <Input id="meetingLink" value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} className="col-span-3" placeholder="https://zoom.us/j/..." />
           </div>
-          <hr className="col-span-4" />
+          <Separator className="col-span-4" />
            <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="username" className="text-right">Username *</Label>
             <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="col-span-3" placeholder="trainer.john" />
@@ -125,3 +132,5 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
     </Dialog>
   );
 }
+
+    

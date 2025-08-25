@@ -11,6 +11,8 @@ export type Registration = {
 
 export type SuperAdmin = {
     id: string;
+    name: string;
+    mobile: string;
     username: string;
     password?: string;
     canManageAdmins: boolean;
@@ -22,6 +24,7 @@ export type SuperAdmin = {
 export type Trainer = {
     id: string;
     name: string;
+    mobile: string;
     meetingLink: string;
     username: string;
     password?: string;
@@ -86,3 +89,5 @@ export type Course = {
   subjects: Subject[];
   status?: 'active' | 'coming-soon' | 'deactivated';
 };
+
+    

@@ -31,6 +31,7 @@ export function TrainersTable({ trainers, onEdit, onDelete }: TrainersTableProps
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Username</TableHead>
+                <TableHead>Mobile</TableHead>
                 <TableHead>Meeting Link</TableHead>
                 <TableHead>Date Added</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -42,6 +43,7 @@ export function TrainersTable({ trainers, onEdit, onDelete }: TrainersTableProps
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell>{t.username}</TableCell>
+                    <TableCell>{t.mobile}</TableCell>
                     <TableCell>
                       <a href={t.meetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         {t.meetingLink}
@@ -62,7 +64,7 @@ export function TrainersTable({ trainers, onEdit, onDelete }: TrainersTableProps
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No trainers found. Add one to get started.
                   </TableCell>
                 </TableRow>
@@ -74,3 +76,5 @@ export function TrainersTable({ trainers, onEdit, onDelete }: TrainersTableProps
     </div>
   );
 }
+
+    

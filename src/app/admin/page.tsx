@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -20,7 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -488,7 +487,9 @@ const SuperAdminsTable = ({
             <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead>Name</TableHead>
                         <TableHead>Username</TableHead>
+                        <TableHead>Mobile</TableHead>
                         <TableHead>Permissions</TableHead>
                         <TableHead>Date Added</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -497,10 +498,12 @@ const SuperAdminsTable = ({
                 <TableBody>
                     {superAdmins.map(admin => (
                         <TableRow key={admin.id}>
-                            <TableCell className="font-medium flex items-center gap-2">
-                                {admin.username}
-                                {admin.isPrimary && <Badge variant="secondary">Primary</Badge>}
+                            <TableCell className="font-medium">
+                                {admin.name}
+                                {admin.isPrimary && <Badge variant="secondary" className="ml-2">Primary</Badge>}
                             </TableCell>
+                            <TableCell>{admin.username}</TableCell>
+                            <TableCell>{admin.mobile}</TableCell>
                             <TableCell>
                                 {admin.canManageAdmins ? (
                                     <Badge variant="default"><ShieldCheck className="mr-1 h-3 w-3"/> Can Manage</Badge>
@@ -510,12 +513,12 @@ const SuperAdminsTable = ({
                             </TableCell>
                             <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right">
-                                {(currentUser.isPrimary || currentUser.canManageAdmins) && admin.id !== currentUser.createdBy && (
+                                {(currentUser.isPrimary || currentUser.canManageAdmins) && admin.id !== currentUser.createdBy && admin.id !== currentUser.id && (
                                      <Button variant="ghost" size="icon" onClick={() => onEdit(admin)}>
                                         <Pencil className="h-4 w-4"/>
                                     </Button>
                                 )}
-                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && admin.id !== currentUser.createdBy && (
+                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && admin.id !== currentUser.createdBy && admin.id !== currentUser.id && (
                                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(admin)}>
                                         <Trash className="h-4 w-4"/>
                                     </Button>
@@ -538,10 +541,12 @@ const ManageAdminDialog = ({
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: {id?: string, username: string, password?: string, canManageAdmins?: boolean, currentUserId?: string}) => Promise<void>;
+    onSave: (data: {id?: string; name: string; mobile?: string; username: string; password?: string; canManageAdmins?: boolean; currentUserId?: string}) => Promise<void>;
     initialData?: SuperAdmin | null;
     currentUser?: SuperAdmin | null;
 }) => {
+    const [name, setName] = useState('');
+    const [mobile, setMobile] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [canManageAdmins, setCanManageAdmins] = useState(false);
@@ -549,6 +554,8 @@ const ManageAdminDialog = ({
 
     useEffect(() => {
         if(isOpen) {
+            setName(initialData?.name || '');
+            setMobile(initialData?.mobile || '');
             setUsername(initialData?.username || '');
             setCanManageAdmins(initialData?.canManageAdmins || false);
             setPassword('');
@@ -560,6 +567,8 @@ const ManageAdminDialog = ({
         setIsSaving(true);
         await onSave({
             id: initialData?.id,
+            name,
+            mobile,
             username,
             password: password || undefined,
             canManageAdmins: canManageAdmins,
@@ -573,9 +582,18 @@ const ManageAdminDialog = ({
             <DialogContent>
               <DialogHeader>
                   <DialogTitle>{initialData ? 'Edit Superadmin' : 'Add New Superadmin'}</DialogTitle>
-                  <DialogDescription>{initialData ? `Update credentials for ${initialData.username}.` : 'Create a new user with administrative privileges.'}</DialogDescription>
+                  <DialogDescription>{initialData ? `Update details for ${initialData.name}.` : 'Create a new user with administrative privileges.'}</DialogDescription>
               </DialogHeader>
               <div className="py-4 space-y-4">
+                  <div>
+                      <Label htmlFor="admin-name">Full Name</Label>
+                      <Input id="admin-name" value={name} onChange={(e) => setName(e.target.value)} />
+                  </div>
+                  <div>
+                      <Label htmlFor="admin-mobile">Mobile Number</Label>
+                      <Input id="admin-mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} />
+                  </div>
+                  <Separator />
                   <div>
                       <Label htmlFor="admin-username">Username</Label>
                       <Input id="admin-username" value={username} onChange={(e) => setUsername(e.target.value)} />
@@ -590,6 +608,7 @@ const ManageAdminDialog = ({
                             id="can-manage-admins"
                             checked={canManageAdmins}
                             onCheckedChange={setCanManageAdmins}
+                            disabled={initialData?.id === currentUser.id}
                         />
                         <Label htmlFor="can-manage-admins">Allow this admin to manage other admins</Label>
                     </div>
@@ -699,7 +718,7 @@ export default function AdminPage() {
         if(role === 'trainer' && id) {
             setTrainerId(id);
         }
-        if (role === 'superadmin' && userJson) {
+        if (userJson) {
             setCurrentUser(JSON.parse(userJson));
         }
         fetchAllData();
@@ -1020,7 +1039,7 @@ export default function AdminPage() {
   };
   
   // Trainer Handlers
-  const handleSaveTrainer = async (details: { name: string, meetingLink: string, username: string, password?: string }) => {
+  const handleSaveTrainer = async (details: { id?: string; name: string; mobile?: string; meetingLink: string; username: string; password?: string; }) => {
     const action = editingTrainer ? updateTrainer : addTrainer;
     const payload = editingTrainer ? { ...details, id: editingTrainer.id } : details;
 
@@ -1101,7 +1120,7 @@ export default function AdminPage() {
       }
   }
 
-  const handleSaveAdmin = async (data: {id?: string, username: string, password?: string, canManageAdmins?: boolean, currentUserId?: string}) => {
+  const handleSaveAdmin = async (data: {id?: string; name: string; mobile?: string; username: string; password?: string; canManageAdmins?: boolean; currentUserId?: string}) => {
     const action = data.id ? updateSuperAdmin : addSuperAdmin;
     const result = await action(data as any);
     if (result.success) {
@@ -1284,7 +1303,7 @@ export default function AdminPage() {
         <div className="flex justify-between items-center mb-8 md:mb-12">
           <div className="flex flex-col">
               <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-                  {userRole === 'superadmin' ? 'Admin Dashboard' : 'Trainer Dashboard'}
+                  {currentUser ? `Welcome, ${currentUser.name}` : (userRole === 'superadmin' ? 'Admin Dashboard' : 'Trainer Dashboard')}
               </h1>
               <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
                    {userRole === 'superadmin' ? 'Manage training batches, registrations, and participants.' : 'Manage your assigned training batches.'}
@@ -1740,3 +1759,5 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
