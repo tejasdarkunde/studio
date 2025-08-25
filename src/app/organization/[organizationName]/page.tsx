@@ -105,12 +105,9 @@ export default function OrganizationDashboardPage() {
     return (
         <div className="min-h-screen flex flex-col">
              <header className="bg-background border-b sticky top-0 z-10">
-                <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-20">
+                <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
                     <div className="flex flex-col">
                          <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
-                        <h1 className="mt-2 text-3xl font-bold tracking-tight">
-                            {organizationName}
-                        </h1>
                     </div>
                     <div className='flex items-center gap-2'>
                         <span className="text-sm text-muted-foreground hidden sm:inline">Welcome, {currentUser?.name}</span>
@@ -122,9 +119,14 @@ export default function OrganizationDashboardPage() {
                 </div>
             </header>
             <main className="container mx-auto p-4 md:p-8 flex-grow">
-                <p className="max-w-2xl text-lg text-muted-foreground mb-8">
-                   Here's your organization's dashboard.
-                </p>
+                 <div className="mb-8">
+                    <h1 className="text-3xl font-bold tracking-tight">
+                        {organizationName} Dashboard
+                    </h1>
+                    <p className="mt-2 text-lg text-muted-foreground">
+                       Here is your organization's dashboard.
+                    </p>
+                </div>
                 <Tabs defaultValue="overview">
                     <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="overview">Overview</TabsTrigger>

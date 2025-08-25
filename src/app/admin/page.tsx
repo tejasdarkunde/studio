@@ -1496,12 +1496,9 @@ export default function AdminPage() {
 
       <div className="min-h-screen flex flex-col">
         <header className="bg-background border-b sticky top-0 z-10">
-            <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-20">
+            <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
                  <div className="flex flex-col">
                     <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
-                    <h1 className="mt-2 text-3xl font-bold tracking-tight">
-                        {currentUser ? `Welcome, ${currentUser.name}` : (userRole === 'superadmin' ? 'Admin Dashboard' : 'Trainer Dashboard')}
-                    </h1>
                 </div>
                 <div className="flex items-center gap-2">
                     {userRole === 'superadmin' && currentUser && (
@@ -1519,9 +1516,14 @@ export default function AdminPage() {
 
         <main className="container mx-auto p-4 md:p-8 flex-grow">
             <div className="flex justify-between items-start mb-8">
-            <p className="max-w-2xl text-lg text-muted-foreground">
-                {userRole === 'superadmin' ? 'Manage training batches, registrations, and participants.' : 'Manage your assigned training batches.'}
-            </p>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">
+                        {currentUser ? `Welcome, ${currentUser.name}` : (userRole === 'superadmin' ? 'Admin Dashboard' : 'Trainer Dashboard')}
+                    </h1>
+                    <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
+                        {userRole === 'superadmin' ? 'Manage training batches, registrations, and participants.' : 'Manage your assigned training batches.'}
+                    </p>
+                </div>
             </div>
 
             <Tabs defaultValue="reports" className="w-full">
