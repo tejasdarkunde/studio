@@ -24,7 +24,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -471,6 +471,112 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     );
 };
 
+const SuperAdminsTable = ({
+    superAdmins,
+    onEdit,
+    onDelete
+}: {
+    superAdmins: (SuperAdmin & {isPrimary: boolean})[];
+    onEdit: (admin: SuperAdmin) => void;
+    onDelete: (admin: SuperAdmin) => void;
+}) => {
+    return (
+        <div className="border rounded-lg">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Date Added</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {superAdmins.map(admin => (
+                        <TableRow key={admin.id}>
+                            <TableCell className="font-medium flex items-center gap-2">
+                                {admin.username}
+                                {admin.isPrimary && <Badge variant="secondary">Primary</Badge>}
+                            </TableCell>
+                            <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" onClick={() => onEdit(admin)}>
+                                    <Pencil className="h-4 w-4"/>
+                                </Button>
+                                {!admin.isPrimary && (
+                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(admin)}>
+                                        <Trash className="h-4 w-4"/>
+                                    </Button>
+                                )}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    )
+}
+
+const ManageAdminDialog = ({
+    isOpen,
+    onClose,
+    onSave,
+    initialData
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (data: {id?: string, username: string, password?: string}) => Promise<void>;
+    initialData?: SuperAdmin | null;
+}) => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if(isOpen) {
+            setUsername(initialData?.username || '');
+            setPassword('');
+            setIsSaving(false);
+        }
+    }, [isOpen, initialData]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        await onSave({
+            id: initialData?.id,
+            username,
+            password: password || undefined
+        });
+        setIsSaving(false);
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>{initialData ? 'Edit Superadmin' : 'Add New Superadmin'}</DialogTitle>
+                  <DialogDescription>{initialData ? `Update credentials for ${initialData.username}.` : 'Create a new user with full administrative privileges.'}</DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                  <div>
+                      <Label htmlFor="admin-username">Username</Label>
+                      <Input id="admin-username" value={username} onChange={(e) => setUsername(e.target.value)} />
+                  </div>
+                   <div>
+                      <Label htmlFor="admin-password">Password</Label>
+                      <Input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={initialData ? 'Leave blank to keep unchanged' : 'Min 6 characters'} />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : (initialData ? 'Save Changes' : 'Add Superadmin')}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+        </Dialog>
+    )
+}
+
 
 export default function AdminPage() {
   const router = useRouter();
@@ -479,7 +585,7 @@ export default function AdminPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
+  const [superAdmins, setSuperAdmins] = useState<(SuperAdmin & {isPrimary: boolean})[]>([]);
   
   // Auth states
   const [isClient, setIsClient] = useState(false);
@@ -497,9 +603,10 @@ export default function AdminPage() {
   const [isAddTrainerOpen, setAddTrainerOpen] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
   const [deletingTrainerId, setDeletingTrainerId] = useState<string | null>(null);
-  const [deletingAdminId, setDeletingAdminId] = useState<string | null>(null);
+  const [deletingAdmin, setDeletingAdmin] = useState<SuperAdmin | null>(null);
   const [isAddCourseOpen, setAddCourseOpen] = useState(false);
-  const [isAddAdminOpen, setAddAdminOpen] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<SuperAdmin | null>(null);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
 
   // Form & Filter states
   const [searchIitpNo, setSearchIitpNo] = useState('');
@@ -508,8 +615,6 @@ export default function AdminPage() {
   const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt' | 'completedLessons'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: []});
   const [newCourseName, setNewCourseName] = useState('');
   const [newCourseStatus, setNewCourseStatus] = useState<'active' | 'coming-soon' | 'deactivated'>('active');
-  const [newAdminUsername, setNewAdminUsername] = useState('');
-  const [newAdminPassword, setNewAdminPassword] = useState('');
   const [sourceCourse, setSourceCourse] = useState('');
   const [destinationCourse, setDestinationCourse] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
@@ -530,7 +635,14 @@ export default function AdminPage() {
     setParticipants(fetchedParticipants);
     setTrainers(fetchedTrainers);
     setCourses(fetchedCourses);
-    if(fetchedAdmins) setSuperAdmins(fetchedAdmins);
+
+    if(fetchedAdmins) {
+         const adminsWithPrimaryFlag = await Promise.all(fetchedAdmins.map(async (admin: SuperAdmin) => {
+            const { isPrimary } = await isPrimaryAdmin(admin.username);
+            return { ...admin, isPrimary };
+        }));
+        setSuperAdmins(adminsWithPrimaryFlag);
+    }
   }, []);
   
   useEffect(() => {
@@ -944,33 +1056,29 @@ export default function AdminPage() {
       }
   }
 
-  const handleAddAdmin = async () => {
-    if (!newAdminUsername.trim() || !newAdminPassword.trim()) {
-        toast({ variant: 'destructive', title: 'All fields required' });
-        return;
-    }
-    const result = await addSuperAdmin({ username: newAdminUsername, password: newAdminPassword });
+  const handleSaveAdmin = async (data: {id?: string, username: string, password?: string}) => {
+    const action = data.id ? updateSuperAdmin : addSuperAdmin;
+    const result = await action(data as any);
     if (result.success) {
-        toast({ title: "Admin Added", description: `Superadmin "${newAdminUsername}" has been created.` });
+        toast({ title: `Superadmin ${data.id ? 'Updated' : 'Added'}` });
         fetchAllData();
-        setNewAdminUsername('');
-        setNewAdminPassword('');
-        setAddAdminOpen(false);
+        setEditingAdmin(null);
+        setIsAddAdminOpen(false);
     } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
     }
   }
   
   const handleDeleteAdmin = async () => {
-    if (!deletingAdminId) return;
-    const result = await deleteSuperAdmin(deletingAdminId);
+    if (!deletingAdmin) return;
+    const result = await deleteSuperAdmin(deletingAdmin.id);
     if (result.success) {
         toast({ title: "Admin Deleted" });
         fetchAllData();
     } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
     }
-    setDeletingAdminId(null);
+    setDeletingAdmin(null);
   }
 
 
@@ -1036,7 +1144,7 @@ export default function AdminPage() {
 
   return (
     <>
-      <ConfirmDialog isOpen={!!deletingAdminId} onClose={() => setDeletingAdminId(null)} onConfirm={handleDeleteAdmin} title="Delete Superadmin?" description={`This will permanently delete the admin account. This action cannot be undone.`} />
+      <ConfirmDialog isOpen={!!deletingAdmin} onClose={() => setDeletingAdmin(null)} onConfirm={handleDeleteAdmin} title="Delete Superadmin?" description={`This will permanently delete the admin account for "${deletingAdmin?.username}". This action cannot be undone.`} />
       <DeleteBatchDialog 
         isOpen={!!deletingBatch}
         onClose={() => setDeletingBatch(null)}
@@ -1118,28 +1226,12 @@ export default function AdminPage() {
               </DialogFooter>
           </DialogContent>
       </Dialog>
-      <Dialog open={isAddAdminOpen} onOpenChange={setAddAdminOpen}>
-          <DialogContent>
-              <DialogHeader>
-                  <DialogTitle>Add New Superadmin</DialogTitle>
-                  <DialogDescription>Create a new user with full administrative privileges.</DialogDescription>
-              </DialogHeader>
-              <div className="py-4 space-y-4">
-                  <div>
-                      <Label htmlFor="new-admin-username">Username</Label>
-                      <Input id="new-admin-username" value={newAdminUsername} onChange={(e) => setNewAdminUsername(e.target.value)} />
-                  </div>
-                   <div>
-                      <Label htmlFor="new-admin-password">Password</Label>
-                      <Input id="new-admin-password" type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} />
-                  </div>
-              </div>
-              <DialogFooter>
-                  <Button variant="outline" onClick={() => setAddAdminOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddAdmin}>Add Superadmin</Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
+      <ManageAdminDialog 
+        isOpen={isAddAdminOpen || !!editingAdmin}
+        onClose={() => {setIsAddAdminOpen(false); setEditingAdmin(null);}}
+        onSave={handleSaveAdmin}
+        initialData={editingAdmin}
+      />
 
 
       <main className="container mx-auto p-4 md:p-8">
@@ -1561,35 +1653,16 @@ export default function AdminPage() {
                                 <CardTitle>Superadmin Management</CardTitle>
                                 <CardDescription>Manage users with full administrative privileges.</CardDescription>
                             </div>
-                            <Button onClick={() => setAddAdminOpen(true)}>
+                            <Button onClick={() => setIsAddAdminOpen(true)}>
                                 <ShieldCheck className="mr-2 h-4 w-4" /> Add Superadmin
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            <div className="border rounded-lg">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Username</TableHead>
-                                            <TableHead>Date Added</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {superAdmins.map(admin => (
-                                            <TableRow key={admin.id}>
-                                                <TableCell className="font-medium">{admin.username}</TableCell>
-                                                <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeletingAdminId(admin.id)}>
-                                                        <Trash className="h-4 w-4"/>
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                            <SuperAdminsTable 
+                                superAdmins={superAdmins}
+                                onEdit={(admin) => setEditingAdmin(admin)}
+                                onDelete={(admin) => setDeletingAdmin(admin)}
+                            />
                         </CardContent>
                     </Card>
                  </TabsContent>

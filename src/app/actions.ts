@@ -675,6 +675,56 @@ export async function deleteSuperAdmin(id: string): Promise<{ success: boolean; 
     }
 }
 
+const updateSuperAdminSchema = superAdminSchema.extend({
+    id: z.string().min(1)
+}).partial().required({ id: true });
+
+
+export async function updateSuperAdmin(data: z.infer<typeof updateSuperAdminSchema>): Promise<{ success: boolean; error?: string }> {
+    const { id, ...adminData } = data;
+    const validatedFields = updateSuperAdminSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    try {
+        const adminDocRef = doc(db, 'superadmins', id);
+        const updateData: any = {};
+        if (adminData.username) {
+            // Check for duplicate username if it's being changed
+            const originalDoc = await getDoc(adminDocRef);
+            if(originalDoc.exists() && originalDoc.data().username !== adminData.username) {
+                const duplicateQuery = query(collection(db, "superadmins"), where("username", "==", adminData.username));
+                const duplicateSnapshot = await getDocs(duplicateQuery);
+                if(!duplicateSnapshot.empty) {
+                    return { success: false, error: "This username is already taken." };
+                }
+            }
+            updateData.username = adminData.username;
+        }
+        if (adminData.password) {
+            updateData.password = adminData.password;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+             await updateDoc(adminDocRef, updateData);
+        }
+       
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error updating superadmin:", error);
+        return { success: false, error: "Could not update superadmin." };
+    }
+}
+
+export async function isPrimaryAdmin(username: string): Promise<{ isPrimary: boolean }> {
+    // This is a simple check against the hardcoded fallback credentials.
+    // In a real app, this might check against an environment variable.
+    const primaryUsername = "7020333927";
+    return { isPrimary: username === primaryUsername };
+}
+
 
 
 // TRAINER ACTIONS
@@ -1390,5 +1440,3 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
-
-    
