@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText, PlayCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Course, Lesson, Participant } from '@/lib/types';
+import type { Course, Lesson, Participant, Subject } from '@/lib/types';
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -116,6 +116,27 @@ const CourseContentPageClient = () => {
             percentage: Math.round((completedInCourse / totalLessons) * 100),
         };
     }, [course, participant]);
+    
+    const subjectProgress = useMemo(() => {
+        if (!course || !participant) return {};
+        const completedLessonsSet = new Set(participant.completedLessons || []);
+        
+        const progressMap: {[subjectId: string]: number} = {};
+
+        course.subjects.forEach(subject => {
+            const subjectLessonIds = subject.units.flatMap(unit => unit.lessons.map(lesson => lesson.id));
+            const totalLessons = subjectLessonIds.length;
+            if (totalLessons === 0) {
+                progressMap[subject.id] = 100; // No lessons means 100% complete
+                return;
+            }
+            const completedCount = subjectLessonIds.filter(id => completedLessonsSet.has(id)).length;
+            progressMap[subject.id] = Math.round((completedCount / totalLessons) * 100);
+        });
+
+        return progressMap;
+
+    }, [course, participant]);
 
     const nextLesson = useMemo(() => {
         if (!course || !participant) return null;
@@ -163,6 +184,11 @@ const CourseContentPageClient = () => {
             setSelectedLesson(nextLesson);
         }
     };
+    
+    const handleSubjectClick = (subjectId: string) => {
+        const element = document.getElementById(`subject-${subjectId}`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     if (loading) {
         return (
@@ -273,33 +299,54 @@ const CourseContentPageClient = () => {
                     <p className="text-muted-foreground mt-2 text-lg">Browse the subjects, units, and lessons for this course.</p>
                 </div>
 
-                <Card className="mb-12">
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-start gap-4">
-                            <div className="w-full">
-                                 <div className="flex justify-between items-center mb-2 text-sm">
+                <div className="space-y-6 mb-12">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="w-full space-y-4">
+                                <div className="flex justify-between items-center mb-2 text-sm">
                                     <p className="font-medium">Your Progress</p>
                                     <p className="text-muted-foreground">{progress.completedLessons} of {progress.totalLessons} lessons</p>
                                 </div>
                                 <Progress value={progress.percentage} />
                                 <p className="text-right text-sm font-bold text-primary mt-1">{progress.percentage}% Complete</p>
+                                 <Button className="w-full" onClick={handleContinueClick} disabled={!nextLesson && progress.percentage < 100}>
+                                    <PlayCircle className="mr-2 h-4 w-4" />
+                                    {progress.percentage === 100
+                                        ? 'Review Course'
+                                        : `Continue Lesson: ${nextLesson?.title}`
+                                    }
+                                </Button>
                             </div>
-                            <Button className="w-full" onClick={handleContinueClick} disabled={!nextLesson && progress.percentage < 100}>
-                                <PlayCircle className="mr-2 h-4 w-4" />
-                                {progress.percentage === 100
-                                    ? 'Review Course'
-                                    : `Continue Lesson: ${nextLesson?.title}`
-                                }
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Course Path</CardTitle>
+                            <CardDescription className="text-sm">Quickly jump to any subject in the course.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ScrollArea className="w-full whitespace-nowrap">
+                                <div className="flex gap-2 pb-2">
+                                {course.subjects.map((subject, index) => (
+                                    <Button key={subject.id} variant="secondary" onClick={() => handleSubjectClick(subject.id)}>
+                                        {subject.name} ({subjectProgress[subject.id] || 0}%)
+                                        {index < course.subjects.length - 1 && <ChevronRight className="h-4 w-4 ml-2 text-muted-foreground" />}
+                                    </Button>
+                                ))}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+
+                </div>
+
 
                 <div ref={contentRef}>
                     {course.subjects.length > 0 ? (
                         <Accordion type="multiple" className="w-full space-y-4">
                             {course.subjects.map(subject => (
-                                <AccordionItem value={subject.id} key={subject.id} className="border rounded-lg">
+                                <AccordionItem value={subject.id} key={subject.id} id={`subject-${subject.id}`} className="border rounded-lg scroll-mt-20">
                                     <AccordionTrigger className="p-6 hover:no-underline">
                                         <div className="flex items-center gap-4">
                                             <div className="bg-primary/10 p-3 rounded-md">
@@ -377,3 +424,4 @@ export default function CourseContentPage() {
 }
 
     
+
