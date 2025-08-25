@@ -1556,6 +1556,49 @@ export async function addOrganization(data: z.infer<typeof addOrganizationSchema
     }
 }
 
+export async function backfillOrganizationsFromParticipants(): Promise<{success: boolean; count: number; error?: string}> {
+    try {
+        const participantsSnapshot = await getDocs(collection(db, "participants"));
+        const organizationsSnapshot = await getDocs(collection(db, "organizations"));
+
+        const participantOrgNames = new Set(
+            participantsSnapshot.docs
+                .map(doc => doc.data().organization)
+                .filter(Boolean) // Filter out empty/undefined organization names
+        );
+
+        const existingOrgNames = new Set(
+            organizationsSnapshot.docs.map(doc => doc.data().name)
+        );
+
+        const missingOrgNames = [...participantOrgNames].filter(name => !existingOrgNames.has(name));
+
+        if (missingOrgNames.length === 0) {
+            return { success: true, count: 0 };
+        }
+
+        const batch = writeBatch(db);
+        const organizationsCollection = collection(db, "organizations");
+
+        missingOrgNames.forEach(name => {
+            const newDocRef = doc(organizationsCollection);
+            batch.set(newDocRef, {
+                name,
+                createdAt: serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+
+        return { success: true, count: missingOrgNames.length };
+
+    } catch(error) {
+        console.error("Error backfilling organizations:", error);
+        return { success: false, count: 0, error: "A database error occurred." };
+    }
+}
+
+
 // ORGANIZATION ADMIN ACTIONS
 const organizationAdminSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -1667,5 +1710,3 @@ export async function deleteOrganizationAdmin(id: string): Promise<{ success: bo
         return { success: false, error: "Could not delete organization admin." };
     }
 }
-
-    

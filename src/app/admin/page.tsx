@@ -20,11 +20,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -514,12 +514,12 @@ const SuperAdminsTable = ({
                             </TableCell>
                             <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right">
-                                {(currentUser.isPrimary || currentUser.canManageAdmins || admin.id === currentUser.id) && admin.id !== currentUser.createdBy && (
+                                {(currentUser.canManageAdmins || admin.id === currentUser.id) && admin.id !== currentUser.createdBy && (
                                      <Button variant="ghost" size="icon" onClick={() => onEdit(admin)}>
                                         <Pencil className="h-4 w-4"/>
                                     </Button>
                                 )}
-                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && admin.id !== currentUser.id && admin.id !== currentUser.createdBy && (
+                                {!admin.isPrimary && currentUser.canManageAdmins && admin.id !== currentUser.id && admin.id !== currentUser.createdBy && (
                                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(admin)}>
                                         <Trash className="h-4 w-4"/>
                                     </Button>
@@ -676,6 +676,8 @@ export default function AdminPage() {
   const [isTransferring, setIsTransferring] = useState(false);
   const [isUpdatingParticipant, setIsUpdatingParticipant] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
+  const [isBackfilling, setIsBackfilling] = useState(false);
+
 
   const { toast } = useToast();
 
@@ -1194,6 +1196,21 @@ export default function AdminPage() {
            toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
       setDeletingOrgAdmin(null);
+  }
+
+  const handleBackfillOrgs = async () => {
+      setIsBackfilling(true);
+      const result = await backfillOrganizationsFromParticipants();
+      if(result.success) {
+          toast({
+              title: "Sync Complete",
+              description: `${result.count} new organization(s) were found and added.`
+          });
+          fetchAllData();
+      } else {
+           toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+      setIsBackfilling(false);
   }
 
 
@@ -1775,15 +1792,21 @@ export default function AdminPage() {
                 <TabsContent value="organizations" className="mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Card>
-                             <CardHeader className="flex flex-row items-center justify-between">
+                             <CardHeader className="flex flex-row items-start justify-between gap-2">
                                 <div>
-                                <CardTitle>Organizations</CardTitle>
-                                <CardDescription>Manage the list of participating organizations.</CardDescription>
+                                    <CardTitle>Organizations</CardTitle>
+                                    <CardDescription>Manage the list of participating organizations.</CardDescription>
                                 </div>
-                                <Button size="sm" onClick={() => setIsAddOrgOpen(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Add Organization
-                                </Button>
+                                <div className="flex flex-col items-end gap-2">
+                                    <Button size="sm" onClick={() => setIsAddOrgOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Add Organization
+                                    </Button>
+                                     <Button size="sm" variant="secondary" onClick={handleBackfillOrgs} disabled={isBackfilling}>
+                                        {isBackfilling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                        Sync from Participants
+                                    </Button>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 <div className="border rounded-lg">
