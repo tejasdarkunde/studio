@@ -20,7 +20,9 @@ import { Progress } from '@/components/ui/progress';
 
 
 const CourseContentPageClient = () => {
-    const params = useParams() as { iitpNo: string; courseId: string; };
+    const params = useParams();
+    const { iitpNo, courseId } = params as { iitpNo: string; courseId: string; };
+
     const [course, setCourse] = useState<Course | null>(null);
     const [participant, setParticipant] = useState<Participant | null>(null);
     const [loading, setLoading] = useState(true);
@@ -31,7 +33,7 @@ const CourseContentPageClient = () => {
 
 
     const fetchParticipantData = async () => {
-        const participantData = await getParticipantByIitpNo(params.iitpNo);
+        const participantData = await getParticipantByIitpNo(iitpNo);
          if (!participantData) {
             notFound();
         }
@@ -40,13 +42,13 @@ const CourseContentPageClient = () => {
     };
 
     useEffect(() => {
-        if (!params.courseId || !params.iitpNo) return;
+        if (!courseId || !iitpNo) return;
         
         const fetchData = async () => {
             setLoading(true);
             const [courseData, participantData] = await Promise.all([
-                getCourseById(params.courseId),
-                getParticipantByIitpNo(params.iitpNo),
+                getCourseById(courseId),
+                getParticipantByIitpNo(iitpNo),
             ]);
 
             if (!participantData || !courseData) {
@@ -66,7 +68,7 @@ const CourseContentPageClient = () => {
             setLoading(false);
         };
         fetchData();
-    }, [params.courseId, params.iitpNo]);
+    }, [courseId, iitpNo]);
     
     const allLessons = useMemo(() => {
         if (!course) return [];
@@ -190,21 +192,21 @@ const CourseContentPageClient = () => {
     return (
         <>
             <Dialog open={!!selectedLesson} onOpenChange={(isOpen) => !isOpen && setSelectedLesson(null)}>
-                <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
-                    <DialogHeader className="p-6 pb-2">
-                        <DialogTitle>{selectedLesson?.title}</DialogTitle>
+                <DialogContent className="max-w-6xl w-full h-full md:h-auto md:max-h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="p-4 md:p-6 pb-2">
+                        <DialogTitle className="text-lg md:text-2xl">{selectedLesson?.title}</DialogTitle>
                          {selectedLesson?.duration && (
                             <DialogDescription className="flex items-center gap-1"><Clock className="h-4 w-4" /> {selectedLesson.duration} min</DialogDescription>
                         )}
                     </DialogHeader>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6 pb-6 flex-grow min-h-0">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 px-4 md:px-6 flex-grow min-h-0">
                         <div className="lg:col-span-2 h-full flex flex-col">
                         {selectedLesson?.videoUrl && (
                            <VideoPlayer url={selectedLesson.videoUrl} />
                         )}
                         </div>
-                        <div className="flex flex-col gap-4 h-full">
-                            <h3 className="text-lg font-semibold">Lesson Details</h3>
+                        <div className="flex flex-col gap-4 h-full lg:max-h-[60vh]">
+                            <h3 className="text-base md:text-lg font-semibold">Lesson Details</h3>
                             <Separator />
                             <ScrollArea className="flex-grow pr-4 -mr-4">
                                 {(selectedLesson?.description || selectedLesson?.documentUrl) ? (
@@ -230,8 +232,7 @@ const CourseContentPageClient = () => {
                                     <p className="text-sm text-muted-foreground">No description or attachments for this lesson.</p>
                                 )}
                             </ScrollArea>
-                            <Separator />
-                            <div>
+                             <div className="mt-auto pt-4">
                             {isLessonCompleted ? (
                                  <div className="flex items-center justify-center gap-2 text-green-600 font-semibold p-3 bg-green-50 rounded-md">
                                     <CheckCircle2 className="h-5 w-5" />
@@ -245,12 +246,12 @@ const CourseContentPageClient = () => {
                             </div>
                         </div>
                     </div>
-                     <DialogFooter className="bg-secondary/50 p-4 border-t flex justify-between items-center sm:justify-between">
-                         <Button variant="outline" onClick={() => lessonNavigation.prev && setSelectedLesson(lessonNavigation.prev)} disabled={!lessonNavigation.prev}>
-                            <ChevronLeft className="mr-2 h-4 w-4"/> Previous Lesson
+                     <DialogFooter className="bg-secondary/50 p-2 md:p-4 border-t flex justify-between items-center sm:justify-between mt-auto">
+                         <Button variant="outline" size="sm" onClick={() => lessonNavigation.prev && setSelectedLesson(lessonNavigation.prev)} disabled={!lessonNavigation.prev}>
+                            <ChevronLeft className="mr-1 h-4 w-4"/> Prev
                         </Button>
-                        <Button variant="outline" onClick={() => lessonNavigation.next && setSelectedLesson(lessonNavigation.next)} disabled={!lessonNavigation.next}>
-                            Next Lesson <ChevronRight className="ml-2 h-4 w-4"/>
+                        <Button variant="outline" size="sm" onClick={() => lessonNavigation.next && setSelectedLesson(lessonNavigation.next)} disabled={!lessonNavigation.next}>
+                            Next <ChevronRight className="ml-1 h-4 w-4"/>
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -259,7 +260,7 @@ const CourseContentPageClient = () => {
             <main className="container mx-auto p-4 md:p-8">
                 <div className="mb-8">
                     <Button asChild variant="outline">
-                        <Link href={`/student/courses/${params.iitpNo}`}>
+                        <Link href={`/student/courses/${iitpNo}`}>
                             <ChevronLeft className="mr-2 h-4 w-4" />
                             Back to My Courses
                         </Link>
