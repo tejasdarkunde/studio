@@ -104,9 +104,10 @@ export default function OrganizationDashboardPage() {
     
     return (
         <main className="container mx-auto p-4 md:p-8">
-            <div className="flex justify-between items-center mb-8 md:mb-12">
+            <div className="flex justify-between items-start mb-8 md:mb-12">
                 <div className="flex flex-col">
-                    <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
+                    <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
+                    <h1 className="mt-2 text-4xl md:text-5xl font-bold tracking-tight">
                         {organizationName}
                     </h1>
                     <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
