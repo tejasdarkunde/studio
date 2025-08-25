@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 type StudentCoursesPageProps = {
     params: {
@@ -37,6 +38,33 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
     const accessibleCourses = enrolledCourses.filter(course => !deniedCourseIds.has(course.id) && course.status === 'active');
     const comingSoonCourses = enrolledCourses.filter(course => !deniedCourseIds.has(course.id) && course.status === 'coming-soon');
     const deniedCourses = enrolledCourses.filter(course => deniedCourseIds.has(course.id));
+
+    const calculateCourseProgress = (courseId: string) => {
+        const course = allCourses.find(c => c.id === courseId);
+        if (!course) return { totalLessons: 0, completedLessons: 0, percentage: 0 };
+        
+        const allLessonIds = new Set<string>();
+        course.subjects.forEach(subject => {
+            subject.units.forEach(unit => {
+                unit.lessons.forEach(lesson => {
+                    allLessonIds.add(lesson.id);
+                });
+            });
+        });
+
+        const totalLessons = allLessonIds.size;
+        if (totalLessons === 0) return { totalLessons: 0, completedLessons: 0, percentage: 0 };
+        
+        const completedStudentLessons = new Set(participant.completedLessons || []);
+        
+        const completedInCourse = Array.from(allLessonIds).filter(lessonId => completedStudentLessons.has(lessonId)).length;
+
+        return {
+            totalLessons: totalLessons,
+            completedLessons: completedInCourse,
+            percentage: Math.round((completedInCourse / totalLessons) * 100),
+        };
+    };
 
 
     return (
@@ -71,30 +99,44 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
 
             {accessibleCourses.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {accessibleCourses.sort((a,b) => a.name.localeCompare(b.name)).map((course) => (
-                        <Card key={course.id}>
+                    {accessibleCourses.sort((a,b) => a.name.localeCompare(b.name)).map((course) => {
+                        const progress = calculateCourseProgress(course.id);
+                        return (
+                        <Card key={course.id} className="flex flex-col">
                             <CardHeader>
                                 <CardTitle>{course.name}</CardTitle>
                                 <CardDescription>Contains {course.subjects.length} subjects.</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <p className="font-semibold mb-2">Subjects include:</p>
-                                <ul className="list-disc list-inside text-muted-foreground">
-                                    {course.subjects.slice(0, 5).map(subject => (
-                                        <li key={subject.id}>{subject.name}</li>
-                                    ))}
-                                     {course.subjects.length > 5 && <li>...and more.</li>}
-                                </ul>
+                            <CardContent className="flex-grow space-y-4">
+                                <div>
+                                    <p className="font-semibold mb-2">Subjects include:</p>
+                                    <ul className="list-disc list-inside text-muted-foreground">
+                                        {course.subjects.slice(0, 5).map(subject => (
+                                            <li key={subject.id}>{subject.name}</li>
+                                        ))}
+                                        {course.subjects.length > 5 && <li>...and more.</li>}
+                                    </ul>
+                                </div>
+                                {progress.totalLessons > 0 && (
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2 text-sm">
+                                            <p className="font-medium">Your Progress</p>
+                                            <p className="text-muted-foreground">{progress.completedLessons} of {progress.totalLessons} lessons</p>
+                                        </div>
+                                        <Progress value={progress.percentage} />
+                                        <p className="text-right text-sm font-bold text-primary mt-1">{progress.percentage}% Complete</p>
+                                    </div>
+                                )}
                             </CardContent>
                             <CardFooter>
                                 <Button asChild className="w-full">
                                     <Link href={`/student/courses/${iitpNo}/${course.id}`}>
-                                        View Course Content <ArrowRight />
+                                        {progress.percentage === 100 ? 'Review Course' : 'Continue Course'} <ArrowRight />
                                     </Link>
                                 </Button>
                             </CardFooter>
                         </Card>
-                    ))}
+                    )})}
                 </div>
             ) : (
                 <div className="text-center text-muted-foreground py-16 border rounded-lg">
