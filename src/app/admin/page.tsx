@@ -510,12 +510,12 @@ const SuperAdminsTable = ({
                             </TableCell>
                             <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right">
-                                {(currentUser.isPrimary || currentUser.canManageAdmins) && currentUser.id !== admin.createdBy && (
+                                {(currentUser.isPrimary || currentUser.canManageAdmins) && admin.id !== currentUser.createdBy && (
                                      <Button variant="ghost" size="icon" onClick={() => onEdit(admin)}>
                                         <Pencil className="h-4 w-4"/>
                                     </Button>
                                 )}
-                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && currentUser.id !== admin.createdBy && (
+                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && admin.id !== currentUser.createdBy && (
                                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(admin)}>
                                         <Trash className="h-4 w-4"/>
                                     </Button>
