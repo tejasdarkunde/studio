@@ -626,6 +626,100 @@ const ManageAdminDialog = ({
     )
 }
 
+const ManageOrganizationAdminDialog = ({
+    isOpen,
+    onClose,
+    onSave,
+    initialData,
+    organizations,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (data: {id?: string; name: string; username: string; password?: string; organizationName: string;}) => Promise<void>;
+    initialData?: OrganizationAdmin | null;
+    organizations: Organization[];
+}) => {
+    const [name, setName] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [organizationName, setOrganizationName] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if(isOpen) {
+            setName(initialData?.name || '');
+            setUsername(initialData?.username || '');
+            setOrganizationName(initialData?.organizationName || '');
+            setPassword('');
+            setIsSaving(false);
+        }
+    }, [isOpen, initialData]);
+
+    const handleSave = async () => {
+        if (!name.trim() || !username.trim() || !organizationName) {
+            toast({ variant: 'destructive', title: "Missing fields", description: "Name, username, and organization are required."});
+            return;
+        }
+        if (!initialData && !password.trim()) {
+            toast({ variant: 'destructive', title: "Missing fields", description: "Password is required for new admins."});
+            return;
+        }
+        setIsSaving(true);
+        await onSave({
+            id: initialData?.id,
+            name,
+            username,
+            organizationName,
+            password: password || undefined,
+        });
+        setIsSaving(false);
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>{initialData ? 'Edit Organization Admin' : 'Add New Organization Admin'}</DialogTitle>
+                  <DialogDescription>{initialData ? `Update details for ${initialData.name}.` : 'Create a new representative account for an organization.'}</DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                  <div>
+                      <Label htmlFor="org-admin-name">Full Name</Label>
+                      <Input id="org-admin-name" value={name} onChange={(e) => setName(e.target.value)} />
+                  </div>
+                   <div>
+                        <Label htmlFor="org-select">Organization</Label>
+                        <Select onValueChange={setOrganizationName} value={organizationName}>
+                            <SelectTrigger id="org-select">
+                                <SelectValue placeholder="Select an organization" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {organizations.map((org) => <SelectItem key={org.id} value={org.name}>{org.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                  </div>
+                  <Separator />
+                  <div>
+                      <Label htmlFor="org-admin-username">Username</Label>
+                      <Input id="org-admin-username" value={username} onChange={(e) => setUsername(e.target.value)} />
+                  </div>
+                   <div>
+                      <Label htmlFor="org-admin-password">Password</Label>
+                      <Input id="org-admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={initialData ? 'Leave blank to keep unchanged' : 'Min 6 characters'} />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : (initialData ? 'Save Changes' : 'Add Admin')}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+        </Dialog>
+    )
+}
+
 
 export default function AdminPage() {
   const router = useRouter();
@@ -1367,7 +1461,38 @@ export default function AdminPage() {
         initialData={editingAdmin}
         currentUser={currentUser}
       />
-      {/* TODO: Add Organization Admin Dialog */}
+      <Dialog open={isAddOrgOpen} onOpenChange={setIsAddOrgOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Add New Organization</DialogTitle>
+                  <DialogDescription>Enter the name for the new organization.</DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                  <div>
+                      <Label htmlFor="new-org-name">Organization Name</Label>
+                      <Input id="new-org-name" value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddOrgOpen(false)}>Cancel</Button>
+                  <Button onClick={handleAddOrganization}>Add Organization</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+      <ManageOrganizationAdminDialog 
+        isOpen={isAddOrgAdminOpen || !!editingOrgAdmin}
+        onClose={() => {setIsAddOrgAdminOpen(false); setEditingOrgAdmin(null);}}
+        onSave={handleSaveOrgAdmin}
+        initialData={editingOrgAdmin}
+        organizations={organizations}
+      />
+      <ConfirmDialog 
+        isOpen={!!deletingOrgAdmin}
+        onClose={() => setDeletingOrgAdmin(null)}
+        onConfirm={handleDeleteOrgAdmin}
+        title="Delete Organization Admin?"
+        description={`This will permanently delete the admin account for "${deletingOrgAdmin?.name}". This action cannot be undone.`}
+      />
 
 
       <main className="container mx-auto p-4 md:p-8">
