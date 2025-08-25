@@ -286,7 +286,10 @@ const CourseContentPageClient = () => {
                             </div>
                             <Button className="w-full md:w-auto flex-shrink-0" onClick={handleContinueClick} disabled={!nextLesson && progress.percentage < 100}>
                                 <PlayCircle className="mr-2 h-4 w-4" />
-                                {progress.percentage === 100 ? 'Review Course' : 'Continue Lesson'}
+                                {progress.percentage === 100
+                                    ? 'Review Course'
+                                    : `Continue Lesson: ${nextLesson?.title}`
+                                }
                             </Button>
                         </div>
                     </CardContent>
