@@ -46,6 +46,9 @@ export default function LoginPage() {
         if (result.role === 'trainer' && result.trainerId) {
             sessionStorage.setItem('trainerId', result.trainerId);
         }
+        if (result.role === 'superadmin' && result.user) {
+            sessionStorage.setItem('user', JSON.stringify(result.user));
+        }
 
         router.push('/admin');
 

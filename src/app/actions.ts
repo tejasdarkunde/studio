@@ -12,7 +12,7 @@ const loginSchema = z.object({
   password: z.string().min(1, { message: "Password is required." }),
 });
 
-export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer'; trainerId?: string; error?: string }> {
+export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer'; user?: SuperAdmin; trainerId?: string; error?: string }> {
     const validatedFields = loginSchema.safeParse(data);
     if (!validatedFields.success) {
         return { success: false, error: "Invalid login data." };
@@ -30,7 +30,8 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
             const superadminDoc = saSnapshot.docs[0];
             const superadmin = superadminDoc.data();
             if (superadmin.password === password) {
-                 return { success: true, role: 'superadmin' };
+                 const { password, ...user } = superadmin;
+                 return { success: true, role: 'superadmin', user: {id: superadminDoc.id, ...user} as SuperAdmin };
             }
         }
         
@@ -607,6 +608,7 @@ export async function transferStudents(data: z.infer<typeof transferStudentsSche
 const superAdminSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters."),
   password: z.string().min(6, "Password must be at least 6 characters."),
+  canManageAdmins: z.boolean().optional(),
 });
 
 export async function getSuperAdmins(): Promise<SuperAdmin[]> {
@@ -621,6 +623,7 @@ export async function getSuperAdmins(): Promise<SuperAdmin[]> {
             return {
                 id: doc.id,
                 username: data.username,
+                canManageAdmins: data.canManageAdmins || false,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
             };
         });
@@ -647,6 +650,7 @@ export async function addSuperAdmin(data: z.infer<typeof superAdminSchema>): Pro
 
         await addDoc(superAdminsCollection, {
             ...validatedFields.data,
+            canManageAdmins: data.canManageAdmins || false,
             createdAt: serverTimestamp(),
         });
         return { success: true };
@@ -698,6 +702,9 @@ export async function updateSuperAdmin(data: z.infer<typeof updateSuperAdminSche
         if (adminData.password) {
             updateData.password = adminData.password;
         }
+        if (typeof adminData.canManageAdmins === 'boolean') {
+            updateData.canManageAdmins = adminData.canManageAdmins;
+        }
 
         if (Object.keys(updateData).length > 0) {
              await updateDoc(adminDocRef, updateData);
@@ -711,7 +718,7 @@ export async function updateSuperAdmin(data: z.infer<typeof updateSuperAdminSche
     }
 }
 
-export async function isPrimaryAdmin(username: string): Promise<{ isPrimary: boolean }> {
+export async function isPrimaryAdmin(id: string): Promise<{ isPrimary: boolean }> {
     // The primary admin is the first one created.
     try {
         const superAdminsCollection = collection(db, "superadmins");
@@ -723,8 +730,8 @@ export async function isPrimaryAdmin(username: string): Promise<{ isPrimary: boo
             return { isPrimary: false };
         }
         
-        const firstAdmin = snapshot.docs[0].data();
-        return { isPrimary: firstAdmin.username === username };
+        const firstAdminDoc = snapshot.docs[0];
+        return { isPrimary: firstAdminDoc.id === id };
 
     } catch (error) {
         console.error("Error checking for primary admin:", error);

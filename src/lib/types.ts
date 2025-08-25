@@ -13,7 +13,9 @@ export type SuperAdmin = {
     id: string;
     username: string;
     password?: string;
+    canManageAdmins: boolean;
     createdAt: string; // ISO 8601 string format
+    isPrimary?: boolean;
 };
 
 export type Trainer = {

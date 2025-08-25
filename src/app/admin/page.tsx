@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
 
 const organizations = [
   "TE Connectivity, Shirwal",
@@ -474,11 +475,13 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
 const SuperAdminsTable = ({
     superAdmins,
     onEdit,
-    onDelete
+    onDelete,
+    currentUser
 }: {
     superAdmins: (SuperAdmin & {isPrimary: boolean})[];
     onEdit: (admin: SuperAdmin) => void;
     onDelete: (admin: SuperAdmin) => void;
+    currentUser: SuperAdmin;
 }) => {
     return (
         <div className="border rounded-lg">
@@ -486,6 +489,7 @@ const SuperAdminsTable = ({
                 <TableHeader>
                     <TableRow>
                         <TableHead>Username</TableHead>
+                        <TableHead>Permissions</TableHead>
                         <TableHead>Date Added</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -497,12 +501,21 @@ const SuperAdminsTable = ({
                                 {admin.username}
                                 {admin.isPrimary && <Badge variant="secondary">Primary</Badge>}
                             </TableCell>
+                            <TableCell>
+                                {admin.canManageAdmins ? (
+                                    <Badge variant="default"><ShieldCheck className="mr-1 h-3 w-3"/> Can Manage</Badge>
+                                ) : (
+                                    <Badge variant="outline"><ShieldOff className="mr-1 h-3 w-3"/> Cannot Manage</Badge>
+                                )}
+                            </TableCell>
                             <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right">
-                                <Button variant="ghost" size="icon" onClick={() => onEdit(admin)}>
-                                    <Pencil className="h-4 w-4"/>
-                                </Button>
-                                {!admin.isPrimary && (
+                                {(currentUser.isPrimary || currentUser.canManageAdmins) && (
+                                     <Button variant="ghost" size="icon" onClick={() => onEdit(admin)}>
+                                        <Pencil className="h-4 w-4"/>
+                                    </Button>
+                                )}
+                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && (
                                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(admin)}>
                                         <Trash className="h-4 w-4"/>
                                     </Button>
@@ -520,20 +533,24 @@ const ManageAdminDialog = ({
     isOpen,
     onClose,
     onSave,
-    initialData
+    initialData,
+    currentUser
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: {id?: string, username: string, password?: string}) => Promise<void>;
+    onSave: (data: {id?: string, username: string, password?: string, canManageAdmins?: boolean}) => Promise<void>;
     initialData?: SuperAdmin | null;
+    currentUser?: SuperAdmin | null;
 }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [canManageAdmins, setCanManageAdmins] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if(isOpen) {
             setUsername(initialData?.username || '');
+            setCanManageAdmins(initialData?.canManageAdmins || false);
             setPassword('');
             setIsSaving(false);
         }
@@ -544,7 +561,8 @@ const ManageAdminDialog = ({
         await onSave({
             id: initialData?.id,
             username,
-            password: password || undefined
+            password: password || undefined,
+            canManageAdmins: canManageAdmins,
         });
         setIsSaving(false);
     }
@@ -554,7 +572,7 @@ const ManageAdminDialog = ({
             <DialogContent>
               <DialogHeader>
                   <DialogTitle>{initialData ? 'Edit Superadmin' : 'Add New Superadmin'}</DialogTitle>
-                  <DialogDescription>{initialData ? `Update credentials for ${initialData.username}.` : 'Create a new user with full administrative privileges.'}</DialogDescription>
+                  <DialogDescription>{initialData ? `Update credentials for ${initialData.username}.` : 'Create a new user with administrative privileges.'}</DialogDescription>
               </DialogHeader>
               <div className="py-4 space-y-4">
                   <div>
@@ -565,6 +583,16 @@ const ManageAdminDialog = ({
                       <Label htmlFor="admin-password">Password</Label>
                       <Input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={initialData ? 'Leave blank to keep unchanged' : 'Min 6 characters'} />
                   </div>
+                  {currentUser?.isPrimary && (
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="can-manage-admins"
+                            checked={canManageAdmins}
+                            onCheckedChange={setCanManageAdmins}
+                        />
+                        <Label htmlFor="can-manage-admins">Allow this admin to manage other admins</Label>
+                    </div>
+                  )}
               </div>
               <DialogFooter>
                   <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
@@ -592,6 +620,7 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'superadmin' | 'trainer' | null>(null);
   const [trainerId, setTrainerId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<SuperAdmin | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   // Dialog states
@@ -638,10 +667,20 @@ export default function AdminPage() {
 
     if(fetchedAdmins) {
          const adminsWithPrimaryFlag = await Promise.all(fetchedAdmins.map(async (admin: SuperAdmin) => {
-            const { isPrimary } = await isPrimaryAdmin(admin.username);
+            const { isPrimary } = await isPrimaryAdmin(admin.id);
             return { ...admin, isPrimary };
         }));
         setSuperAdmins(adminsWithPrimaryFlag);
+        
+        // Update current user state if they are a superadmin
+        const userJson = sessionStorage.getItem('user');
+        if (userJson) {
+            const user = JSON.parse(userJson);
+            const userWithPrimary = adminsWithPrimaryFlag.find(a => a.id === user.id);
+            if(userWithPrimary) {
+                setCurrentUser(userWithPrimary);
+            }
+        }
     }
   }, []);
   
@@ -650,12 +689,17 @@ export default function AdminPage() {
     // Check session storage for auth state
     const role = sessionStorage.getItem('userRole') as 'superadmin' | 'trainer' | null;
     const id = sessionStorage.getItem('trainerId');
+    const userJson = sessionStorage.getItem('user');
+
 
     if(role) {
         setIsAuthenticated(true);
         setUserRole(role);
         if(role === 'trainer' && id) {
             setTrainerId(id);
+        }
+        if (role === 'superadmin' && userJson) {
+            setCurrentUser(JSON.parse(userJson));
         }
         fetchAllData();
     } else {
@@ -1056,7 +1100,7 @@ export default function AdminPage() {
       }
   }
 
-  const handleSaveAdmin = async (data: {id?: string, username: string, password?: string}) => {
+  const handleSaveAdmin = async (data: {id?: string, username: string, password?: string, canManageAdmins?: boolean}) => {
     const action = data.id ? updateSuperAdmin : addSuperAdmin;
     const result = await action(data as any);
     if (result.success) {
@@ -1231,6 +1275,7 @@ export default function AdminPage() {
         onClose={() => {setIsAddAdminOpen(false); setEditingAdmin(null);}}
         onSave={handleSaveAdmin}
         initialData={editingAdmin}
+        currentUser={currentUser}
       />
 
 
@@ -1653,16 +1698,21 @@ export default function AdminPage() {
                                 <CardTitle>Superadmin Management</CardTitle>
                                 <CardDescription>Manage users with full administrative privileges.</CardDescription>
                             </div>
-                            <Button onClick={() => setIsAddAdminOpen(true)}>
-                                <ShieldCheck className="mr-2 h-4 w-4" /> Add Superadmin
-                            </Button>
+                            {(currentUser?.isPrimary || currentUser?.canManageAdmins) && (
+                                <Button onClick={() => setIsAddAdminOpen(true)}>
+                                    <ShieldCheck className="mr-2 h-4 w-4" /> Add Superadmin
+                                </Button>
+                            )}
                         </CardHeader>
                         <CardContent>
-                            <SuperAdminsTable 
-                                superAdmins={superAdmins}
-                                onEdit={(admin) => setEditingAdmin(admin)}
-                                onDelete={(admin) => setDeletingAdmin(admin)}
-                            />
+                            {currentUser && (
+                                <SuperAdminsTable 
+                                    superAdmins={superAdmins}
+                                    onEdit={(admin) => setEditingAdmin(admin)}
+                                    onDelete={(admin) => setDeletingAdmin(admin)}
+                                    currentUser={currentUser}
+                                />
+                            )}
                         </CardContent>
                     </Card>
                  </TabsContent>
