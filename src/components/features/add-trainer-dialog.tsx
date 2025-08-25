@@ -15,11 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import type { Trainer } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
 
 type AddTrainerDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; meetingLink: string; username: string; password?: string; }) => void;
+  onSave: (details: { name: string; meetingLink: string; username: string; password?: string; }) => Promise<void>;
   initialData?: Trainer | null;
 };
 
@@ -28,6 +29,7 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
   const [meetingLink, setMeetingLink] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -36,10 +38,11 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
       setMeetingLink(initialData?.meetingLink || '');
       setUsername(initialData?.username || '');
       setPassword(''); // Always clear password for security
+      setIsSaving(false);
     }
   }, [isOpen, initialData]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !meetingLink.trim() || !username.trim()) {
       toast({
         variant: "destructive",
@@ -78,7 +81,9 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
         return;
     }
     
-    onSave({ name, meetingLink, username, password });
+    setIsSaving(true);
+    await onSave({ name, meetingLink, username, password });
+    setIsSaving(false);
   };
 
   const dialogTitle = initialData ? 'Edit Trainer' : 'Add New Trainer';
@@ -111,8 +116,10 @@ export function AddTrainerDialog({ isOpen, onClose, onSave, initialData }: AddTr
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="button" onClick={handleSave}>{initialData ? 'Save Changes' : 'Add Trainer'}</Button>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+          <Button type="button" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : (initialData ? 'Save Changes' : 'Add Trainer')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

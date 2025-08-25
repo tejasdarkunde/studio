@@ -19,12 +19,12 @@ import Papa from 'papaparse';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Upload } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 
 type ImportParticipantsDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (participants: Omit<Participant, 'id' | 'createdAt'>[]) => void;
+  onSave: (participants: Omit<Participant, 'id' | 'createdAt'>[]) => Promise<void>;
 };
 
 type CsvParticipantRow = {
@@ -35,12 +35,13 @@ type CsvParticipantRow = {
   enrolledCourses?: string;
 };
 
-type ParsedParticipant = Omit<Participant, 'id' | 'createdAt'>;
+type ParsedParticipant = Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>;
 
 export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportParticipantsDialogProps) {
   const [participants, setParticipants] = useState<ParsedParticipant[]>([]);
   const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,9 +107,11 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
 
   }, [toast]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (participants.length > 0) {
-      onSave(participants);
+      setIsSaving(true);
+      await onSave(participants);
+      setIsSaving(false);
     } else {
         toast({
             variant: "destructive",
@@ -122,6 +125,7 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
     setParticipants([]);
     setFileName('');
     setError('');
+    setIsSaving(false);
     onClose();
   }
 
@@ -174,10 +178,9 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={resetState}>Cancel</Button>
-          <Button type="button" onClick={handleSave} disabled={participants.length === 0 || !!error}>
-            <Upload className='mr-2 h-4 w-4' />
-            Import {participants.length > 0 ? participants.length : ''} Participants
+          <Button variant="outline" onClick={resetState} disabled={isSaving}>Cancel</Button>
+          <Button type="button" onClick={handleSave} disabled={participants.length === 0 || !!error || isSaving}>
+            {isSaving ? <><Loader2 className='mr-2 h-4 w-4 animate-spin' /> Importing...</> : <><Upload className='mr-2 h-4 w-4' /> Import {participants.length > 0 ? participants.length : ''} Participants</>}
           </Button>
         </DialogFooter>
       </DialogContent>

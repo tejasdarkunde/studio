@@ -18,12 +18,13 @@ import type { Participant, Course } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { Checkbox } from '../ui/checkbox';
+import { Loader2 } from 'lucide-react';
 
 
 type AddParticipantDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>) => void;
+  onSave: (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>) => Promise<void>;
   courses: Course[];
 };
 
@@ -40,6 +41,7 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses }: AddPa
   const [mobile, setMobile] = useState('');
   const [organization, setOrganization] = useState('');
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,10 +51,11 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses }: AddPa
       setMobile('');
       setOrganization('');
       setSelectedCourses([]);
+      setIsSaving(false);
     }
   }, [isOpen]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !iitpNo.trim()) {
         toast({
             variant: "destructive",
@@ -62,7 +65,9 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses }: AddPa
       return;
     }
     
-    onSave({ name, iitpNo, mobile, organization, enrolledCourses: selectedCourses });
+    setIsSaving(true);
+    await onSave({ name, iitpNo, mobile, organization, enrolledCourses: selectedCourses });
+    setIsSaving(false);
   };
   
   const handleCourseToggle = (courseName: string) => {
@@ -130,8 +135,10 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses }: AddPa
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="button" onClick={handleSave}>Add Participant</Button>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+          <Button type="button" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Adding...</> : 'Add Participant'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

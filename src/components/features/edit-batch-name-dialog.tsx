@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -35,7 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => void;
+  onSave: (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => Promise<void>;
   initialData?: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: string; startTime: string; endTime: string; trainerId?: string; };
   trainers: Trainer[];
   courses: Course[];
@@ -70,6 +70,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [trainerId, setTrainerId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
         setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
         setStartTime(initialData?.startTime || '');
         setEndTime(initialData?.endTime || '');
+        setIsSaving(false);
         
         if (userRole === 'trainer' && !initialData) {
             // For a trainer creating a new batch, lock it to their ID
@@ -89,7 +91,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
     }
   }, [initialData, isOpen, userRole, currentTrainerId]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !course || !startTime || !endTime || !trainerId) {
         toast({
             variant: "destructive",
@@ -98,8 +100,9 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
         });
         return;
     }
-    onSave({ name: name.trim(), course, startDate, startTime, endTime, trainerId });
-    onClose();
+    setIsSaving(true);
+    await onSave({ name: name.trim(), course, startDate, startTime, endTime, trainerId });
+    setIsSaving(false);
   };
 
   const dialogTitle = initialData ? 'Edit Batch' : 'Create New Batch';
@@ -226,8 +229,10 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="button" onClick={handleSave}>Save changes</Button>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+          <Button type="button" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save changes'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

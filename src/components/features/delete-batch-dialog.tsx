@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,15 +13,25 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from 'lucide-react';
 
 type DeleteBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
   batchName: string;
 };
 
 export function DeleteBatchDialog({ isOpen, onClose, onConfirm, batchName }: DeleteBatchDialogProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirm = async () => {
+    setIsDeleting(true);
+    await onConfirm();
+    // The parent component will close the dialog on success
+    setIsDeleting(false);
+  }
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
@@ -32,12 +43,13 @@ export function DeleteBatchDialog({ isOpen, onClose, onConfirm, batchName }: Del
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose} disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={handleConfirm}
+            disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Yes, delete batch
+            {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Deleting...</> : 'Yes, delete batch'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

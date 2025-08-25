@@ -55,6 +55,7 @@ const ManageLessonDialog = ({
     const [duration, setDuration] = useState('');
     const [description, setDescription] = useState('');
     const [documentUrl, setDocumentUrl] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if(isOpen) {
@@ -63,12 +64,15 @@ const ManageLessonDialog = ({
             setDuration(initialData?.duration?.toString() || '');
             setDescription(initialData?.description || '');
             setDocumentUrl(initialData?.documentUrl || '');
+            setIsSaving(false);
         }
     }, [isOpen, initialData])
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        setIsSaving(true);
         const durationNumber = duration ? parseInt(duration, 10) : undefined;
-        onSave({ title, videoUrl, duration: durationNumber, description, documentUrl });
+        await onSave({ title, videoUrl, duration: durationNumber, description, documentUrl });
+        setIsSaving(false);
     }
 
     return (
@@ -101,8 +105,10 @@ const ManageLessonDialog = ({
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleSave}>Save Lesson</Button>
+                    <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+                    <Button onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Lesson'}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -269,10 +275,10 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
         if (result.success) {
             toast({ title: `Lesson ${lessonDialogState.initialData ? 'Updated' : 'Added'}` });
             onContentUpdated();
+            setLessonDialogState({ isOpen: false });
         } else {
             toast({ variant: 'destructive', title: "Error", description: result.error });
         }
-        setLessonDialogState({ isOpen: false });
     }
     
     const handleDeleteLesson = async () => {
@@ -501,6 +507,7 @@ export default function AdminPage() {
   const [sourceCourse, setSourceCourse] = useState('');
   const [destinationCourse, setDestinationCourse] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
+  const [isUpdatingParticipant, setIsUpdatingParticipant] = useState(false);
 
   const { toast } = useToast();
 
@@ -693,6 +700,7 @@ export default function AdminPage() {
             description: `New batch "${details.name}" was successfully created.`,
         });
         fetchAllData();
+        setCreateDialogOpen(false);
     } else {
         toast({
             variant: "destructive",
@@ -700,7 +708,6 @@ export default function AdminPage() {
             description: result.error || "Could not create the new batch.",
         });
     }
-    setCreateDialogOpen(false);
   }
 
   const confirmDeleteBatch = async () => {
@@ -773,6 +780,7 @@ export default function AdminPage() {
   const handleUpdateParticipant = async () => {
     if (!editFormData.id) return;
     
+    setIsUpdatingParticipant(true);
     const result = await updateParticipant({
       ...editFormData,
       enrolledCourses: Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses : String(editFormData.enrolledCourses).split(',').map(c => c.trim()).filter(Boolean),
@@ -796,6 +804,7 @@ export default function AdminPage() {
         description: result.error || 'Could not update participant.',
       });
     }
+    setIsUpdatingParticipant(false);
   };
 
 
@@ -833,6 +842,7 @@ export default function AdminPage() {
         description: `${successfulCount} participants have been added. ${result.skippedCount || 0} were skipped.`,
       });
       fetchAllData();
+      setImportDialogOpen(false);
     } else {
       toast({
         variant: 'destructive',
@@ -841,7 +851,6 @@ export default function AdminPage() {
       });
     }
 
-    setImportDialogOpen(false);
   };
   
   // Trainer Handlers
@@ -857,6 +866,8 @@ export default function AdminPage() {
         description: `${details.name} has been saved successfully.`,
       });
       fetchAllData();
+      setEditingTrainer(null);
+      setAddTrainerOpen(false);
     } else {
       toast({
         variant: 'destructive',
@@ -864,8 +875,6 @@ export default function AdminPage() {
         description: result.error || `Could not save the trainer.`,
       });
     }
-    setEditingTrainer(null);
-    setAddTrainerOpen(false);
   }
 
   const handleDeleteTrainer = async () => {
@@ -1409,7 +1418,9 @@ export default function AdminPage() {
 
                                         <div className="col-span-1 md:col-span-2 flex justify-end gap-2 pt-4">
                                             <Button variant="outline" onClick={() => {setFetchedParticipant(null); setSearchIitpNo('');}}>Cancel</Button>
-                                            <Button onClick={handleUpdateParticipant}>Update Details</Button>
+                                            <Button onClick={handleUpdateParticipant} disabled={isUpdatingParticipant}>
+                                                {isUpdatingParticipant ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Update Details'}
+                                            </Button>
                                         </div>
                                     </div>
                                 )}
@@ -1448,7 +1459,7 @@ export default function AdminPage() {
                                     <div className="flex justify-end">
                                         <Button onClick={handleStudentTransfer} disabled={isTransferring || !sourceCourse || !destinationCourse}>
                                             {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Replace className="mr-2 h-4 w-4"/>}
-                                            Transfer Students
+                                            {isTransferring ? 'Transferring...' : 'Transfer Students'}
                                         </Button>
                                     </div>
                                 </CardContent>
