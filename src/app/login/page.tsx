@@ -43,14 +43,21 @@ export default function LoginPage() {
         
         // Store auth info in session storage
         sessionStorage.setItem('userRole', result.role!);
-        if (result.role === 'trainer' && result.trainerId) {
-            sessionStorage.setItem('trainerId', result.trainerId);
-        }
-        if (result.role === 'superadmin' && result.user) {
+        if (result.user) {
             sessionStorage.setItem('user', JSON.stringify(result.user));
         }
 
-        router.push('/admin');
+        if (result.role === 'trainer') {
+            sessionStorage.setItem('trainerId', result.trainerId!);
+            router.push('/admin');
+        } else if (result.role === 'superadmin') {
+            router.push('/admin');
+        } else if (result.role === 'organization-admin') {
+            router.push(`/organization/${result.organizationName}`);
+        } else {
+             router.push('/login'); // Fallback
+        }
+
 
       } else {
         throw new Error(result.error);

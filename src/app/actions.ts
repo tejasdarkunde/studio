@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -12,7 +12,7 @@ const loginSchema = z.object({
   password: z.string().min(1, { message: "Password is required." }),
 });
 
-export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer'; user?: SuperAdmin; trainerId?: string; error?: string }> {
+export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer' | 'organization-admin'; user?: SuperAdmin | OrganizationAdmin; trainerId?: string; organizationName?: string; error?: string }> {
     const validatedFields = loginSchema.safeParse(data);
     if (!validatedFields.success) {
         return { success: false, error: "Invalid login data." };
@@ -41,29 +41,41 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
         const tQuery = query(trainersCollection, where("username", "==", username));
         const tSnapshot = await getDocs(tQuery);
 
-        if (tSnapshot.empty) {
-             // If we didn't find a superadmin or a trainer
-            return { success: false, error: "Invalid username or password." };
+        if (!tSnapshot.empty) {
+            const trainerDoc = tSnapshot.docs[0];
+            const trainerData = trainerDoc.data();
+            
+            if (trainerData.password === password) {
+                const createdAt = trainerData.createdAt as Timestamp;
+                const trainer: Trainer = {
+                    id: trainerDoc.id,
+                    name: trainerData.name,
+                    username: trainerData.username,
+                    mobile: trainerData.mobile || '',
+                    meetingLink: trainerData.meetingLink,
+                    createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+                };
+                return { success: true, role: 'trainer', trainerId: trainerDoc.id, user: trainer as any };
+            }
+        }
+
+        // 3. Check for Organization Admin
+        const orgAdminsCollection = collection(db, "organizationAdmins");
+        const oaQuery = query(orgAdminsCollection, where("username", "==", username));
+        const oaSnapshot = await getDocs(oaQuery);
+
+        if (!oaSnapshot.empty) {
+            const orgAdminDoc = oaSnapshot.docs[0];
+            const orgAdminData = orgAdminDoc.data() as OrganizationAdmin;
+            if (orgAdminData.password === password) {
+                const { password, ...user } = orgAdminData;
+                const createdAt = user.createdAt as unknown as Timestamp;
+                return { success: true, role: 'organization-admin', user: {id: orgAdminDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as OrganizationAdmin, organizationName: user.organizationName };
+            }
         }
         
-        const trainerDoc = tSnapshot.docs[0];
-        const trainerData = trainerDoc.data();
-        
-        if (trainerData.password === password) {
-            const createdAt = trainerData.createdAt as Timestamp;
-            const trainer: Trainer = {
-                id: trainerDoc.id,
-                name: trainerData.name,
-                username: trainerData.username,
-                mobile: trainerData.mobile || '',
-                meetingLink: trainerData.meetingLink,
-                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-            };
-            // Return a serializable user object for trainer as well
-            return { success: true, role: 'trainer', trainerId: trainerDoc.id, user: trainer as any };
-        } else {
-            return { success: false, error: "Invalid username or password." };
-        }
+        // If we didn't find anyone
+        return { success: false, error: "Invalid username or password." };
 
     } catch (error) {
         console.error("Error during login:", error);
@@ -1487,6 +1499,172 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
     } catch(error) {
         console.error("Error marking lesson as complete:", error);
         return { success: false, error: "Could not update your progress." };
+    }
+}
+
+
+// ORGANIZATION ACTIONS
+export async function getOrganizations(): Promise<Organization[]> {
+    try {
+        const organizationsCollectionRef = collection(db, "organizations");
+        const q = query(organizationsCollectionRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+            return {
+                id: doc.id,
+                name: data.name,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching organizations:", error);
+        return [];
+    }
+}
+
+const addOrganizationSchema = z.object({
+  name: z.string().min(2, { message: "Organization name must be at least 2 characters." }),
+});
+
+export async function addOrganization(data: z.infer<typeof addOrganizationSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = addOrganizationSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+    
+    try {
+        const { name } = validatedFields.data;
+        const organizationsCollection = collection(db, "organizations");
+        
+        const duplicateQuery = query(organizationsCollection, where("name", "==", name));
+        const duplicateSnapshot = await getDocs(duplicateQuery);
+        if(!duplicateSnapshot.empty) {
+            return { success: false, error: "This organization already exists."};
+        }
+        
+        await addDoc(organizationsCollection, {
+            name,
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding organization:", error);
+        return { success: false, error: "Could not add organization." };
+    }
+}
+
+// ORGANIZATION ADMIN ACTIONS
+const organizationAdminSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  organizationName: z.string().min(1, "An organization must be selected."),
+  username: z.string().min(3, "Username must be at least 3 characters."),
+  password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+});
+
+export async function getOrganizationAdmins(): Promise<OrganizationAdmin[]> {
+    try {
+        const orgAdminsCollectionRef = collection(db, "organizationAdmins");
+        const q = query(orgAdminsCollectionRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+            // Omit password from the returned data
+            const { password, ...rest } = data;
+            return {
+                id: doc.id,
+                ...rest,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            } as OrganizationAdmin;
+        });
+    } catch (error) {
+        console.error("Error fetching organization admins:", error);
+        return [];
+    }
+}
+
+export async function addOrganizationAdmin(data: z.infer<typeof organizationAdminSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = organizationAdminSchema.safeParse(data);
+    if (!validatedFields.success) {
+        console.error(validatedFields.error.flatten().fieldErrors);
+        return { success: false, error: "Invalid data." };
+    }
+    if (!validatedFields.data.password) {
+        return { success: false, error: "Password is required for new admins." };
+    }
+    
+    try {
+        const { username, ...rest } = validatedFields.data;
+        const orgAdminsCollection = collection(db, "organizationAdmins");
+        
+        const duplicateQuery = query(orgAdminsCollection, where("username", "==", username));
+        const duplicateSnapshot = await getDocs(duplicateQuery);
+        if(!duplicateSnapshot.empty) {
+            return { success: false, error: "This username is already taken."};
+        }
+        
+        await addDoc(orgAdminsCollection, {
+            username,
+            ...rest,
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding organization admin:", error);
+        return { success: false, error: "Could not add organization admin." };
+    }
+}
+
+const updateOrgAdminSchema = organizationAdminSchema.extend({
+  id: z.string().min(1),
+});
+
+export async function updateOrganizationAdmin(data: z.infer<typeof updateOrgAdminSchema>): Promise<{ success: boolean; error?: string }> {
+    const { id, ...adminData } = data;
+    const validatedFields = organizationAdminSchema.safeParse(adminData);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    try {
+        const adminDocRef = doc(db, 'organizationAdmins', id);
+        
+        const originalDoc = await getDoc(adminDocRef);
+        if (originalDoc.exists() && originalDoc.data().username !== validatedFields.data.username) {
+            const duplicateQuery = query(collection(db, "organizationAdmins"), where("username", "==", validatedFields.data.username));
+            const duplicateSnapshot = await getDocs(duplicateQuery);
+            if(!duplicateSnapshot.empty) {
+                return { success: false, error: "This username is already taken." };
+            }
+        }
+
+        const updateData: any = { ...validatedFields.data };
+        if (!updateData.password) {
+            delete updateData.password;
+        }
+
+        await updateDoc(adminDocRef, updateData);
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error updating organization admin:", error);
+        return { success: false, error: "Could not update organization admin." };
+    }
+}
+
+export async function deleteOrganizationAdmin(id: string): Promise<{ success: boolean; error?: string }> {
+    if (!id) return { success: false, error: "Invalid ID." };
+    try {
+        const adminDocRef = doc(db, 'organizationAdmins', id);
+        await deleteDoc(adminDocRef);
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting organization admin:", error);
+        return { success: false, error: "Could not delete organization admin." };
     }
 }
 

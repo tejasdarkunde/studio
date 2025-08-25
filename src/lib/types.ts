@@ -90,4 +90,18 @@ export type Course = {
   status?: 'active' | 'coming-soon' | 'deactivated';
 };
 
+export type Organization = {
+    id: string;
+    name: string;
+    createdAt: string;
+};
+
+export type OrganizationAdmin = {
+    id: string;
+    name: string;
+    organizationName: string;
+    username: string;
+    password?: string;
+    createdAt: string;
+};
     

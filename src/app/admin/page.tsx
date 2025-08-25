@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin } from '@/lib/types';
+import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
@@ -20,11 +20,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -635,6 +635,8 @@ export default function AdminPage() {
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [superAdmins, setSuperAdmins] = useState<(SuperAdmin & {isPrimary: boolean})[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [organizationAdmins, setOrganizationAdmins] = useState<OrganizationAdmin[]>([]);
   
   // Auth states
   const [isClient, setIsClient] = useState(false);
@@ -657,6 +659,10 @@ export default function AdminPage() {
   const [isAddCourseOpen, setAddCourseOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<SuperAdmin | null>(null);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+  const [isAddOrgOpen, setIsAddOrgOpen] = useState(false);
+  const [editingOrgAdmin, setEditingOrgAdmin] = useState<OrganizationAdmin | null>(null);
+  const [isAddOrgAdminOpen, setIsAddOrgAdminOpen] = useState(false);
+  const [deletingOrgAdmin, setDeletingOrgAdmin] = useState<OrganizationAdmin | null>(null);
 
   // Form & Filter states
   const [searchIitpNo, setSearchIitpNo] = useState('');
@@ -669,6 +675,7 @@ export default function AdminPage() {
   const [destinationCourse, setDestinationCourse] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
   const [isUpdatingParticipant, setIsUpdatingParticipant] = useState(false);
+  const [newOrgName, setNewOrgName] = useState('');
 
   const { toast } = useToast();
 
@@ -676,15 +683,17 @@ export default function AdminPage() {
     const role = sessionStorage.getItem('userRole');
     const actions: Promise<any>[] = [getBatches(), getParticipants(), getTrainers(), getCourses()];
     if (role === 'superadmin') {
-        actions.push(getSuperAdmins());
+        actions.push(getSuperAdmins(), getOrganizations(), getOrganizationAdmins());
     }
     
-    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, fetchedAdmins] = await Promise.all(actions);
+    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, fetchedAdmins, fetchedOrgs, fetchedOrgAdmins] = await Promise.all(actions);
 
     setBatches(fetchedBatches);
     setParticipants(fetchedParticipants);
     setTrainers(fetchedTrainers);
     setCourses(fetchedCourses);
+    if(fetchedOrgs) setOrganizations(fetchedOrgs);
+    if(fetchedOrgAdmins) setOrganizationAdmins(fetchedOrgAdmins);
 
     if(fetchedAdmins) {
          const adminsWithPrimaryFlag = await Promise.all(fetchedAdmins.map(async (admin: SuperAdmin) => {
@@ -812,10 +821,10 @@ export default function AdminPage() {
         courseStats: activeCourseStats,
         totalActiveEnrollments,
         totalSessions: batches.length,
-        totalOrganizations: organizationSet.size,
+        totalOrganizations: organizations.length,
         totalTrainers: trainers.length,
     };
-  }, [participants, batches, trainers, courses]);
+  }, [participants, batches, trainers, courses, organizations]);
   
   const handleEditBatch = (batch: Batch) => {
     setEditingBatch(batch);
@@ -1146,6 +1155,47 @@ export default function AdminPage() {
     setDeletingAdmin(null);
   }
 
+  const handleAddOrganization = async () => {
+      if (!newOrgName.trim()) {
+          toast({ variant: 'destructive', title: 'Organization name required' });
+          return;
+      }
+      const result = await addOrganization({ name: newOrgName });
+      if(result.success) {
+          toast({ title: "Organization Added" });
+          fetchAllData();
+          setNewOrgName('');
+          setIsAddOrgOpen(false);
+      } else {
+          toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+  }
+
+  const handleSaveOrgAdmin = async (data: {id?: string; name: string; username: string; password?: string; organizationName: string;}) => {
+      const action = data.id ? updateOrganizationAdmin : addOrganizationAdmin;
+      const result = await action(data as any);
+      if(result.success) {
+          toast({ title: `Organization Admin ${data.id ? 'Updated' : 'Added'}` });
+          fetchAllData();
+          setEditingOrgAdmin(null);
+          setIsAddOrgAdminOpen(false);
+      } else {
+          toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+  }
+
+  const handleDeleteOrgAdmin = async () => {
+      if(!deletingOrgAdmin) return;
+      const result = await deleteOrganizationAdmin(deletingOrgAdmin.id);
+      if(result.success) {
+          toast({ title: "Organization Admin Deleted" });
+          fetchAllData();
+      } else {
+           toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+      setDeletingOrgAdmin(null);
+  }
+
 
   if (!isClient || loadingAuth) {
     return (
@@ -1189,12 +1239,13 @@ export default function AdminPage() {
 
 
   const SuperAdminTabs = () => (
-    <TabsList className="grid w-full grid-cols-7">
+    <TabsList className="grid w-full grid-cols-8">
         <TabsTrigger value="reports">Reports</TabsTrigger>
         <TabsTrigger value="trainings">Trainings</TabsTrigger>
         <TabsTrigger value="courses">Courses</TabsTrigger>
         <TabsTrigger value="users">All Users</TabsTrigger>
         <TabsTrigger value="trainers">Trainers</TabsTrigger>
+        <TabsTrigger value="organizations">Organizations</TabsTrigger>
         <TabsTrigger value="admins">Admins</TabsTrigger>
         <TabsTrigger value="attendance">Attendance</TabsTrigger>
     </TabsList>
@@ -1240,6 +1291,7 @@ export default function AdminPage() {
         onClose={() => setAddParticipantOpen(false)}
         onSave={handleAddParticipant}
         courses={courses}
+        organizations={organizations}
       />
       <ImportParticipantsDialog
         isOpen={isImportDialogOpen}
@@ -1298,6 +1350,7 @@ export default function AdminPage() {
         initialData={editingAdmin}
         currentUser={currentUser}
       />
+      {/* TODO: Add Organization Admin Dialog */}
 
 
       <main className="container mx-auto p-4 md:p-8">
@@ -1602,8 +1655,8 @@ export default function AdminPage() {
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                     {organizations.map((org) => (
-                                                        <SelectItem key={org} value={org}>
-                                                        {org}
+                                                        <SelectItem key={org.id} value={org.name}>
+                                                        {org.name}
                                                         </SelectItem>
                                                     ))}
                                                     </SelectContent>
@@ -1719,6 +1772,82 @@ export default function AdminPage() {
                     </Card>
                 </TabsContent>
 
+                <TabsContent value="organizations" className="mt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card>
+                             <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                <CardTitle>Organizations</CardTitle>
+                                <CardDescription>Manage the list of participating organizations.</CardDescription>
+                                </div>
+                                <Button size="sm" onClick={() => setIsAddOrgOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Organization
+                                </Button>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="border rounded-lg">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Date Added</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {organizations.map(org => (
+                                                <TableRow key={org.id}>
+                                                    <TableCell className="font-medium">{org.name}</TableCell>
+                                                    <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                             <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                <CardTitle>Organization Admins</CardTitle>
+                                <CardDescription>Manage representative accounts for each organization.</CardDescription>
+                                </div>
+                                <Button size="sm" onClick={() => setIsAddOrgAdminOpen(true)}>
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Add Admin
+                                </Button>
+                            </CardHeader>
+                             <CardContent>
+                                <div className="border rounded-lg">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Organization</TableHead>
+                                                <TableHead>Username</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {organizationAdmins.map(admin => (
+                                                <TableRow key={admin.id}>
+                                                    <TableCell className="font-medium">{admin.name}</TableCell>
+                                                    <TableCell><Badge variant="secondary">{admin.organizationName}</Badge></TableCell>
+                                                    <TableCell>{admin.username}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="icon" onClick={() => setEditingOrgAdmin(admin)}><Pencil className="h-4 w-4"/></Button>
+                                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeletingOrgAdmin(admin)}><Trash className="h-4 w-4"/></Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
                  <TabsContent value="admins" className="mt-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -1767,4 +1896,3 @@ export default function AdminPage() {
     </>
   );
 }
-

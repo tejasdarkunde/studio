@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Participant, Course } from '@/lib/types';
+import type { Participant, Course, Organization } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '../ui/scroll-area';
 import { Checkbox } from '../ui/checkbox';
@@ -26,16 +26,11 @@ type AddParticipantDialogProps = {
   onClose: () => void;
   onSave: (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>) => Promise<void>;
   courses: Course[];
+  organizations: Organization[];
 };
 
-const organizations = [
-  "TE Connectivity, Shirwal",
-  "BSA Plant, Chakan",
-  "Belden India",
-  "Other",
-];
 
-export function AddParticipantDialog({ isOpen, onClose, onSave, courses }: AddParticipantDialogProps) {
+export function AddParticipantDialog({ isOpen, onClose, onSave, courses, organizations }: AddParticipantDialogProps) {
   const [name, setName] = useState('');
   const [iitpNo, setIitpNo] = useState('');
   const [mobile, setMobile] = useState('');
@@ -106,10 +101,11 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses }: AddPa
                 </SelectTrigger>
                 <SelectContent>
                   {organizations.map((org) => (
-                    <SelectItem key={org} value={org}>
-                      {org}
+                    <SelectItem key={org.id} value={org.name}>
+                      {org.name}
                     </SelectItem>
                   ))}
+                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
             </Select>
           </div>
