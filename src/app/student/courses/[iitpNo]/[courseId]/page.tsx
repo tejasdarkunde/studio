@@ -301,44 +301,38 @@ const CourseContentPageClient = () => {
 
                 <div className="space-y-6 mb-12">
                     <Card>
-                        <CardContent className="pt-6">
-                            <div className="w-full space-y-4">
+                        <CardContent className="pt-6 space-y-4">
+                            <div>
                                 <div className="flex justify-between items-center mb-2 text-sm">
                                     <p className="font-medium">Your Progress</p>
                                     <p className="text-muted-foreground">{progress.completedLessons} of {progress.totalLessons} lessons</p>
                                 </div>
                                 <Progress value={progress.percentage} />
                                 <p className="text-right text-sm font-bold text-primary mt-1">{progress.percentage}% Complete</p>
-                                 <Button className="w-full" onClick={handleContinueClick} disabled={!nextLesson && progress.percentage < 100}>
-                                    <PlayCircle className="mr-2 h-4 w-4" />
-                                    {progress.percentage === 100
-                                        ? 'Review Course'
-                                        : `Continue Lesson: ${nextLesson?.title}`
-                                    }
-                                </Button>
+                            </div>
+                             <Button className="w-full" onClick={handleContinueClick} disabled={!nextLesson && progress.percentage < 100}>
+                                <PlayCircle className="mr-2 h-4 w-4" />
+                                {progress.percentage === 100
+                                    ? 'Review Course'
+                                    : `Continue Lesson: ${nextLesson?.title}`
+                                }
+                            </Button>
+                            <Separator />
+                            <div>
+                                <p className="text-sm font-medium mb-2">Course Path</p>
+                                <ScrollArea className="w-full whitespace-nowrap">
+                                    <div className="flex gap-2 pb-2">
+                                    {course.subjects.map((subject, index) => (
+                                        <Button key={subject.id} variant="secondary" size="sm" onClick={() => handleSubjectClick(subject.id)}>
+                                            {subject.name} ({subjectProgress[subject.id] || 0}%)
+                                            {index < course.subjects.length - 1 && <ChevronRight className="h-4 w-4 ml-2 text-muted-foreground" />}
+                                        </Button>
+                                    ))}
+                                    </div>
+                                </ScrollArea>
                             </div>
                         </CardContent>
                     </Card>
-                    
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Course Path</CardTitle>
-                            <CardDescription className="text-sm">Quickly jump to any subject in the course.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ScrollArea className="w-full whitespace-nowrap">
-                                <div className="flex gap-2 pb-2">
-                                {course.subjects.map((subject, index) => (
-                                    <Button key={subject.id} variant="secondary" onClick={() => handleSubjectClick(subject.id)}>
-                                        {subject.name} ({subjectProgress[subject.id] || 0}%)
-                                        {index < course.subjects.length - 1 && <ChevronRight className="h-4 w-4 ml-2 text-muted-foreground" />}
-                                    </Button>
-                                ))}
-                                </div>
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
-
                 </div>
 
 
@@ -424,4 +418,5 @@ export default function CourseContentPage() {
 }
 
     
+
 
