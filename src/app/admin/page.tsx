@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -19,7 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -513,12 +514,12 @@ const SuperAdminsTable = ({
                             </TableCell>
                             <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right">
-                                {(currentUser.isPrimary || currentUser.canManageAdmins) && admin.id !== currentUser.createdBy && admin.id !== currentUser.id && (
+                                {(currentUser.isPrimary || currentUser.canManageAdmins || admin.id === currentUser.id) && admin.id !== currentUser.createdBy && (
                                      <Button variant="ghost" size="icon" onClick={() => onEdit(admin)}>
                                         <Pencil className="h-4 w-4"/>
                                     </Button>
                                 )}
-                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && admin.id !== currentUser.createdBy && admin.id !== currentUser.id && (
+                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && admin.id !== currentUser.id && admin.id !== currentUser.createdBy && (
                                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(admin)}>
                                         <Trash className="h-4 w-4"/>
                                     </Button>
@@ -581,7 +582,7 @@ const ManageAdminDialog = ({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent>
               <DialogHeader>
-                  <DialogTitle>{initialData ? 'Edit Superadmin' : 'Add New Superadmin'}</DialogTitle>
+                  <DialogTitle>{initialData?.id === currentUser?.id ? 'Edit My Profile' : initialData ? 'Edit Superadmin' : 'Add New Superadmin'}</DialogTitle>
                   <DialogDescription>{initialData ? `Update details for ${initialData.name}.` : 'Create a new user with administrative privileges.'}</DialogDescription>
               </DialogHeader>
               <div className="py-4 space-y-4">
@@ -1309,10 +1310,17 @@ export default function AdminPage() {
                    {userRole === 'superadmin' ? 'Manage training batches, registrations, and participants.' : 'Manage your assigned training batches.'}
               </p>
           </div>
-           <Button variant="outline" onClick={() => {
-                sessionStorage.clear();
-                router.push('/login');
-           }}>Logout</Button>
+          <div className="flex items-center gap-2">
+            {userRole === 'superadmin' && currentUser && (
+                <Button variant="outline" size="sm" onClick={() => setEditingAdmin(currentUser)}>
+                    <UserCircle className="mr-2 h-4 w-4"/> My Profile
+                </Button>
+            )}
+            <Button variant="outline" onClick={() => {
+                    sessionStorage.clear();
+                    router.push('/login');
+            }}>Logout</Button>
+          </div>
         </div>
 
         <Tabs defaultValue="reports" className="w-full">
@@ -1760,4 +1768,3 @@ export default function AdminPage() {
   );
 }
 
-    
