@@ -1,12 +1,33 @@
 
+"use client";
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { getParticipantByIitpNo } from '@/app/actions';
+import type { Participant } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StudentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const params = useParams();
+  const iitpNo = params.iitpNo as string;
+  const [participant, setParticipant] = useState<Participant | null>(null);
+
+  useEffect(() => {
+    if(iitpNo) {
+      const fetchParticipant = async () => {
+        const data = await getParticipantByIitpNo(iitpNo);
+        setParticipant(data);
+      }
+      fetchParticipant();
+    }
+  }, [iitpNo]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-background border-b sticky top-0 z-10">
@@ -14,9 +35,16 @@ export default function StudentLayout({
           <Link href="/" className="text-xl font-bold text-primary">
             BSA Training Academy, Pune
           </Link>
-          <Button variant="outline" asChild>
-            <Link href="/">Logout</Link>
-          </Button>
+          <div className="flex items-center gap-4">
+             {participant ? (
+                <span className="text-sm font-medium text-muted-foreground hidden sm:block">Welcome, {participant.name}</span>
+            ) : (
+                iitpNo && <Skeleton className="h-5 w-32 hidden sm:block" />
+            )}
+            <Button variant="outline" asChild>
+              <Link href="/">Logout</Link>
+            </Button>
+          </div>
         </nav>
       </header>
       <main className="flex-grow">
