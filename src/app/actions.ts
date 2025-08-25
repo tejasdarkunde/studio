@@ -137,19 +137,26 @@ export async function joinMeeting(data: z.infer<typeof joinMeetingSchema>): Prom
         const participantDoc = participantSnapshot.docs[0];
         const participant = { id: participantDoc.id, ...participantDoc.data() } as Participant;
         
-        // Create a registration record for this batch using the participant's data
-        const registrationData = {
-          name: participant.name,
-          iitpNo: participant.iitpNo,
-          mobile: participant.mobile || '',
-          organization: participant.organization || '',
-          submissionTime: serverTimestamp(),
-        };
-
+        // Check if the user is already registered for this batch
         const registrationsCollection = collection(db, `batches/${batchId}/registrations`);
-        await addDoc(registrationsCollection, registrationData);
+        const registrationQuery = query(registrationsCollection, where("iitpNo", "==", iitpNo));
+        const registrationSnapshot = await getDocs(registrationQuery);
 
+        // If they are not already registered, create a new registration.
+        if (registrationSnapshot.empty) {
+            const registrationData = {
+              name: participant.name,
+              iitpNo: participant.iitpNo,
+              mobile: participant.mobile || '',
+              organization: participant.organization || '',
+              submissionTime: serverTimestamp(),
+            };
+            await addDoc(registrationsCollection, registrationData);
+        }
+        
+        // If they are already registered, we don't need to do anything, just return success.
         return { success: true };
+
     } catch(error) {
         console.error("Error joining meeting:", error);
         return { success: false, error: "Could not process your request due to a database error." };
@@ -1309,5 +1316,3 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
-
-    
