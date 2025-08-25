@@ -258,7 +258,7 @@ const CourseContentPageClient = () => {
 }
 
 
-export default function CourseContentPage() {
+export default function CourseContentPage({ params }: { params: { iitpNo: string; courseId: string; } }) {
     // This wrapper is needed because this is a server component by default,
     // but we need client-side hooks like useState and useEffect for interactivity.
     return <CourseContentPageClient />;
