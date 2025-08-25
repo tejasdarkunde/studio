@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove } from "firebase/firestore";
+import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
 import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin } from "@/lib/types";
 
 // GENERAL LOGIN
@@ -20,16 +20,8 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
     
     const { username, password } = validatedFields.data;
 
-    // 1. Check for Superadmin (hardcoded fallback)
-    const superadminUsername = "7020333927";
-    const superadminPassword = "11082000";
-
-    if (username === superadminUsername && password === superadminPassword) {
-        return { success: true, role: 'superadmin' };
-    }
-
     try {
-        // 2. Check for Superadmin in DB
+        // 1. Check for Superadmin in DB
         const superadminsCollection = collection(db, "superadmins");
         const saQuery = query(superadminsCollection, where("username", "==", username));
         const saSnapshot = await getDocs(saQuery);
@@ -42,12 +34,13 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
             }
         }
         
-        // 3. Check for Trainer
+        // 2. Check for Trainer
         const trainersCollection = collection(db, "trainers");
         const tQuery = query(trainersCollection, where("username", "==", username));
         const tSnapshot = await getDocs(tQuery);
 
         if (tSnapshot.empty) {
+             // If we didn't find a superadmin or a trainer
             return { success: false, error: "Invalid username or password." };
         }
         
@@ -719,10 +712,24 @@ export async function updateSuperAdmin(data: z.infer<typeof updateSuperAdminSche
 }
 
 export async function isPrimaryAdmin(username: string): Promise<{ isPrimary: boolean }> {
-    // This is a simple check against the hardcoded fallback credentials.
-    // In a real app, this might check against an environment variable.
-    const primaryUsername = "7020333927";
-    return { isPrimary: username === primaryUsername };
+    // The primary admin is the first one created.
+    try {
+        const superAdminsCollection = collection(db, "superadmins");
+        const q = query(superAdminsCollection, orderBy("createdAt", "asc"), limit(1));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+            // This case should ideally not happen if there's at least one admin
+            return { isPrimary: false };
+        }
+        
+        const firstAdmin = snapshot.docs[0].data();
+        return { isPrimary: firstAdmin.username === username };
+
+    } catch (error) {
+        console.error("Error checking for primary admin:", error);
+        return { isPrimary: false };
+    }
 }
 
 
@@ -1440,3 +1447,5 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
+
+    
