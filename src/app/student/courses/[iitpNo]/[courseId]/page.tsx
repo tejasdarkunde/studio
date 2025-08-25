@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText, PlayCircle } from 'lucide-react';
+import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText, PlayCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Course, Lesson, Participant } from '@/lib/types';
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
@@ -67,6 +67,27 @@ const CourseContentPageClient = () => {
         };
         fetchData();
     }, [params.courseId, params.iitpNo]);
+    
+    const allLessons = useMemo(() => {
+        if (!course) return [];
+        return course.subjects.flatMap(subject => 
+            subject.units.flatMap(unit => 
+                unit.lessons.map(lesson => ({...lesson, unitTitle: unit.title, subjectName: subject.name}))
+            )
+        );
+    }, [course]);
+
+    const lessonNavigation = useMemo(() => {
+        if (!selectedLesson || allLessons.length === 0) return { prev: null, next: null };
+        const currentIndex = allLessons.findIndex(l => l.id === selectedLesson.id);
+        if (currentIndex === -1) return { prev: null, next: null };
+        
+        const prev = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+        const next = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+        return { prev, next };
+    }, [selectedLesson, allLessons]);
+
 
     const progress = useMemo(() => {
         if (!course || !participant) return { totalLessons: 0, completedLessons: 0, percentage: 0 };
@@ -169,52 +190,68 @@ const CourseContentPageClient = () => {
     return (
         <>
             <Dialog open={!!selectedLesson} onOpenChange={(isOpen) => !isOpen && setSelectedLesson(null)}>
-                <DialogContent className="max-w-4xl h-auto">
-                    <DialogHeader>
+                <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="p-6 pb-2">
                         <DialogTitle>{selectedLesson?.title}</DialogTitle>
                          {selectedLesson?.duration && (
                             <DialogDescription className="flex items-center gap-1"><Clock className="h-4 w-4" /> {selectedLesson.duration} min</DialogDescription>
                         )}
                     </DialogHeader>
-                    <div className="grid gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6 pb-6 flex-grow min-h-0">
+                        <div className="lg:col-span-2 h-full flex flex-col">
                         {selectedLesson?.videoUrl && (
                            <VideoPlayer url={selectedLesson.videoUrl} />
                         )}
-                        {(selectedLesson?.description || selectedLesson?.documentUrl) && (
-                            <div className="p-4 bg-secondary/50 rounded-md max-h-48">
-                                <ScrollArea className="h-full">
-                                    {selectedLesson.description && (
-                                        <>
-                                            <h4 className="font-semibold mb-2 flex items-center gap-2"><FileText className="h-4 w-4"/> Lesson Details</h4>
-                                            <p className="text-sm whitespace-pre-wrap">{selectedLesson.description}</p>
-                                        </>
-                                    )}
-                                </ScrollArea>
+                        </div>
+                        <div className="flex flex-col gap-4 h-full">
+                            <h3 className="text-lg font-semibold">Lesson Details</h3>
+                            <Separator />
+                            <ScrollArea className="flex-grow pr-4 -mr-4">
+                                {(selectedLesson?.description || selectedLesson?.documentUrl) ? (
+                                    <div className="space-y-4">
+                                        {selectedLesson.description && (
+                                            <div>
+                                                <h4 className="font-semibold mb-2 flex items-center gap-2"><FileText className="h-4 w-4"/> Description</h4>
+                                                <p className="text-sm whitespace-pre-wrap text-muted-foreground">{selectedLesson.description}</p>
+                                            </div>
+                                        )}
+                                        {selectedLesson.documentUrl && (
+                                            <div>
+                                                <h4 className="font-semibold mb-2 flex items-center gap-2"><Download className="h-4 w-4"/> Attachments</h4>
+                                                <Button asChild variant="secondary" size="sm">
+                                                    <Link href={selectedLesson.documentUrl} target="_blank" download>
+                                                        Download Document
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No description or attachments for this lesson.</p>
+                                )}
+                            </ScrollArea>
+                            <Separator />
+                            <div>
+                            {isLessonCompleted ? (
+                                 <div className="flex items-center justify-center gap-2 text-green-600 font-semibold p-3 bg-green-50 rounded-md">
+                                    <CheckCircle2 className="h-5 w-5" />
+                                    <span>Lesson Completed</span>
+                                </div>
+                            ) : (
+                                 <Button onClick={() => selectedLesson && handleMarkAsComplete(selectedLesson.id)} disabled={isPending} className="w-full">
+                                    {isPending ? 'Saving...' : 'Mark as Complete'}
+                                </Button>
+                            )}
                             </div>
-                        )}
+                        </div>
                     </div>
-                     <DialogFooter className="sm:justify-between items-center">
-                        <div>
-                        {selectedLesson?.documentUrl && (
-                            <Button asChild variant="outline">
-                                <Link href={selectedLesson.documentUrl} target="_blank" download>
-                                    <Download className="mr-2"/> Download Document
-                                </Link>
-                            </Button>
-                        )}
-                        </div>
-                        <div>
-                        {isLessonCompleted ? (
-                             <div className="flex items-center gap-2 text-green-600 font-semibold text-sm pr-4">
-                                <CheckCircle2 className="h-5 w-5" />
-                                <span>Completed</span>
-                            </div>
-                        ) : (
-                             <Button onClick={() => selectedLesson && handleMarkAsComplete(selectedLesson.id)} disabled={isPending}>
-                                {isPending ? 'Saving...' : 'Mark as Complete'}
-                            </Button>
-                        )}
-                        </div>
+                     <DialogFooter className="bg-secondary/50 p-4 border-t flex justify-between items-center sm:justify-between">
+                         <Button variant="outline" onClick={() => lessonNavigation.prev && setSelectedLesson(lessonNavigation.prev)} disabled={!lessonNavigation.prev}>
+                            <ChevronLeft className="mr-2 h-4 w-4"/> Previous Lesson
+                        </Button>
+                        <Button variant="outline" onClick={() => lessonNavigation.next && setSelectedLesson(lessonNavigation.next)} disabled={!lessonNavigation.next}>
+                            Next Lesson <ChevronRight className="ml-2 h-4 w-4"/>
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -329,7 +366,7 @@ const CourseContentPageClient = () => {
 }
 
 
-export default function CourseContentPage({ params }: { params: { iitpNo: string; courseId: string; } }) {
+export default function CourseContentPage() {
     // This wrapper is needed because this is a server component by default,
     // but we need client-side hooks like useState and useEffect for interactivity.
     return <CourseContentPageClient />;
