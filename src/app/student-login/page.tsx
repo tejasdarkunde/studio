@@ -24,10 +24,10 @@ export default function StudentLoginPage() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center text-center mb-8">
             <h1 className="text-4xl font-bold text-primary tracking-tight">
-              Student Login
+              BSA Training Academy, Pune
             </h1>
             <p className="mt-3 text-lg text-muted-foreground">
-              Access your learning materials.
+              Student Login: Access your learning materials.
             </p>
         </div>
         
@@ -50,5 +50,3 @@ export default function StudentLoginPage() {
     </main>
   );
 }
-
-    

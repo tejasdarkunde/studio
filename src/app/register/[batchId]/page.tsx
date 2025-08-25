@@ -95,7 +95,10 @@ export default function RegistrationPage() {
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center justify-center min-h-screen">
       <div className="w-full max-w-5xl">
         <div className="flex flex-col items-center justify-center text-center mb-8 md:mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
+            <p className="text-xl font-bold text-primary tracking-tight">
+                BSA Training Academy, Pune
+            </p>
+            <h1 className="mt-2 text-4xl md:text-5xl font-bold tracking-tight">
               {batch?.name || 'Training Program'}
             </h1>
             <p className="mt-3 max-w-2xl text-lg text-muted-foreground">

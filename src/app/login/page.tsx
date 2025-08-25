@@ -78,10 +78,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center text-center mb-8">
             <h1 className="text-4xl font-bold text-primary tracking-tight">
-              Admin & Trainer Login
+              BSA Training Academy, Pune
             </h1>
             <p className="mt-3 text-lg text-muted-foreground">
-              Access your dashboard.
+              Admin & Trainer Login
             </p>
         </div>
         

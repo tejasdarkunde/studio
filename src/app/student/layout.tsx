@@ -12,7 +12,7 @@ export default function StudentLayout({
       <header className="bg-background border-b sticky top-0 z-10">
         <nav className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
           <Link href="/" className="text-xl font-bold text-primary">
-            BSA Student Portal
+            BSA Training Academy, Pune
           </Link>
           <Button variant="outline" asChild>
             <Link href="/">Logout</Link>
@@ -25,5 +25,3 @@ export default function StudentLayout({
     </div>
   );
 }
-
-    
