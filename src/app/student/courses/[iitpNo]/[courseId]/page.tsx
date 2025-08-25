@@ -275,8 +275,8 @@ const CourseContentPageClient = () => {
 
                 <Card className="mb-12">
                     <CardContent className="pt-6">
-                        <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                            <div className="flex-grow w-full">
+                        <div className="flex flex-col items-start gap-4">
+                            <div className="w-full">
                                  <div className="flex justify-between items-center mb-2 text-sm">
                                     <p className="font-medium">Your Progress</p>
                                     <p className="text-muted-foreground">{progress.completedLessons} of {progress.totalLessons} lessons</p>
@@ -284,7 +284,7 @@ const CourseContentPageClient = () => {
                                 <Progress value={progress.percentage} />
                                 <p className="text-right text-sm font-bold text-primary mt-1">{progress.percentage}% Complete</p>
                             </div>
-                            <Button className="w-full md:w-auto flex-shrink-0" onClick={handleContinueClick} disabled={!nextLesson && progress.percentage < 100}>
+                            <Button className="w-full" onClick={handleContinueClick} disabled={!nextLesson && progress.percentage < 100}>
                                 <PlayCircle className="mr-2 h-4 w-4" />
                                 {progress.percentage === 100
                                     ? 'Review Course'
