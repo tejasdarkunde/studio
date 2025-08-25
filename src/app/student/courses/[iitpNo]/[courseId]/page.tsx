@@ -6,16 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText } from 'lucide-react';
+import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Course, Lesson, Participant } from '@/lib/types';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { VideoPlayer } from '@/components/features/video-player';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 
 
 const CourseContentPageClient = () => {
@@ -26,6 +27,8 @@ const CourseContentPageClient = () => {
     const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
+    const contentRef = useRef<HTMLDivElement>(null);
+
 
     const fetchParticipantData = async () => {
         const participantData = await getParticipantByIitpNo(params.iitpNo);
@@ -65,6 +68,48 @@ const CourseContentPageClient = () => {
         fetchData();
     }, [params.courseId, params.iitpNo]);
 
+    const progress = useMemo(() => {
+        if (!course || !participant) return { totalLessons: 0, completedLessons: 0, percentage: 0 };
+        
+        const allLessonIds = new Set<string>();
+        course.subjects.forEach(subject => {
+            subject.units.forEach(unit => {
+                unit.lessons.forEach(lesson => {
+                    allLessonIds.add(lesson.id);
+                });
+            });
+        });
+
+        const totalLessons = allLessonIds.size;
+        if (totalLessons === 0) return { totalLessons: 0, completedLessons: 0, percentage: 0 };
+        
+        const completedStudentLessons = new Set(participant.completedLessons || []);
+        
+        const completedInCourse = Array.from(allLessonIds).filter(lessonId => completedStudentLessons.has(lessonId)).length;
+
+        return {
+            totalLessons: totalLessons,
+            completedLessons: completedInCourse,
+            percentage: Math.round((completedInCourse / totalLessons) * 100),
+        };
+    }, [course, participant]);
+
+    const nextLesson = useMemo(() => {
+        if (!course || !participant) return null;
+        const completedLessonsSet = new Set(participant.completedLessons || []);
+        
+        for (const subject of course.subjects) {
+            for (const unit of subject.units) {
+                for (const lesson of unit.lessons) {
+                    if (!completedLessonsSet.has(lesson.id)) {
+                        return lesson;
+                    }
+                }
+            }
+        }
+        return null; // All lessons completed
+    }, [course, participant]);
+
     const handleMarkAsComplete = (lessonId: string) => {
         if (!participant) return;
 
@@ -76,11 +121,7 @@ const CourseContentPageClient = () => {
                     description: "Lesson marked as complete."
                 });
                 // Re-fetch participant data to update UI
-                const updatedParticipant = await fetchParticipantData();
-                // Close dialog if the completed lesson was the selected one
-                if (selectedLesson && updatedParticipant?.completedLessons?.includes(selectedLesson.id)) {
-                    // Do nothing, let user see the completed state in dialog
-                }
+                await fetchParticipantData();
             } else {
                 toast({
                     variant: 'destructive',
@@ -90,6 +131,15 @@ const CourseContentPageClient = () => {
             }
         });
     }
+
+     const handleContinueClick = () => {
+        if (progress.percentage === 100) {
+            // Scroll to content if course is complete
+            contentRef.current?.scrollIntoView({ behavior: 'smooth' });
+        } else if (nextLesson) {
+            setSelectedLesson(nextLesson);
+        }
+    };
 
     if (loading) {
         return (
@@ -179,79 +229,100 @@ const CourseContentPageClient = () => {
                     </Button>
                 </div>
                 
-                <div className="mb-12">
+                <div className="mb-8">
                     <p className="text-lg text-primary font-semibold">{course.name}</p>
                     <h1 className="text-4xl font-bold tracking-tight">Course Content</h1>
                     <p className="text-muted-foreground mt-2 text-lg">Browse the subjects, units, and lessons for this course.</p>
                 </div>
 
-                {course.subjects.length > 0 ? (
-                    <Accordion type="multiple" className="w-full space-y-4">
-                        {course.subjects.map(subject => (
-                            <AccordionItem value={subject.id} key={subject.id} className="border rounded-lg">
-                                <AccordionTrigger className="p-6 hover:no-underline">
-                                    <div className="flex items-center gap-4">
-                                        <div className="bg-primary/10 p-3 rounded-md">
-                                        <BookOpen className="h-6 w-6 text-primary" />
+                <Card className="mb-12">
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                            <div className="flex-grow w-full">
+                                 <div className="flex justify-between items-center mb-2 text-sm">
+                                    <p className="font-medium">Your Progress</p>
+                                    <p className="text-muted-foreground">{progress.completedLessons} of {progress.totalLessons} lessons</p>
+                                </div>
+                                <Progress value={progress.percentage} />
+                                <p className="text-right text-sm font-bold text-primary mt-1">{progress.percentage}% Complete</p>
+                            </div>
+                            <Button className="w-full md:w-auto flex-shrink-0" onClick={handleContinueClick} disabled={!nextLesson && progress.percentage < 100}>
+                                <PlayCircle className="mr-2 h-4 w-4" />
+                                {progress.percentage === 100 ? 'Review Course' : 'Continue Lesson'}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div ref={contentRef}>
+                    {course.subjects.length > 0 ? (
+                        <Accordion type="multiple" className="w-full space-y-4">
+                            {course.subjects.map(subject => (
+                                <AccordionItem value={subject.id} key={subject.id} className="border rounded-lg">
+                                    <AccordionTrigger className="p-6 hover:no-underline">
+                                        <div className="flex items-center gap-4">
+                                            <div className="bg-primary/10 p-3 rounded-md">
+                                            <BookOpen className="h-6 w-6 text-primary" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-xl font-semibold text-left">{subject.name}</h2>
+                                                <p className="text-sm text-muted-foreground text-left">{subject.units.length} units</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h2 className="text-xl font-semibold text-left">{subject.name}</h2>
-                                            <p className="text-sm text-muted-foreground text-left">{subject.units.length} units</p>
-                                        </div>
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="p-6 pt-0">
-                                    {subject.units.length > 0 ? (
-                                        <Accordion type="multiple" className="w-full space-y-2">
-                                            {subject.units.map(unit => (
-                                                <AccordionItem value={unit.id} key={unit.id} className="border-l-4 border-primary/50 pl-4">
-                                                    <AccordionTrigger className="py-3 hover:no-underline">
-                                                        <h3 className="text-lg font-medium">{unit.title}</h3>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent className="pb-0">
-                                                        <ul className="space-y-3 pt-2">
-                                                            {unit.lessons.map(lesson => (
-                                                                <li key={lesson.id}>
-                                                                     <button 
-                                                                        className="w-full flex items-center justify-between p-3 rounded-md bg-background hover:bg-secondary/50 transition-colors text-left"
-                                                                        onClick={() => setSelectedLesson(lesson)}
-                                                                    >
-                                                                        <div className="flex items-center gap-3">
-                                                                            <Video className="h-5 w-5 text-muted-foreground" />
-                                                                            <div className="flex flex-col items-start">
-                                                                                <span className="text-base font-medium">{lesson.title}</span>
-                                                                                {lesson.duration && (
-                                                                                    <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration} min</span>
-                                                                                )}
+                                    </AccordionTrigger>
+                                    <AccordionContent className="p-6 pt-0">
+                                        {subject.units.length > 0 ? (
+                                            <Accordion type="multiple" className="w-full space-y-2">
+                                                {subject.units.map(unit => (
+                                                    <AccordionItem value={unit.id} key={unit.id} className="border-l-4 border-primary/50 pl-4">
+                                                        <AccordionTrigger className="py-3 hover:no-underline">
+                                                            <h3 className="text-lg font-medium">{unit.title}</h3>
+                                                        </AccordionTrigger>
+                                                        <AccordionContent className="pb-0">
+                                                            <ul className="space-y-3 pt-2">
+                                                                {unit.lessons.map(lesson => (
+                                                                    <li key={lesson.id}>
+                                                                        <button 
+                                                                            className="w-full flex items-center justify-between p-3 rounded-md bg-background hover:bg-secondary/50 transition-colors text-left"
+                                                                            onClick={() => setSelectedLesson(lesson)}
+                                                                        >
+                                                                            <div className="flex items-center gap-3">
+                                                                                <Video className="h-5 w-5 text-muted-foreground" />
+                                                                                <div className="flex flex-col items-start">
+                                                                                    <span className="text-base font-medium">{lesson.title}</span>
+                                                                                    {lesson.duration && (
+                                                                                        <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration} min</span>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                        {completedLessonsSet.has(lesson.id) && (
-                                                                            <div className="flex items-center gap-1 text-green-600 font-medium text-sm">
-                                                                                <CheckCircle2 className="h-5 w-5" />
-                                                                            </div>
-                                                                        )}
-                                                                    </button>
-                                                                </li>
-                                                            ))}
-                                                            {unit.lessons.length === 0 && <p className="text-muted-foreground text-sm p-3">No lessons in this unit yet.</p>}
-                                                        </ul>
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            ))}
-                                        </Accordion>
-                                    ) : (
-                                        <p className="text-muted-foreground">No units have been added to this subject yet.</p>
-                                    )}
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
-                    </Accordion>
-                ) : (
-                    <div className="text-center text-muted-foreground py-16 border rounded-lg">
-                        <h3 className="text-xl font-semibold text-foreground">No Content Available</h3>
-                        <p className="mt-2">The curriculum for this course has not been uploaded yet.</p>
-                    </div>
-                )}
+                                                                            {completedLessonsSet.has(lesson.id) && (
+                                                                                <div className="flex items-center gap-1 text-green-600 font-medium text-sm">
+                                                                                    <CheckCircle2 className="h-5 w-5" />
+                                                                                </div>
+                                                                            )}
+                                                                        </button>
+                                                                    </li>
+                                                                ))}
+                                                                {unit.lessons.length === 0 && <p className="text-muted-foreground text-sm p-3">No lessons in this unit yet.</p>}
+                                                            </ul>
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                ))}
+                                            </Accordion>
+                                        ) : (
+                                            <p className="text-muted-foreground">No units have been added to this subject yet.</p>
+                                        )}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    ) : (
+                        <div className="text-center text-muted-foreground py-16 border rounded-lg">
+                            <h3 className="text-xl font-semibold text-foreground">No Content Available</h3>
+                            <p className="mt-2">The curriculum for this course has not been uploaded yet.</p>
+                        </div>
+                    )}
+                </div>
             </main>
         </>
     );
@@ -263,3 +334,5 @@ export default function CourseContentPage({ params }: { params: { iitpNo: string
     // but we need client-side hooks like useState and useEffect for interactivity.
     return <CourseContentPageClient />;
 }
+
+    
