@@ -16,6 +16,7 @@ export type SuperAdmin = {
     canManageAdmins: boolean;
     createdAt: string; // ISO 8601 string format
     isPrimary?: boolean;
+    createdBy?: string; // ID of the admin who created this admin
 };
 
 export type Trainer = {

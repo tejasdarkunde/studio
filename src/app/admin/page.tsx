@@ -510,12 +510,12 @@ const SuperAdminsTable = ({
                             </TableCell>
                             <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right">
-                                {(currentUser.isPrimary || currentUser.canManageAdmins) && (
+                                {(currentUser.isPrimary || currentUser.canManageAdmins) && currentUser.id !== admin.createdBy && (
                                      <Button variant="ghost" size="icon" onClick={() => onEdit(admin)}>
                                         <Pencil className="h-4 w-4"/>
                                     </Button>
                                 )}
-                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && (
+                                {(!admin.isPrimary && (currentUser.isPrimary || currentUser.canManageAdmins)) && currentUser.id !== admin.createdBy && (
                                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(admin)}>
                                         <Trash className="h-4 w-4"/>
                                     </Button>
@@ -538,7 +538,7 @@ const ManageAdminDialog = ({
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: {id?: string, username: string, password?: string, canManageAdmins?: boolean}) => Promise<void>;
+    onSave: (data: {id?: string, username: string, password?: string, canManageAdmins?: boolean, currentUserId?: string}) => Promise<void>;
     initialData?: SuperAdmin | null;
     currentUser?: SuperAdmin | null;
 }) => {
@@ -563,6 +563,7 @@ const ManageAdminDialog = ({
             username,
             password: password || undefined,
             canManageAdmins: canManageAdmins,
+            currentUserId: currentUser?.id,
         });
         setIsSaving(false);
     }
@@ -1100,7 +1101,7 @@ export default function AdminPage() {
       }
   }
 
-  const handleSaveAdmin = async (data: {id?: string, username: string, password?: string, canManageAdmins?: boolean}) => {
+  const handleSaveAdmin = async (data: {id?: string, username: string, password?: string, canManageAdmins?: boolean, currentUserId?: string}) => {
     const action = data.id ? updateSuperAdmin : addSuperAdmin;
     const result = await action(data as any);
     if (result.success) {

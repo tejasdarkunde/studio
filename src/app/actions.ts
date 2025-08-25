@@ -28,10 +28,10 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
 
         if (!saSnapshot.empty) {
             const superadminDoc = saSnapshot.docs[0];
-            const superadminData = superadminDoc.data();
+            const superadminData = superadminDoc.data() as SuperAdmin;
             if (superadminData.password === password) {
                  const { password, ...user } = superadminData;
-                 const createdAt = user.createdAt as Timestamp;
+                 const createdAt = user.createdAt as unknown as Timestamp;
                  return { success: true, role: 'superadmin', user: {id: superadminDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as SuperAdmin };
             }
         }
@@ -610,6 +610,7 @@ const superAdminSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters."),
   password: z.string().min(6, "Password must be at least 6 characters."),
   canManageAdmins: z.boolean().optional(),
+  currentUserId: z.string().optional(), // ID of the admin performing the action
 });
 
 export async function getSuperAdmins(): Promise<SuperAdmin[]> {
@@ -626,6 +627,7 @@ export async function getSuperAdmins(): Promise<SuperAdmin[]> {
                 username: data.username,
                 canManageAdmins: data.canManageAdmins || false,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+                createdBy: data.createdBy,
             };
         });
     } catch (error) {
@@ -641,19 +643,26 @@ export async function addSuperAdmin(data: z.infer<typeof superAdminSchema>): Pro
     }
     
     try {
+        const { currentUserId, ...adminData } = validatedFields.data;
         const superAdminsCollection = collection(db, "superadmins");
         
-        const duplicateQuery = query(superAdminsCollection, where("username", "==", data.username));
+        const duplicateQuery = query(superAdminsCollection, where("username", "==", adminData.username));
         const duplicateSnapshot = await getDocs(duplicateQuery);
         if(!duplicateSnapshot.empty) {
             return { success: false, error: "This username is already taken."};
         }
-
-        await addDoc(superAdminsCollection, {
-            ...validatedFields.data,
-            canManageAdmins: data.canManageAdmins || false,
+        
+        const newAdminData: any = {
+            ...adminData,
+            canManageAdmins: adminData.canManageAdmins || false,
             createdAt: serverTimestamp(),
-        });
+        };
+
+        if(currentUserId) {
+            newAdminData.createdBy = currentUserId;
+        }
+
+        await addDoc(superAdminsCollection, newAdminData);
         return { success: true };
     } catch (error) {
         console.error("Error adding superadmin:", error);
@@ -1455,6 +1464,3 @@ export async function markLessonAsComplete(data: z.infer<typeof markLessonComple
         return { success: false, error: "Could not update your progress." };
     }
 }
-
-    
-    
