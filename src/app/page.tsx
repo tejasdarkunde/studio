@@ -28,12 +28,12 @@ const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
   return (
     <Card className="flex flex-col">
         <CardHeader>
-          <div className="flex justify-between items-start">
-            <CardTitle>{batch.name}</CardTitle>
-            <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
+           <div className="flex justify-between items-start">
+             <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-full">
               {batch.course}
             </Badge>
           </div>
+          <CardTitle>{batch.name}</CardTitle>
           <CardDescription className="flex items-center gap-2 pt-1">
             {batch.startDate ? (
               <>
