@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getRedirectLink, getBatchById } from '@/app/actions';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Hourglass } from 'lucide-react';
+import { Hourglass, Timer } from 'lucide-react';
 
 
 export default function RegistrationPage() {
@@ -20,7 +20,8 @@ export default function RegistrationPage() {
   const batchId = params.batchId as string;
   const [batch, setBatch] = useState<Batch | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPast, setIsPast] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<'upcoming' | 'active' | 'past'>('upcoming');
+  const [timeUntilStart, setTimeUntilStart] = useState(0);
 
   useEffect(() => {
     if (!batchId) return;
@@ -31,26 +32,54 @@ export default function RegistrationPage() {
         notFound();
       } else {
         setBatch(fetchedBatch);
-        // Check if the batch is in the past
-        if (!fetchedBatch.startDate || !fetchedBatch.endTime) {
-            setIsPast(true); // Treat batches with no date/time as past
-        } else {
-            const now = new Date();
-            const eventDate = new Date(fetchedBatch.startDate);
-            eventDate.setHours(0,0,0,0);
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-            
-            if(eventDate < today || (eventDate.getTime() === today.getTime() && fetchedBatch.endTime <= currentTime)) {
-                setIsPast(true);
-            }
-        }
       }
       setLoading(false);
     }
     fetchBatchDetails();
   }, [batchId]);
+  
+  useEffect(() => {
+    if (!batch || !batch.startDate || !batch.startTime || !batch.endTime) {
+        if(batch) { // if batch is loaded but has no time info
+            setSessionStatus('past');
+        }
+        return;
+    }
+
+    const calculateStatus = () => {
+        const now = new Date().getTime();
+        
+        const [startHour, startMinute] = batch.startTime.split(':').map(Number);
+        const [endHour, endMinute] = batch.endTime.split(':').map(Number);
+
+        const startDate = new Date(batch.startDate);
+        startDate.setHours(startHour, startMinute, 0, 0);
+        
+        const endDate = new Date(batch.startDate);
+        endDate.setHours(endHour, endMinute, 0, 0);
+
+        // Registration opens 2 minutes before start time
+        const registrationOpenTime = startDate.getTime() - (2 * 60 * 1000);
+
+        if (now < registrationOpenTime) {
+            setSessionStatus('upcoming');
+            setTimeUntilStart(registrationOpenTime - now);
+        } else if (now >= registrationOpenTime && now <= endDate.getTime()) {
+            setSessionStatus('active');
+            setTimeUntilStart(0);
+        } else {
+            setSessionStatus('past');
+            setTimeUntilStart(0);
+        }
+    };
+    
+    calculateStatus();
+    
+    const interval = setInterval(calculateStatus, 1000);
+    return () => clearInterval(interval);
+
+  }, [batch]);
+
 
   const handleJoinSuccess = async () => {
     toast({
@@ -82,6 +111,23 @@ export default function RegistrationPage() {
       });
     }
   };
+  
+  const formatTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    let parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0 || days > 0) parts.push(`${hours.toString().padStart(2, '0')}h`);
+    parts.push(`${minutes.toString().padStart(2, '0')}m`);
+    parts.push(`${seconds.toString().padStart(2, '0')}s`);
+    
+    return parts.join(' : ');
+  };
+
 
   if (loading) {
       return (
@@ -118,7 +164,7 @@ export default function RegistrationPage() {
             <h1 className="mt-2 text-4xl md:text-5xl font-bold tracking-tight">
               {batch?.name || 'Training Program'}
             </h1>
-            {!isPast && (
+             {sessionStatus === 'active' && (
                 <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
                     Enter your IITP No. to join the meeting.
                 </p>
@@ -129,22 +175,36 @@ export default function RegistrationPage() {
             <div className="w-full max-w-md">
                 <Card>
                     <CardHeader>
-                        <CardTitle>{isPast ? 'Session Ended' : 'Join Meeting'}</CardTitle>
+                       <CardTitle>
+                        {sessionStatus === 'past' && 'Session Ended'}
+                        {sessionStatus === 'active' && 'Join Meeting'}
+                        {sessionStatus === 'upcoming' && 'Session Starting Soon'}
+                       </CardTitle>
                         <CardDescription>
-                            {isPast ? 'This training session is no longer active.' : 'Verify your identity to get the meeting link.'}
+                            {sessionStatus === 'past' && 'This training session is no longer active.'}
+                            {sessionStatus === 'active' && 'Verify your identity to get the meeting link.'}
+                            {sessionStatus === 'upcoming' && 'The registration will open automatically.'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {isPast ? (
+                       {sessionStatus === 'past' && (
                              <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
                                 <Hourglass className="h-8 w-8 mb-2" />
                                 <p>This session has ended and is no longer available.</p>
                              </div>
-                        ) : (
+                        )}
+                        {sessionStatus === 'active' && (
                             <JoinMeetingForm 
                                 batchId={batchId}
                                 onSuccess={handleJoinSuccess}
                             />
+                        )}
+                         {sessionStatus === 'upcoming' && (
+                             <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
+                                <Timer className="h-8 w-8 mb-2 text-primary" />
+                                <p className="font-semibold text-primary mb-1">Session Starts In:</p>
+                                <p className="text-2xl font-bold tracking-wider">{formatTime(timeUntilStart)}</p>
+                             </div>
                         )}
                     </CardContent>
                 </Card>
