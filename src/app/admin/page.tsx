@@ -12,7 +12,6 @@ import { AddParticipantDialog } from '@/components/features/add-participant-dial
 import { ImportParticipantsDialog } from '@/components/features/import-participants-dialog';
 import { ParticipantsTable } from '@/components/features/participants-table';
 import { TrainersTable } from '@/components/features/trainers-table';
-import { AddTrainerDialog } from '@/components/features/add-trainer-dialog';
 import { AttendanceReport } from '@/components/features/attendance-report';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -1497,9 +1496,7 @@ export default function AdminPage() {
       <div className="min-h-screen flex flex-col">
         <header className="bg-background border-b sticky top-0 z-10">
             <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
-                 <div className="flex flex-col">
-                    <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
-                </div>
+                 <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
                 <div className="flex items-center gap-2">
                     {userRole === 'superadmin' && currentUser && (
                         <Button variant="outline" size="sm" onClick={() => setEditingAdmin(currentUser)}>
@@ -1637,7 +1634,7 @@ export default function AdminPage() {
                                             <span>
                                                 {batch.name} 
                                             </span>
-                                            <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'}>
+                                            <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
                                                 {batch.course}
                                             </Badge>
                                         </div>

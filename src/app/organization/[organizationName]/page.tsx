@@ -106,9 +106,7 @@ export default function OrganizationDashboardPage() {
         <div className="min-h-screen flex flex-col">
              <header className="bg-background border-b sticky top-0 z-10">
                 <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
-                    <div className="flex flex-col">
-                         <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
-                    </div>
+                     <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
                     <div className='flex items-center gap-2'>
                         <span className="text-sm text-muted-foreground hidden sm:inline">Welcome, {currentUser?.name}</span>
                         <Button variant="outline" onClick={() => {
@@ -124,7 +122,7 @@ export default function OrganizationDashboardPage() {
                         {organizationName} Dashboard
                     </h1>
                     <p className="mt-2 text-lg text-muted-foreground">
-                       Here is your organization's dashboard.
+                       View your organization's training and attendance data.
                     </p>
                 </div>
                 <Tabs defaultValue="overview">
@@ -198,7 +196,7 @@ export default function OrganizationDashboardPage() {
                                                     <span>
                                                         {batch.name} 
                                                     </span>
-                                                    <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'}>
+                                                    <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
                                                         {batch.course}
                                                     </Badge>
                                                 </div>

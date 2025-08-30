@@ -30,7 +30,7 @@ const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
         <CardHeader>
           <div className="flex justify-between items-start">
             <CardTitle>{batch.name}</CardTitle>
-            <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'}>
+            <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
               {batch.course}
             </Badge>
           </div>
