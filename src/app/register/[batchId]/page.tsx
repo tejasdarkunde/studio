@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getRedirectLink, getBatchById } from '@/app/actions';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Hourglass } from 'lucide-react';
 
 
 export default function RegistrationPage() {
@@ -19,6 +20,7 @@ export default function RegistrationPage() {
   const batchId = params.batchId as string;
   const [batch, setBatch] = useState<Batch | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPast, setIsPast] = useState(false);
 
   useEffect(() => {
     if (!batchId) return;
@@ -29,6 +31,21 @@ export default function RegistrationPage() {
         notFound();
       } else {
         setBatch(fetchedBatch);
+        // Check if the batch is in the past
+        if (!fetchedBatch.startDate || !fetchedBatch.endTime) {
+            setIsPast(true); // Treat batches with no date/time as past
+        } else {
+            const now = new Date();
+            const eventDate = new Date(fetchedBatch.startDate);
+            eventDate.setHours(0,0,0,0);
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            if(eventDate < today || (eventDate.getTime() === today.getTime() && fetchedBatch.endTime <= currentTime)) {
+                setIsPast(true);
+            }
+        }
       }
       setLoading(false);
     }
@@ -101,23 +118,34 @@ export default function RegistrationPage() {
             <h1 className="mt-2 text-4xl md:text-5xl font-bold tracking-tight">
               {batch?.name || 'Training Program'}
             </h1>
-            <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
-              Enter your IITP No. to join the meeting.
-            </p>
+            {!isPast && (
+                <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
+                    Enter your IITP No. to join the meeting.
+                </p>
+            )}
         </div>
         
         <div className="flex justify-center w-full">
             <div className="w-full max-w-md">
                 <Card>
                     <CardHeader>
-                    <CardTitle>Join Meeting</CardTitle>
-                    <CardDescription>Verify your identity to get the meeting link.</CardDescription>
+                        <CardTitle>{isPast ? 'Session Ended' : 'Join Meeting'}</CardTitle>
+                        <CardDescription>
+                            {isPast ? 'This training session is no longer active.' : 'Verify your identity to get the meeting link.'}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
-                    <JoinMeetingForm 
-                        batchId={batchId}
-                        onSuccess={handleJoinSuccess}
-                    />
+                        {isPast ? (
+                             <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
+                                <Hourglass className="h-8 w-8 mb-2" />
+                                <p>This session has ended and is no longer available.</p>
+                             </div>
+                        ) : (
+                            <JoinMeetingForm 
+                                batchId={batchId}
+                                onSuccess={handleJoinSuccess}
+                            />
+                        )}
                     </CardContent>
                 </Card>
             </div>
