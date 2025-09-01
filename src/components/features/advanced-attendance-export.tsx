@@ -22,8 +22,8 @@ type AdvancedAttendanceExportProps = {
 
 export function AdvancedAttendanceExport({ batches, trainers, courses }: AdvancedAttendanceExportProps) {
   const [dateRange, setDateRange] = useState<{ from?: Date, to?: Date }>({});
-  const [selectedTrainer, setSelectedTrainer] = useState<string>('');
-  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [selectedTrainer, setSelectedTrainer] = useState<string>('all');
+  const [selectedCourse, setSelectedCourse] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
@@ -42,12 +42,12 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
     }
 
     // 2. Filter by trainer
-    if (selectedTrainer) {
+    if (selectedTrainer && selectedTrainer !== 'all') {
         filteredBatches = filteredBatches.filter(batch => batch.trainerId === selectedTrainer);
     }
     
     // 3. Filter by course
-    if (selectedCourse) {
+    if (selectedCourse && selectedCourse !== 'all') {
         filteredBatches = filteredBatches.filter(batch => batch.course === selectedCourse);
     }
 
@@ -155,7 +155,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
                         <SelectValue placeholder="All Trainers" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">All Trainers</SelectItem>
+                        <SelectItem value="all">All Trainers</SelectItem>
                         {trainers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
@@ -167,7 +167,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
                         <SelectValue placeholder="All Courses" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">All Courses</SelectItem>
+                        <SelectItem value="all">All Courses</SelectItem>
                         {courses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
