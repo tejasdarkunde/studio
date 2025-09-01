@@ -42,6 +42,8 @@ export type Batch = {
   trainerId?: string; // Link to the trainer
   registrations: Registration[];
   createdAt: string; // ISO 8601 string format
+  isCancelled?: boolean;
+  cancellationReason?: string;
 };
 
 // This type is no longer used, but kept for potential future global settings.

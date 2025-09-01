@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Calendar, Clock, Users } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, Users, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
 import { getBatches } from './actions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
   const formatDate = (dateString: string) => {
@@ -28,10 +29,16 @@ const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
   return (
     <Card className="flex flex-col">
         <CardHeader>
-           <div className="flex justify-between items-start">
+           <div className="flex justify-between items-start mb-2">
              <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-full">
               {batch.course}
             </Badge>
+            {batch.isCancelled && (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                    <XCircle className="h-3 w-3" />
+                    Cancelled
+                </Badge>
+            )}
           </div>
           <CardTitle>{batch.name}</CardTitle>
           <CardDescription className="flex items-center gap-2 pt-1">
@@ -58,10 +65,21 @@ const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
             </div>
         </CardContent>
         <CardFooter>
-          {isPast ? (
-            <Button className="w-full" disabled={isPast}>
-              View Details <ArrowRight className="ml-2" />
-            </Button>
+          {isPast || batch.isCancelled ? (
+             <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Button className="w-full" disabled>
+                           {batch.isCancelled ? 'Cancelled' : 'View Details'} <ArrowRight className="ml-2" />
+                        </Button>
+                    </TooltipTrigger>
+                     {batch.isCancelled && batch.cancellationReason && (
+                        <TooltipContent>
+                            <p>{batch.cancellationReason}</p>
+                        </TooltipContent>
+                     )}
+                </Tooltip>
+             </TooltipProvider>
           ) : (
             <Link href={`/register/${batch.id}`} passHref className="w-full">
               <Button className="w-full">

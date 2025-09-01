@@ -19,11 +19,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, cancelBatch, unCancelBatch } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 const organizations = [
   "TE Connectivity, Shirwal",
@@ -719,6 +720,56 @@ const ManageOrganizationAdminDialog = ({
     )
 }
 
+const CancelBatchDialog = ({
+    isOpen,
+    onClose,
+    onConfirm,
+    batchName,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (reason: string) => Promise<void>;
+    batchName: string;
+}) => {
+    const [reason, setReason] = useState('');
+    const [isConfirming, setIsConfirming] = useState(false);
+
+    const handleConfirm = async () => {
+        setIsConfirming(true);
+        await onConfirm(reason);
+        setIsConfirming(false);
+    }
+    
+    useEffect(() => {
+        if(isOpen) {
+            setReason('');
+            setIsConfirming(false);
+        }
+    }, [isOpen]);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Cancel Session: {batchName}?</DialogTitle>
+                    <DialogDescription>This will mark the session as cancelled and prevent new registrations. Please provide a reason for the cancellation.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="cancellation-reason">Reason for Cancellation</Label>
+                    <Textarea id="cancellation-reason" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g., Unforeseen technical issues." />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose} disabled={isConfirming}>Back</Button>
+                    <Button variant="destructive" onClick={handleConfirm} disabled={!reason.trim() || isConfirming}>
+                        {isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Ban className="mr-2 h-4 w-4" />}
+                        Confirm Cancellation
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 
 export default function AdminPage() {
   const router = useRouter();
@@ -742,6 +793,7 @@ export default function AdminPage() {
   // Dialog states
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
+  const [cancellingBatch, setCancellingBatch] = useState<Batch | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isAddParticipantOpen, setAddParticipantOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
@@ -1032,6 +1084,28 @@ export default function AdminPage() {
         });
     }
     setDeletingBatch(null);
+  }
+  
+  const handleConfirmCancelBatch = async (reason: string) => {
+    if (!cancellingBatch) return;
+    const result = await cancelBatch({ batchId: cancellingBatch.id, reason });
+    if(result.success) {
+        toast({ title: "Batch Cancelled" });
+        fetchAllData();
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+    }
+    setCancellingBatch(null);
+  }
+
+  const handleUnCancelBatch = async (batchId: string) => {
+    const result = await unCancelBatch(batchId);
+    if(result.success) {
+        toast({ title: "Batch Restored" });
+        fetchAllData();
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+    }
   }
 
   const handleAddParticipant = async (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>) => {
@@ -1391,6 +1465,12 @@ export default function AdminPage() {
 
   return (
     <>
+      <CancelBatchDialog 
+        isOpen={!!cancellingBatch}
+        onClose={() => setCancellingBatch(null)}
+        onConfirm={handleConfirmCancelBatch}
+        batchName={cancellingBatch?.name || ''}
+      />
       <ConfirmDialog isOpen={!!deletingAdmin} onClose={() => setDeletingAdmin(null)} onConfirm={handleDeleteAdmin} title="Delete Superadmin?" description={`This will permanently delete the admin account for "${deletingAdmin?.username}". This action cannot be undone.`} />
       <DeleteBatchDialog 
         isOpen={!!deletingBatch}
@@ -1721,21 +1801,33 @@ export default function AdminPage() {
                                         {sortedScheduleBatches.map(batch => {
                                             const trainer = trainers.find(t => t.id === batch.trainerId);
                                             return (
-                                                <TableRow key={batch.id}>
+                                                <TableRow key={batch.id} className={cn(batch.isCancelled && "bg-destructive/10 text-muted-foreground")}>
                                                     <TableCell>
-                                                        <div className="font-medium">{batch.startDate ? new Date(batch.startDate).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'}</div>
-                                                        <div className="text-sm text-muted-foreground">{formatTime(batch.startTime)} - {formatTime(batch.endTime)}</div>
+                                                        <div className={cn("font-medium", batch.isCancelled && "line-through")}>{batch.startDate ? new Date(batch.startDate).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'}</div>
+                                                        <div className={cn("text-sm", batch.isCancelled ? "line-through" : "text-muted-foreground")}>{formatTime(batch.startTime)} - {formatTime(batch.endTime)}</div>
                                                     </TableCell>
-                                                    <TableCell>{batch.name}</TableCell>
+                                                    <TableCell className={cn(batch.isCancelled && "line-through")}>
+                                                        {batch.name}
+                                                        {batch.isCancelled && <Badge variant="destructive" className="ml-2">Cancelled</Badge>}
+                                                    </TableCell>
                                                     <TableCell>
-                                                        <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'}>{batch.course}</Badge>
+                                                        <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className={cn(batch.isCancelled && "opacity-50")}>{batch.course}</Badge>
                                                     </TableCell>
-                                                    <TableCell>{trainer?.name || 'N/A'}</TableCell>
+                                                    <TableCell className={cn(batch.isCancelled && "line-through")}>{trainer?.name || 'N/A'}</TableCell>
                                                     <TableCell>{batch.registrations?.length || 0}</TableCell>
                                                     <TableCell className="text-right">
-                                                         <Button variant="ghost" size="icon" onClick={() => handleEditBatch(batch)}>
+                                                         <Button variant="ghost" size="icon" onClick={() => handleEditBatch(batch)} disabled={batch.isCancelled}>
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
+                                                        {batch.isCancelled ? (
+                                                            <Button variant="ghost" size="icon" onClick={() => handleUnCancelBatch(batch.id)}>
+                                                                <RotateCcw className="h-4 w-4 text-green-600" />
+                                                            </Button>
+                                                        ) : (
+                                                            <Button variant="ghost" size="icon" onClick={() => setCancellingBatch(batch)}>
+                                                                <Ban className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        )}
                                                         <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteBatch(batch)}>
                                                             <Trash className="h-4 w-4" />
                                                         </Button>

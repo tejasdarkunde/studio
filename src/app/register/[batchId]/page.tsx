@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getRedirectLink, getBatchById } from '@/app/actions';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Hourglass, Timer } from 'lucide-react';
+import { Hourglass, Timer, XCircle } from 'lucide-react';
 
 
 export default function RegistrationPage() {
@@ -20,7 +20,7 @@ export default function RegistrationPage() {
   const batchId = params.batchId as string;
   const [batch, setBatch] = useState<Batch | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sessionStatus, setSessionStatus] = useState<'upcoming' | 'active' | 'past'>('upcoming');
+  const [sessionStatus, setSessionStatus] = useState<'upcoming' | 'active' | 'past' | 'cancelled'>('upcoming');
   const [timeUntilStart, setTimeUntilStart] = useState(0);
 
   useEffect(() => {
@@ -39,10 +39,15 @@ export default function RegistrationPage() {
   }, [batchId]);
   
   useEffect(() => {
-    if (!batch || !batch.startDate || !batch.startTime || !batch.endTime) {
-        if(batch) { // if batch is loaded but has no time info
-            setSessionStatus('past');
-        }
+    if (!batch) return;
+
+    if(batch.isCancelled) {
+        setSessionStatus('cancelled');
+        return;
+    }
+    
+    if (!batch.startDate || !batch.startTime || !batch.endTime) {
+        setSessionStatus('past');
         return;
     }
 
@@ -179,11 +184,13 @@ export default function RegistrationPage() {
                         {sessionStatus === 'past' && 'Session Ended'}
                         {sessionStatus === 'active' && 'Join Meeting'}
                         {sessionStatus === 'upcoming' && 'Session Starting Soon'}
+                        {sessionStatus === 'cancelled' && 'Session Cancelled'}
                        </CardTitle>
                         <CardDescription>
                             {sessionStatus === 'past' && 'This training session is no longer active.'}
                             {sessionStatus === 'active' && 'Verify your identity to get the meeting link.'}
                             {sessionStatus === 'upcoming' && 'The registration will open automatically.'}
+                            {sessionStatus === 'cancelled' && 'This session has been cancelled by the administrator.'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -204,6 +211,12 @@ export default function RegistrationPage() {
                                 <Timer className="h-8 w-8 mb-2 text-primary" />
                                 <p className="font-semibold text-primary mb-1">Session Starts In:</p>
                                 <p className="text-2xl font-bold tracking-wider">{formatTime(timeUntilStart)}</p>
+                             </div>
+                        )}
+                         {sessionStatus === 'cancelled' && (
+                             <div className="flex flex-col items-center justify-center h-24 text-destructive-foreground bg-destructive/90 rounded-md p-4">
+                                <XCircle className="h-8 w-8 mb-2" />
+                                <p className="font-semibold text-center">{batch?.cancellationReason || 'No reason provided.'}</p>
                              </div>
                         )}
                     </CardContent>

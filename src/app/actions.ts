@@ -230,6 +230,8 @@ export async function getBatches(): Promise<Batch[]> {
                 trainerId: batchData.trainerId,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
                 registrations,
+                isCancelled: batchData.isCancelled || false,
+                cancellationReason: batchData.cancellationReason || '',
             });
         }
         
@@ -264,7 +266,9 @@ export async function getBatchById(id: string): Promise<Batch | null> {
             meetingLink: batchData.meetingLink || '',
             trainerId: batchData.trainerId,
             createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-            registrations: [], 
+            registrations: [],
+            isCancelled: batchData.isCancelled || false,
+            cancellationReason: batchData.cancellationReason || '',
         };
     } catch (error) {
         console.error('Error fetching batch by ID:', error);
@@ -305,6 +309,45 @@ export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'na
         return { success: false, error: "Could not update batch." };
     }
 }
+
+const cancelBatchSchema = z.object({
+  batchId: z.string().min(1),
+  reason: z.string().min(1, "A reason for cancellation is required."),
+});
+
+export async function cancelBatch(data: z.infer<typeof cancelBatchSchema>): Promise<{success: boolean, error?: string}> {
+    const validated = cancelBatchSchema.safeParse(data);
+    if(!validated.success) return { success: false, error: "Invalid data."};
+
+    try {
+        const { batchId, reason } = validated.data;
+        const batchDocRef = doc(db, 'batches', batchId);
+        await updateDoc(batchDocRef, {
+            isCancelled: true,
+            cancellationReason: reason,
+        });
+        return { success: true };
+    } catch(error) {
+        console.error("Error cancelling batch:", error);
+        return { success: false, error: "Could not cancel batch." };
+    }
+}
+
+export async function unCancelBatch(batchId: string): Promise<{success: boolean, error?: string}> {
+    if(!batchId) return { success: false, error: "Invalid batch ID." };
+    try {
+        const batchDocRef = doc(db, 'batches', batchId);
+        await updateDoc(batchDocRef, {
+            isCancelled: false,
+            cancellationReason: '',
+        });
+        return { success: true };
+    } catch(error) {
+        console.error("Error un-cancelling batch:", error);
+        return { success: false, error: "Could not restore batch." };
+    }
+}
+
 
 const createBatchSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
