@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,6 +33,10 @@ import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, isWithinInterval } from 'date-fns';
+
 
 const organizations = [
   "TE Connectivity, Shirwal",
@@ -822,6 +826,7 @@ export default function AdminPage() {
   const [isUpdatingParticipant, setIsUpdatingParticipant] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [isBackfilling, setIsBackfilling] = useState(false);
+  const [scheduleDateRange, setScheduleDateRange] = useState<{from?: Date, to?: Date}>({});
 
 
   const { toast } = useToast();
@@ -1393,6 +1398,76 @@ export default function AdminPage() {
       setIsBackfilling(false);
   }
 
+    const formatTime = (timeString: string) => {
+        if (!timeString) return '';
+        const [hours, minutes] = timeString.split(':');
+        const date = new Date();
+        date.setHours(parseInt(hours), parseInt(minutes));
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+    
+    const handleExportSchedule = () => {
+        const { from, to } = scheduleDateRange;
+        if (!from || !to) {
+            toast({
+                variant: 'destructive',
+                title: 'Date Range Required',
+                description: 'Please select a "from" and "to" date to export the schedule.',
+            });
+            return;
+        }
+
+        const filtered = sortedScheduleBatches.filter(batch => {
+            if (!batch.startDate) return false;
+            const batchDate = new Date(batch.startDate);
+            return isWithinInterval(batchDate, { start: from, end: to });
+        });
+
+        if (filtered.length === 0) {
+            toast({
+                title: 'No Data',
+                description: 'No batches found within the selected date range.',
+            });
+            return;
+        }
+        
+        const headers = "Date,Start Time,End Time,Batch Name,Course,Trainer,Registrations,Status\n";
+        const csvRows = filtered.map(batch => {
+            const trainerName = trainers.find(t => t.id === batch.trainerId)?.name || 'N/A';
+            const status = batch.isCancelled ? `Cancelled (${batch.cancellationReason || 'No reason'})` : 'Active';
+            const row = [
+                batch.startDate ? format(new Date(batch.startDate), 'yyyy-MM-dd') : 'N/A',
+                formatTime(batch.startTime),
+                formatTime(batch.endTime),
+                batch.name,
+                batch.course,
+                trainerName,
+                batch.registrations?.length || 0,
+                status,
+            ];
+             return row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
+        }).join('\n');
+        
+        const csvContent = headers + csvRows;
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        const fileName = `schedule_report_${format(from, 'yyyy-MM-dd')}_to_${format(to, 'yyyy-MM-dd')}.csv`;
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast({
+            title: 'Export Started',
+            description: 'The schedule report is being downloaded.',
+        });
+    }
+
+
 
   if (!isClient || loadingAuth) {
     return (
@@ -1455,13 +1530,6 @@ export default function AdminPage() {
     </TabsList>
   );
 
-  const formatTime = (timeString: string) => {
-    if (!timeString) return '';
-    const [hours, minutes] = timeString.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours), parseInt(minutes));
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  }
 
   return (
     <>
@@ -1785,6 +1853,55 @@ export default function AdminPage() {
                             )}
                         </TabsContent>
                         <TabsContent value="schedule-view" className="mt-4">
+                            <div className='flex justify-end items-center gap-2 mb-4'>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-[240px] justify-start text-left font-normal",
+                                            !scheduleDateRange.from && "text-muted-foreground"
+                                        )}
+                                        >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {scheduleDateRange.from ? format(scheduleDateRange.from, "PPP") : <span>From date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                        mode="single"
+                                        selected={scheduleDateRange.from}
+                                        onSelect={(date) => setScheduleDateRange(prev => ({ ...prev, from: date }))}
+                                        initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-[240px] justify-start text-left font-normal",
+                                            !scheduleDateRange.to && "text-muted-foreground"
+                                        )}
+                                        >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {scheduleDateRange.to ? format(scheduleDateRange.to, "PPP") : <span>To date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                        mode="single"
+                                        selected={scheduleDateRange.to}
+                                        onSelect={(date) => setScheduleDateRange(prev => ({ ...prev, to: date }))}
+                                        initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                                <Button onClick={handleExportSchedule} disabled={!scheduleDateRange.from || !scheduleDateRange.to}>
+                                    <Download className='mr-2 h-4 w-4'/> Export Schedule
+                                </Button>
+                            </div>
                             <div className="border rounded-lg">
                                 <Table>
                                     <TableHeader>
@@ -2219,3 +2336,4 @@ export default function AdminPage() {
     </>
   );
 }
+
