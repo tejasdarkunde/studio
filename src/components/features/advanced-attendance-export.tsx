@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import type { Batch, Course, Participant, Registration, Trainer } from '@/lib/types';
+import type { Batch, Course, Registration, Trainer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,6 +13,7 @@ import { format, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Label } from '../ui/label';
+import JSZip from 'jszip';
 
 type AdvancedAttendanceExportProps = {
   batches: Batch[];
@@ -27,7 +28,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setIsExporting(true);
 
     let filteredBatches = [...batches];
@@ -60,22 +61,31 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
         setIsExporting(false);
         return;
     }
+    
+    const zip = new JSZip();
+    let reportsGenerated = 0;
 
-    // 4. Gather unique participants from the filtered batches
-    const participantMap = new Map<string, Registration>();
     filteredBatches.forEach(batch => {
-        batch.registrations.forEach(reg => {
-            // Use IITP No. as the unique key to avoid duplicate participants
-            if (!participantMap.has(reg.iitpNo)) {
-                participantMap.set(reg.iitpNo, reg);
-            }
-        });
+        if (batch.registrations && batch.registrations.length > 0) {
+            const headers = "Name,IITP No,Mobile No,Organization,Registration Time\n";
+            const csvRows = batch.registrations.map(p => {
+                const row = [p.name, p.iitpNo, p.mobile, p.organization, new Date(p.submissionTime).toLocaleString()];
+                return row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
+            }).join('\n');
+            const csvContent = headers + csvRows;
+
+            const date = batch.startDate ? format(new Date(batch.startDate), 'yyyy-MM-dd') : 'nodate';
+            const time = batch.startTime ? batch.startTime.replace(':', '-') : 'notime';
+            const sessionName = batch.name.replace(/[^a-z0-9]/gi, '_');
+
+            const fileName = `${date}_${time}_${sessionName}.csv`;
+            zip.file(fileName, csvContent);
+            reportsGenerated++;
+        }
     });
-    
-    const participantsToExport = Array.from(participantMap.values());
-    
-    if (participantsToExport.length === 0) {
-         toast({
+
+    if (reportsGenerated === 0) {
+        toast({
             variant: 'destructive',
             title: 'No Participants Found',
             description: 'There are no registered participants for the batches matching your criteria.',
@@ -84,30 +94,32 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
         return;
     }
 
-    // 5. Generate and download CSV
-    const headers = "Name,IITP No,Mobile No,Organization,Registration Time\n";
-    const csvRows = participantsToExport.map(p => {
-      const row = [p.name, p.iitpNo, p.mobile, p.organization, new Date(p.submissionTime).toLocaleString()];
-      return row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
-    }).join('\n');
+    try {
+        const zipContent = await zip.generateAsync({ type: "blob" });
+        const link = document.createElement('a');
+        
+        const url = URL.createObjectURL(zipContent);
+        const zipFileName = `attendance_reports_${format(new Date(), 'yyyy-MM-dd')}.zip`;
+        link.setAttribute('href', url);
+        link.setAttribute('download', zipFileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-    const csvContent = headers + csvRows;
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    
-    const url = URL.createObjectURL(blob);
-    const fileName = `attendance_report_${new Date().toISOString().split('T')[0]}.csv`;
-    link.setAttribute('href', url);
-    link.setAttribute('download', fileName);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        toast({
+          title: 'Export Complete',
+          description: `${reportsGenerated} reports have been generated and zipped for download.`,
+        });
 
-    toast({
-      title: 'Export Complete',
-      description: `${participantsToExport.length} participant records have been exported.`,
-    });
+    } catch (error) {
+         toast({
+            variant: 'destructive',
+            title: 'Zip Creation Failed',
+            description: 'Could not create the zip file.',
+        });
+    }
+
     setIsExporting(false);
   };
 
@@ -116,7 +128,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
       <CardHeader>
         <CardTitle>Advanced Export</CardTitle>
         <CardDescription>
-          Generate a CSV of participants who attended sessions based on specific filters. Leave filters blank to include all.
+          Generate a zip file containing individual CSV reports for each session, based on specific filters.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -174,7 +186,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
             </div>
             <Button onClick={handleExport} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                Export Report
+                Export Reports
             </Button>
         </div>
       </CardContent>
