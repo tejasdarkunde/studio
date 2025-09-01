@@ -36,6 +36,8 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isWithinInterval } from 'date-fns';
+import { AddTrainerDialog } from '@/components/features/add-trainer-dialog';
+import { AdvancedAttendanceExport } from '@/components/features/advanced-attendance-export';
 
 
 const organizations = [
@@ -2319,12 +2321,19 @@ export default function AdminPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Attendance Report</CardTitle>
-                        <CardDescription>View and export participant attendance for Diploma and Advance Diploma courses.</CardDescription>
+                        <CardDescription>View and export participant attendance for specific courses, trainers, and date ranges.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-6">
+                         <AdvancedAttendanceExport 
+                            batches={filteredBatches}
+                            trainers={trainers}
+                            courses={courses}
+                         />
+                         <Separator />
                         <AttendanceReport 
                             participants={participants}
                             batches={filteredBatches}
+                            courses={courses}
                         />
                     </CardContent>
                 </Card>

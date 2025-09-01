@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Participant, Batch } from '@/lib/types';
+import type { Participant, Batch, Course } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 type AttendanceReportProps = {
   participants: Participant[];
   batches: Batch[];
+  courses: Course[];
 };
 
 type AttendanceGrid = {
@@ -156,17 +158,23 @@ const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseNam
 };
 
 
-export function AttendanceReport({ participants, batches }: AttendanceReportProps) {
+export function AttendanceReport({ participants, batches, courses }: AttendanceReportProps) {
   const uniqueCoursesInBatches = useMemo(() => {
-    const courseNames = new Set(batches.map(b => b.course));
-    return Array.from(courseNames).sort();
-  }, [batches]);
+    // Show only active courses in the attendance report tabs
+    const activeCourseNames = new Set(courses.filter(c => c.status === 'active').map(c => c.name));
+    const courseNamesInBatches = new Set(batches.map(b => b.course));
+    
+    return Array.from(courseNamesInBatches)
+        .filter(name => activeCourseNames.has(name))
+        .sort();
+
+  }, [batches, courses]);
 
   if (uniqueCoursesInBatches.length === 0) {
       return (
            <div className="flex flex-col items-center justify-center h-64 border rounded-md">
                 <p className="text-muted-foreground">No active training sessions to report on.</p>
-                <p className="text-muted-foreground text-sm mt-2">Assign a batch to a course to generate a report.</p>
+                <p className="text-muted-foreground text-sm mt-2">Assign a batch to an active course to generate a report.</p>
             </div>
       )
   }
