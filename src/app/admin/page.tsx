@@ -857,6 +857,19 @@ export default function AdminPage() {
     return batches;
   }, [batches, userRole, trainerId]);
 
+  const sortedScheduleBatches = useMemo(() => {
+    return [...filteredBatches].sort((a, b) => {
+        const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+        const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+        if (dateA !== dateB) return dateB - dateA;
+        
+        // If dates are same, sort by start time
+        const timeA = a.startTime || '00:00';
+        const timeB = b.startTime || '00:00';
+        return timeB.localeCompare(timeA);
+    });
+  }, [filteredBatches]);
+
   const reportStats = useMemo(() => {
     const courseStats: { [courseName: string]: { enrollments: number; sessions: number; } } = {};
     
@@ -1368,6 +1381,14 @@ export default function AdminPage() {
     </TabsList>
   );
 
+  const formatTime = (timeString: string) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes));
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+
   return (
     <>
       <ConfirmDialog isOpen={!!deletingAdmin} onClose={() => setDeletingAdmin(null)} onConfirm={handleDeleteAdmin} title="Delete Superadmin?" description={`This will permanently delete the admin account for "${deletingAdmin?.username}". This action cannot be undone.`} />
@@ -1624,58 +1645,112 @@ export default function AdminPage() {
                     )}
                     </CardHeader>
                     <CardContent>
-                    {filteredBatches && filteredBatches.length > 0 ? (
-                        <Accordion type="multiple" className="w-full">
-                            {filteredBatches.map(batch => (
-                                <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
-                                    <AccordionTrigger>
-                                        <div className="flex justify-between items-center w-full pr-4">
-                                        <div className="flex items-center gap-4">
-                                            <span>
-                                                {batch.name} 
-                                            </span>
-                                            <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
-                                                {batch.course}
-                                            </Badge>
-                                        </div>
-                                        <span className="text-sm text-muted-foreground">
-                                            {batch.registrations.length} registration(s)
-                                        </span>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                    {userRole === 'superadmin' && (
-                                        <div className="flex justify-end items-center pb-4 gap-2">
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm"
-                                                onClick={() => handleEditBatch(batch)}
-                                            >
-                                                <Pencil className="mr-2 h-4 w-4" /> Edit Batch
-                                            </Button>
-                                            <Button 
-                                                variant="destructive" 
-                                                size="sm"
-                                                onClick={() => handleDeleteBatch(batch)}
-                                            >
-                                                <Trash className="mr-2 h-4 w-4" /> Delete Batch
-                                            </Button>
-                                        </div>
-                                    )}
-                                        <RegistrationsTable 
-                                            registrations={batch.registrations}
-                                            batchName={batch.name}
-                                        />
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
-                    ) : (
-                        <div className="text-center py-12 text-muted-foreground">
-                        <p>No batches found.</p>
-                        {(userRole === 'superadmin' || userRole === 'trainer') && <p>Click "Create New Batch" to get started.</p>}
-                        </div>
-                    )}
+                    <Tabs defaultValue="batch-view">
+                        <TabsList>
+                            <TabsTrigger value="batch-view">Batch View</TabsTrigger>
+                            <TabsTrigger value="schedule-view">Schedule View</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="batch-view" className="mt-4">
+                             {filteredBatches && filteredBatches.length > 0 ? (
+                                <Accordion type="multiple" className="w-full">
+                                    {filteredBatches.map(batch => (
+                                        <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
+                                            <AccordionTrigger>
+                                                <div className="flex justify-between items-center w-full pr-4">
+                                                <div className="flex items-center gap-4">
+                                                    <span>
+                                                        {batch.name} 
+                                                    </span>
+                                                    <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-nowrap text-center">
+                                                        {batch.course}
+                                                    </Badge>
+                                                </div>
+                                                <span className="text-sm text-muted-foreground">
+                                                    {batch.registrations.length} registration(s)
+                                                </span>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                            {userRole === 'superadmin' && (
+                                                <div className="flex justify-end items-center pb-4 gap-2">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm"
+                                                        onClick={() => handleEditBatch(batch)}
+                                                    >
+                                                        <Pencil className="mr-2 h-4 w-4" /> Edit Batch
+                                                    </Button>
+                                                    <Button 
+                                                        variant="destructive" 
+                                                        size="sm"
+                                                        onClick={() => handleDeleteBatch(batch)}
+                                                    >
+                                                        <Trash className="mr-2 h-4 w-4" /> Delete Batch
+                                                    </Button>
+                                                </div>
+                                            )}
+                                                <RegistrationsTable 
+                                                    registrations={batch.registrations}
+                                                    batchName={batch.name}
+                                                />
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    ))}
+                                </Accordion>
+                            ) : (
+                                <div className="text-center py-12 text-muted-foreground">
+                                <p>No batches found.</p>
+                                {(userRole === 'superadmin' || userRole === 'trainer') && <p>Click "Create New Batch" to get started.</p>}
+                                </div>
+                            )}
+                        </TabsContent>
+                        <TabsContent value="schedule-view" className="mt-4">
+                            <div className="border rounded-lg">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date & Time</TableHead>
+                                            <TableHead>Batch Name</TableHead>
+                                            <TableHead>Course</TableHead>
+                                            <TableHead>Trainer</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {sortedScheduleBatches.map(batch => {
+                                            const trainer = trainers.find(t => t.id === batch.trainerId);
+                                            return (
+                                                <TableRow key={batch.id}>
+                                                    <TableCell>
+                                                        <div className="font-medium">{batch.startDate ? new Date(batch.startDate).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'}</div>
+                                                        <div className="text-sm text-muted-foreground">{formatTime(batch.startTime)} - {formatTime(batch.endTime)}</div>
+                                                    </TableCell>
+                                                    <TableCell>{batch.name}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'}>{batch.course}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>{trainer?.name || 'N/A'}</TableCell>
+                                                    <TableCell className="text-right">
+                                                         <Button variant="ghost" size="icon" onClick={() => handleEditBatch(batch)}>
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteBatch(batch)}>
+                                                            <Trash className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                                {sortedScheduleBatches.length === 0 && (
+                                     <div className="text-center py-12 text-muted-foreground">
+                                        <p>No batches found to display in the schedule.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </TabsContent>
+                    </Tabs>
                     </CardContent>
                 </Card>
             </TabsContent>
