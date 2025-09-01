@@ -1661,7 +1661,7 @@ export default function AdminPage() {
                                                     <span>
                                                         {batch.name} 
                                                     </span>
-                                                    <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-nowrap text-center">
+                                                    <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
                                                         {batch.course}
                                                     </Badge>
                                                 </div>
@@ -1713,6 +1713,7 @@ export default function AdminPage() {
                                             <TableHead>Batch Name</TableHead>
                                             <TableHead>Course</TableHead>
                                             <TableHead>Trainer</TableHead>
+                                            <TableHead>Registrations</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -1730,6 +1731,7 @@ export default function AdminPage() {
                                                         <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'}>{batch.course}</Badge>
                                                     </TableCell>
                                                     <TableCell>{trainer?.name || 'N/A'}</TableCell>
+                                                    <TableCell>{batch.registrations?.length || 0}</TableCell>
                                                     <TableCell className="text-right">
                                                          <Button variant="ghost" size="icon" onClick={() => handleEditBatch(batch)}>
                                                             <Pencil className="h-4 w-4" />
