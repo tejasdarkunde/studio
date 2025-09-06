@@ -1,15 +1,14 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Course, Exam, Question, ExamResult } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search, Clock, Users } from 'lucide-react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults, deleteExamAttempt } from '@/app/actions';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -18,36 +17,45 @@ import { ConfirmDialog } from '@/components/features/confirm-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 const ManageExamDialog = ({
     isOpen,
     onClose,
     onSave,
+    courses,
     initialData,
-    courseName,
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: { title: string; duration?: number }) => Promise<void>;
-    initialData?: Exam | null;
-    courseName: string;
+    onSave: (data: { courseId: string; title: string; duration?: number }) => Promise<void>;
+    courses: Course[];
+    initialData?: Exam & { courseId: string };
 }) => {
     const [title, setTitle] = useState('');
     const [duration, setDuration] = useState('');
+    const [selectedCourseId, setSelectedCourseId] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         if (isOpen) {
             setTitle(initialData?.title || '');
             setDuration(initialData?.duration?.toString() || '');
+            setSelectedCourseId(initialData?.courseId || '');
             setIsSaving(false);
         }
     }, [isOpen, initialData]);
 
     const handleSave = async () => {
-        if (!title.trim()) return;
+        if (!title.trim() || !selectedCourseId) {
+            toast({ variant: 'destructive', title: 'Missing Fields', description: 'Course and Exam Title are required.'});
+            return;
+        }
         setIsSaving(true);
         await onSave({
+            courseId: selectedCourseId,
             title,
             duration: duration ? parseInt(duration, 10) : undefined,
         });
@@ -58,11 +66,27 @@ const ManageExamDialog = ({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{initialData ? `Edit Exam in ${courseName}` : `Add New Exam to ${courseName}`}</DialogTitle>
+                    <DialogTitle>{initialData ? 'Edit Exam' : 'Add New Exam'}</DialogTitle>
+                     <DialogDescription>
+                        {initialData ? `Update details for ${initialData.title}.` : 'Create a new exam and assign it to a course.'}
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
+                     <div>
+                        <Label htmlFor="course-select">Course *</Label>
+                        <Select onValueChange={setSelectedCourseId} value={selectedCourseId} disabled={!!initialData}>
+                            <SelectTrigger id="course-select">
+                                <SelectValue placeholder="Select a course" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {courses.map((course) => (
+                                    <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div>
-                        <Label htmlFor="exam-title">Exam Title</Label>
+                        <Label htmlFor="exam-title">Exam Title *</Label>
                         <Input id="exam-title" value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
                     <div>
@@ -229,7 +253,7 @@ export default function ExamsPage() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [deletingExam, setDeletingExam] = useState<{exam: Exam, courseId: string} | null>(null);
-    const [examDialog, setExamDialog] = useState<{isOpen: boolean; course?: Course; exam?: Exam | null}>({isOpen: false});
+    const [examDialog, setExamDialog] = useState<{isOpen: boolean; exam?: Exam & { courseId: string } }>({isOpen: false});
     const [viewingResultsFor, setViewingResultsFor] = useState<Exam | null>(null);
     const [resultCounts, setResultCounts] = useState<Record<string, number>>({});
 
@@ -240,8 +264,7 @@ export default function ExamsPage() {
         const fetchedCourses = await getCourses();
         setCourses(fetchedCourses);
 
-        // Fetch result counts for all exams
-        const allExams = fetchedCourses.flatMap(c => c.exams || []);
+        const allExams = fetchedCourses.flatMap(c => (c.exams || []));
         const counts: Record<string, number> = {};
         for (const exam of allExams) {
             const results = await getExamResults(exam.id);
@@ -255,18 +278,28 @@ export default function ExamsPage() {
     useEffect(() => {
         fetchCourses();
     }, [fetchCourses]);
+    
+    const allExams = useMemo(() => {
+        return courses.flatMap(course => 
+            (course.exams || []).map(exam => ({
+                ...exam,
+                courseId: course.id,
+                courseName: course.name,
+            }))
+        ).sort((a, b) => a.title.localeCompare(b.title));
+    }, [courses]);
 
-     const handleSaveExam = async (data: { title: string; duration?: number }) => {
-        if (!examDialog.course) return;
-
-        const action = examDialog.exam ? updateExam : addExam;
-        const payload = examDialog.exam
-            ? { courseId: examDialog.course.id, examId: examDialog.exam.id, ...data }
-            : { courseId: examDialog.course.id, ...data };
+     const handleSaveExam = async (data: { courseId: string; title: string; duration?: number }) => {
+        const isEditing = !!examDialog.exam;
+        
+        const action = isEditing ? updateExam : addExam;
+        const payload = isEditing
+            ? { ...data, examId: examDialog.exam!.id }
+            : data;
         
         const result = await action(payload as any);
         if (result.success) {
-            toast({ title: `Exam ${examDialog.exam ? 'Updated' : 'Added'}` });
+            toast({ title: `Exam ${isEditing ? 'Updated' : 'Added'}` });
             fetchCourses();
             setExamDialog({ isOpen: false });
         } else {
@@ -307,7 +340,7 @@ export default function ExamsPage() {
                 onClose={() => setExamDialog({isOpen: false})}
                 onSave={handleSaveExam}
                 initialData={examDialog.exam}
-                courseName={examDialog.course?.name || ''}
+                courses={courses}
             />
             <ViewResultsDialog 
                 isOpen={!!viewingResultsFor}
@@ -325,81 +358,64 @@ export default function ExamsPage() {
             
             <main className="mt-6">
                  <Card>
-                    <CardHeader>
-                        <CardTitle>Exam Management</CardTitle>
-                        <CardDescription>Create and manage exams for each course. Click "Manage" to add questions and adjust settings.</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle>Exam Management</CardTitle>
+                            <CardDescription>Create, manage, and view results for all exams across all courses.</CardDescription>
+                        </div>
+                         <Button onClick={() => setExamDialog({isOpen: true})}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add New Exam
+                        </Button>
                     </CardHeader>
                     <CardContent>
-                        {courses.length > 0 ? (
-                            <Accordion type="multiple" className="w-full space-y-4">
-                                {courses.map(course => (
-                                    <AccordionItem key={course.id} value={course.id} className="border rounded-lg">
-                                        <AccordionTrigger className="p-4 hover:no-underline text-lg font-semibold">
-                                            {course.name}
-                                        </AccordionTrigger>
-                                        <AccordionContent className="p-4 pt-0 space-y-4">
-                                            <div className="flex justify-end">
-                                                <Button size="sm" onClick={() => setExamDialog({isOpen: true, course: course})}>
-                                                    <PlusCircle className="mr-2 h-4 w-4" /> Add New Exam
+                       <div className="border rounded-lg">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Exam Title</TableHead>
+                                        <TableHead>Course</TableHead>
+                                        <TableHead>Questions</TableHead>
+                                        <TableHead>Duration</TableHead>
+                                        <TableHead>Submissions</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {allExams.length > 0 ? allExams.map(exam => (
+                                        <TableRow key={exam.id}>
+                                            <TableCell className="font-medium">{exam.title}</TableCell>
+                                            <TableCell><Badge variant="secondary">{exam.courseName}</Badge></TableCell>
+                                            <TableCell>{exam.questions.length}</TableCell>
+                                            <TableCell>{exam.duration ? `${exam.duration} min` : 'N/A'}</TableCell>
+                                            <TableCell>{resultCounts[exam.id] || 0}</TableCell>
+                                            <TableCell className="text-right space-x-1">
+                                                <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)} title="Copy direct link">
+                                                    <LinkIcon className="h-4 w-4"/>
                                                 </Button>
-                                            </div>
-                                            <div className="space-y-4">
-                                                {(course.exams || []).map(exam => (
-                                                    <Card key={exam.id}>
-                                                        <CardHeader>
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <CardTitle className="text-xl">{exam.title}</CardTitle>
-                                                                    <CardDescription className="flex items-center gap-4 text-sm mt-1">
-                                                                        <span className="flex items-center gap-1"><FileQuestion className="h-4 w-4" /> {exam.questions.length} Questions</span>
-                                                                        {exam.duration && (
-                                                                            <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {exam.duration} minutes</span>
-                                                                        )}
-                                                                        <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {resultCounts[exam.id] || 0} Submissions</span>
-                                                                    </CardDescription>
-                                                                </div>
-                                                                <div className="flex gap-2">
-                                                                    <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)} title="Copy direct link">
-                                                                        <LinkIcon className="h-4 w-4"/>
-                                                                    </Button>
-                                                                     <Button variant="destructive" size="icon" onClick={() => setDeletingExam({ exam, courseId: course.id })} title="Delete exam">
-                                                                        <Trash className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </CardHeader>
-                                                        <CardFooter className="flex gap-2">
-                                                            <Button asChild className="w-full" variant="outline">
-                                                                <Link href={`/admin/exams/${course.id}/${exam.id}`}>
-                                                                    <Pencil className="mr-2 h-4 w-4" /> Manage
-                                                                </Link>
-                                                            </Button>
-                                                            <Button className="w-full" onClick={() => setViewingResultsFor(exam)}>
-                                                                <BarChart className="mr-2 h-4 w-4" /> View Results ({resultCounts[exam.id] || 0})
-                                                            </Button>
-                                                        </CardFooter>
-                                                    </Card>
-                                                ))}
-                                                 {course.exams?.length === 0 && (
-                                                    <p className="text-center text-sm text-muted-foreground py-8">
-                                                        No exams created for this course yet.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                ))}
-                            </Accordion>
-                        ) : (
-                            <div className="text-center py-12 text-muted-foreground">
-                                <p>No courses found. Create a course first to add exams.</p>
-                            </div>
-                        )}
+                                                <Button asChild variant="ghost" size="icon" title="Manage questions">
+                                                    <Link href={`/admin/exams/${exam.courseId}/${exam.id}`}>
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setViewingResultsFor(exam)} title="View results">
+                                                    <BarChart className="h-4 w-4" />
+                                                </Button>
+                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeletingExam({ exam, courseId: exam.courseId })} title="Delete exam">
+                                                    <Trash className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center h-24">No exams created yet.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                       </div>
                     </CardContent>
                 </Card>
             </main>
         </>
     );
 }
-
-    
