@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, HelpCircle, Check, Trash2 } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, HelpCircle, Check, Trash2, GraduationCap } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,6 +39,7 @@ import { format, isWithinInterval } from 'date-fns';
 import { AddTrainerDialog } from '@/components/features/add-trainer-dialog';
 import { AdvancedAttendanceExport } from '@/components/features/advanced-attendance-export';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Progress } from '@/components/ui/progress';
 
 
 const organizations = [
@@ -907,6 +908,32 @@ export default function AdminPage() {
        setEditFormData({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: []});
     }
   }, [fetchedParticipant]);
+
+  const participantSummary = useMemo(() => {
+    if (!fetchedParticipant) return null;
+    const enrolledCoursesDetails = courses.filter(c => fetchedParticipant.enrolledCourses?.includes(c.name));
+
+    let totalLessons = 0;
+    enrolledCoursesDetails.forEach(course => {
+        course.subjects.forEach(subject => {
+            subject.units.forEach(unit => {
+                totalLessons += unit.lessons.length;
+            });
+        });
+    });
+
+    const completedLessons = fetchedParticipant.completedLessons?.length || 0;
+    const percentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+    const submittedExams = Object.values(fetchedParticipant.examProgress || {}).filter(attempt => attempt.isSubmitted).length;
+
+    return {
+      enrolledCount: enrolledCoursesDetails.length,
+      completedLessons,
+      totalLessons,
+      progressPercentage: percentage,
+      submittedExams,
+    };
+  }, [fetchedParticipant, courses]);
 
 
   const filteredBatches = useMemo(() => {
@@ -2015,6 +2042,27 @@ export default function AdminPage() {
                                         </Button>
                                     </div>
                                     {fetchedParticipant && (
+                                      <div className="space-y-6">
+                                        {participantSummary && (
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle>Student Summary</CardTitle>
+                                                    <CardDescription>{fetchedParticipant.name} - {fetchedParticipant.iitpNo}</CardDescription>
+                                                </CardHeader>
+                                                <CardContent className="space-y-4">
+                                                     <div className="grid grid-cols-2 gap-4 text-sm">
+                                                        <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-muted-foreground" /> <span>{fetchedParticipant.organization || 'N/A'}</span></div>
+                                                        <div className="flex items-center gap-2"><BookUser className="h-4 w-4 text-muted-foreground" /> <span>{participantSummary.enrolledCount} Courses Enrolled</span></div>
+                                                        <div className="flex items-center gap-2"><FileQuestion className="h-4 w-4 text-muted-foreground" /> <span>{participantSummary.submittedExams} Exams Submitted</span></div>
+                                                    </div>
+                                                    <div>
+                                                        <Label className="text-xs">Overall Lesson Completion</Label>
+                                                        <Progress value={participantSummary.progressPercentage} className="mt-1" />
+                                                        <p className="text-xs text-right text-muted-foreground mt-1">{participantSummary.completedLessons} of {participantSummary.totalLessons} lessons completed ({participantSummary.progressPercentage}%)</p>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
                                         <div className="border rounded-lg p-4 space-y-6">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
@@ -2085,6 +2133,7 @@ export default function AdminPage() {
                                                 </Button>
                                             </div>
                                         </div>
+                                      </div>
                                     )}
                                 </CardContent>
                                 </Card>
