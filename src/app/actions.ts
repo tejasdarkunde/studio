@@ -445,6 +445,16 @@ export async function getParticipants(): Promise<Participant[]> {
         const participants = snapshot.docs.map(doc => {
             const data = doc.data();
             const createdAt = data.createdAt as Timestamp;
+
+            // This is the fix: convert nested timestamps inside examProgress
+            const examProgress = data.examProgress || {};
+            for(const examId in examProgress) {
+                const attempt = examProgress[examId];
+                if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
+                    attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
+                }
+            }
+
             return {
                 id: doc.id,
                 name: data.name,
@@ -455,7 +465,7 @@ export async function getParticipants(): Promise<Participant[]> {
                 enrolledCourses: data.enrolledCourses || [], 
                 completedLessons: data.completedLessons || [],
                 deniedCourses: data.deniedCourses || [],
-                examProgress: data.examProgress || {},
+                examProgress: examProgress,
             };
         });
 
@@ -2161,3 +2171,4 @@ export async function getExamResults(examId: string): Promise<ExamResult[]> {
 
 
       
+    
