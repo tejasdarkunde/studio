@@ -1552,7 +1552,7 @@ export default function AdminPage() {
 
 
   const SuperAdminTabs = () => (
-    <TabsList className="grid w-full grid-cols-9">
+    <TabsList className="grid w-full grid-cols-10">
         <TabsTrigger value="reports">Reports</TabsTrigger>
         <TabsTrigger value="trainings">Trainings</TabsTrigger>
         <TabsTrigger value="courses">Courses</TabsTrigger>
@@ -1562,6 +1562,7 @@ export default function AdminPage() {
         <TabsTrigger value="organizations">Organizations</TabsTrigger>
         <TabsTrigger value="admins">Admins</TabsTrigger>
         <TabsTrigger value="attendance">Attendance</TabsTrigger>
+        <TabsTrigger value="settings">Site Settings</TabsTrigger>
     </TabsList>
   );
 
@@ -1709,67 +1710,44 @@ export default function AdminPage() {
             
             {userRole === 'superadmin' && (
                 <TabsContent value="reports" className="mt-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Reports</CardTitle>
-                                <CardDescription>A high-level overview of your training statistics.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Card className="p-4 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                        <Users className="h-8 w-8 text-primary" />
-                                        <p className="text-2xl font-bold">{reportStats.totalActiveEnrollments}</p>
-                                        <p className="text-sm text-muted-foreground">Total Active Enrollments</p>
-                                        </div>
-                                    </Card>
-                                     <Card className="p-4 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Presentation className="h-8 w-8 text-primary" />
-                                            <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
-                                            <p className="text-sm text-muted-foreground">Total Sessions</p>
-                                        </div>
-                                    </Card>
-                                    <Card className="p-4 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Building className="h-8 w-8 text-primary" />
-                                            <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
-                                            <p className="text-sm text-muted-foreground">Total Organizations</p>
-                                        </div>
-                                    </Card>
-                                    <Card className="p-4 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <UserCog className="h-8 w-8 text-primary" />
-                                            <p className="text-2xl font-bold">{reportStats.totalTrainers}</p>
-                                            <p className="text-sm text-muted-foreground">Total Trainers</p>
-                                        </div>
-                                    </Card>
-                                </div>
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>Site Settings</CardTitle>
-                                <CardDescription>Manage global settings for the site.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div>
-                                    <Label htmlFor="announcement-text">Homepage Announcement</Label>
-                                    <Textarea 
-                                        id="announcement-text" 
-                                        value={announcement}
-                                        onChange={(e) => setAnnouncement(e.target.value)}
-                                        placeholder="Enter a site-wide announcement..."
-                                        rows={4}
-                                    />
-                                </div>
-                                <Button onClick={handleSaveAnnouncement} disabled={isSavingAnnouncement}>
-                                    {isSavingAnnouncement ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save Announcement'}
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </div>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Reports</CardTitle>
+                            <CardDescription>A high-level overview of your training statistics.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <Card className="p-4 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                    <Users className="h-8 w-8 text-primary" />
+                                    <p className="text-2xl font-bold">{reportStats.totalActiveEnrollments}</p>
+                                    <p className="text-sm text-muted-foreground">Total Active Enrollments</p>
+                                    </div>
+                                </Card>
+                                 <Card className="p-4 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Presentation className="h-8 w-8 text-primary" />
+                                        <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
+                                        <p className="text-sm text-muted-foreground">Total Sessions</p>
+                                    </div>
+                                </Card>
+                                <Card className="p-4 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Building className="h-8 w-8 text-primary" />
+                                        <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
+                                        <p className="text-sm text-muted-foreground">Total Organizations</p>
+                                    </div>
+                                </Card>
+                                <Card className="p-4 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <UserCog className="h-8 w-8 text-primary" />
+                                        <p className="text-2xl font-bold">{reportStats.totalTrainers}</p>
+                                        <p className="text-sm text-muted-foreground">Total Trainers</p>
+                                    </div>
+                                </Card>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             )}
             
@@ -2326,6 +2304,30 @@ export default function AdminPage() {
                                         currentUser={currentUser}
                                     />
                                 )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                     <TabsContent value="settings" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Site Settings</CardTitle>
+                                <CardDescription>Manage global settings for the site.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div>
+                                    <Label htmlFor="announcement-text">Homepage Announcement</Label>
+                                    <Textarea 
+                                        id="announcement-text" 
+                                        value={announcement}
+                                        onChange={(e) => setAnnouncement(e.target.value)}
+                                        placeholder="Enter a site-wide announcement..."
+                                        rows={4}
+                                    />
+                                </div>
+                                <Button onClick={handleSaveAnnouncement} disabled={isSavingAnnouncement}>
+                                    {isSavingAnnouncement ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save Announcement'}
+                                </Button>
                             </CardContent>
                         </Card>
                     </TabsContent>
