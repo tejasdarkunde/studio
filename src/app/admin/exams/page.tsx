@@ -7,7 +7,7 @@ import type { Course, Exam, Question, ExamResult } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults } from '@/app/actions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -217,7 +217,7 @@ const ViewResultsDialog = ({
                 <DialogHeader>
                     <DialogTitle>Results for: {exam?.title}</DialogTitle>
                 </DialogHeader>
-                 <DialogContent>
+                 <div className="py-4">
                     {loading ? (
                         <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
                     ) : results.length > 0 ? (
@@ -246,10 +246,12 @@ const ViewResultsDialog = ({
                     ) : (
                         <p className="text-center text-muted-foreground py-16">No results submitted for this exam yet.</p>
                     )}
-                </DialogContent>
+                </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Close</Button>
-                    <Button onClick={handleDownloadResults} disabled={results.length === 0 || loading}>Download CSV</Button>
+                    <Button onClick={handleDownloadResults} disabled={results.length === 0 || loading}>
+                        <Download className="mr-2 h-4 w-4" /> Download CSV
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
