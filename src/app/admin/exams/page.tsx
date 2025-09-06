@@ -171,7 +171,7 @@ export default function ExamsPage() {
     
     const handleDeleteExam = async () => {
         if (!deletingExam) return;
-        const result = await deleteExam(deletingExam);
+        const result = await deleteExam({courseId: deletingExam.courseId, examId: deletingExam.exam.id});
         if (result.success) {
             toast({ title: "Exam Deleted" });
             fetchCourses();
