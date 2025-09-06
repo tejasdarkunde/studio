@@ -56,6 +56,7 @@ export type ExamAttempt = {
   answers: { [questionId: string]: number };
   score?: number;
   submittedAt?: string; // ISO 8601 string
+  isSubmitted: boolean;
 };
 
 export type Participant = {
@@ -131,3 +132,11 @@ export type OrganizationAdmin = {
     createdAt: string;
 };
     
+export type ExamResult = {
+    participantId: string;
+    participantName: string;
+    iitpNo: string;
+    score: number;
+    totalQuestions: number;
+    submittedAt: string;
+}

@@ -1,8 +1,9 @@
 
+
 import { getCourses, getParticipantByIitpNo } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, User, Building, Lock, Clock } from 'lucide-react';
+import { ArrowRight, User, Building, Lock, Clock, FileQuestion } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
@@ -125,6 +126,31 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
                                         </div>
                                         <Progress value={progress.percentage} />
                                         <p className="text-right text-sm font-bold text-primary mt-1">{progress.percentage}% Complete</p>
+                                    </div>
+                                )}
+                                {course.exams && course.exams.length > 0 && (
+                                    <div className="pt-4">
+                                        <h4 className="font-semibold mb-2 text-sm">Exams</h4>
+                                        <div className="space-y-2">
+                                        {course.exams.map(exam => {
+                                            const attempt = participant.examProgress?.[exam.id];
+                                            return(
+                                                <div key={exam.id} className="flex justify-between items-center p-2 rounded-md bg-secondary/50">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileQuestion className="h-4 w-4 text-muted-foreground" />
+                                                        <span className="font-medium">{exam.title}</span>
+                                                    </div>
+                                                    {attempt?.isSubmitted ? (
+                                                        <Button asChild size="sm" variant="outline">
+                                                            <Link href={`/student/results/${participant.iitpNo}/${exam.id}`}>View Result</Link>
+                                                        </Button>
+                                                    ) : (
+                                                        <Badge variant="destructive">Pending</Badge>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>

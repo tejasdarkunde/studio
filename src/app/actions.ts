@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt, ExamResult } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -2052,3 +2052,100 @@ export async function saveExamProgress(data: z.infer<typeof saveExamProgressSche
         return { success: false, error: "Could not save exam progress." };
     }
 }
+
+
+const submitExamSchema = z.object({
+    participantId: z.string().min(1),
+    courseId: z.string().min(1),
+    examId: z.string().min(1),
+    answers: z.record(z.number()),
+});
+
+export async function submitExam(data: z.infer<typeof submitExamSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = submitExamSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { participantId, courseId, examId, answers } = validated.data;
+
+        // 1. Fetch exam questions to calculate score
+        const course = await getCourseById(courseId);
+        const exam = course?.exams?.find(e => e.id === examId);
+        if (!exam) {
+            return { success: false, error: "Exam could not be found." };
+        }
+
+        // 2. Calculate score
+        let score = 0;
+        for (const question of exam.questions) {
+            if (answers[question.id] === question.correctAnswer) {
+                score++;
+            }
+        }
+        
+        // 3. Update participant's exam progress
+        const participantDocRef = doc(db, 'participants', participantId);
+        const fieldToUpdate = `examProgress.${examId}`;
+        
+        await updateDoc(participantDocRef, {
+            [fieldToUpdate]: {
+                answers,
+                score,
+                isSubmitted: true,
+                submittedAt: serverTimestamp(),
+            }
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error submitting exam:", error);
+        return { success: false, error: "Could not submit your exam due to a database error." };
+    }
+}
+
+
+export async function getExamResults(examId: string): Promise<ExamResult[]> {
+    try {
+        const participantsCollection = collection(db, "participants");
+        const q = query(participantsCollection, where(`examProgress.${examId}.isSubmitted`, "==", true));
+        const snapshot = await getDocs(q);
+
+        const results: ExamResult[] = [];
+
+        if (snapshot.empty) {
+            return [];
+        }
+        
+        // Find the exam to get total questions
+        const coursesSnapshot = await getDocs(collection(db, 'courses'));
+        let exam: Exam | undefined;
+        for (const courseDoc of coursesSnapshot.docs) {
+             const courseExams = courseDoc.data().exams as Exam[] | undefined;
+             exam = courseExams?.find(e => e.id === examId);
+             if (exam) break;
+        }
+
+        snapshot.forEach(doc => {
+            const p = doc.data() as Participant;
+            const attempt = p.examProgress?.[examId];
+
+            if (attempt && attempt.isSubmitted) {
+                results.push({
+                    participantId: doc.id,
+                    participantName: p.name,
+                    iitpNo: p.iitpNo,
+                    score: attempt.score ?? 0,
+                    totalQuestions: exam?.questions.length ?? 0,
+                    submittedAt: (attempt.submittedAt as any)?.toDate()?.toISOString() || new Date().toISOString(),
+                });
+            }
+        });
+
+        return results.sort((a, b) => b.score - a.score);
+
+    } catch (error) {
+        console.error("Error fetching exam results:", error);
+        return [];
+    }
+}
+

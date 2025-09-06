@@ -3,19 +3,21 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Course, Exam, Question } from '@/lib/types';
+import type { Course, Exam, Question, ExamResult } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion } from '@/app/actions';
+import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults } from '@/app/actions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/features/confirm-dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const ManageQuestionDialog = ({
     isOpen,
@@ -169,6 +171,91 @@ const ManageExamDialog = ({
     );
 };
 
+const ViewResultsDialog = ({
+    isOpen,
+    onClose,
+    exam,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    exam: Exam | null;
+}) => {
+    const [results, setResults] = useState<ExamResult[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && exam) {
+            const fetchResults = async () => {
+                setLoading(true);
+                const fetchedResults = await getExamResults(exam.id);
+                setResults(fetchedResults);
+                setLoading(false);
+            };
+            fetchResults();
+        }
+    }, [isOpen, exam]);
+    
+    const handleDownloadResults = () => {
+        // Simple CSV export
+        const headers = "Rank,Name,IITP No,Score\n";
+        const csvRows = results.map((res, index) => 
+            `${index + 1},"${res.participantName}","${res.iitpNo}",${res.score}/${res.totalQuestions}`
+        ).join('\n');
+        const csv = headers + csvRows;
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${exam?.title}_results.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    return (
+         <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>Results for: {exam?.title}</DialogTitle>
+                </DialogHeader>
+                 <DialogContent>
+                    {loading ? (
+                        <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                    ) : results.length > 0 ? (
+                        <ScrollArea className="h-96">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Rank</TableHead>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>IITP No</TableHead>
+                                        <TableHead>Score</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {results.map((res, index) => (
+                                        <TableRow key={res.participantId}>
+                                            <TableCell>{index + 1}</TableCell>
+                                            <TableCell>{res.participantName}</TableCell>
+                                            <TableCell>{res.iitpNo}</TableCell>
+                                            <TableCell>{res.score} / {res.totalQuestions}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    ) : (
+                        <p className="text-center text-muted-foreground py-16">No results submitted for this exam yet.</p>
+                    )}
+                </DialogContent>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Close</Button>
+                    <Button onClick={handleDownloadResults} disabled={results.length === 0 || loading}>Download CSV</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 
 export default function ExamsPage() {
     const [courses, setCourses] = useState<Course[]>([]);
@@ -177,6 +264,7 @@ export default function ExamsPage() {
     const [examDialog, setExamDialog] = useState<{isOpen: boolean; course?: Course; exam?: Exam | null}>({isOpen: false});
     const [questionDialog, setQuestionDialog] = useState<{isOpen: boolean; exam?: Exam; courseId?: string; question?: Question | null}>({isOpen: false});
     const [deletingQuestion, setDeletingQuestion] = useState<{question: Question; examId: string; courseId: string;} | null>(null);
+    const [viewingResultsFor, setViewingResultsFor] = useState<Exam | null>(null);
 
     const { toast } = useToast();
 
@@ -276,12 +364,17 @@ export default function ExamsPage() {
                 initialData={examDialog.exam}
                 courseName={examDialog.course?.name || ''}
             />
+            <ViewResultsDialog 
+                isOpen={!!viewingResultsFor}
+                onClose={() => setViewingResultsFor(null)}
+                exam={viewingResultsFor}
+            />
              <ConfirmDialog 
                 isOpen={!!deletingExam}
                 onClose={() => setDeletingExam(null)}
                 onConfirm={handleDeleteExam}
                 title="Delete Exam?"
-                description={`Permanently delete the exam "${deletingExam?.exam.title}". All questions inside will also be deleted.`}
+                description={`Permanently delete the exam "${deletingExam?.exam.title}". All questions and results will also be deleted.`}
             />
             <ConfirmDialog 
                 isOpen={!!deletingQuestion}
@@ -324,22 +417,27 @@ export default function ExamsPage() {
                                                             <div className="flex justify-between items-center">
                                                                 <CardTitle className="text-xl">{exam.title}</CardTitle>
                                                                 <div className="flex gap-2">
-                                                                    <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)}>
+                                                                    <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)} title="Copy direct link">
                                                                         <LinkIcon className="h-4 w-4"/>
                                                                     </Button>
-                                                                    <Button variant="ghost" size="icon" onClick={() => setExamDialog({isOpen: true, course: course, exam: exam})}>
+                                                                    <Button variant="ghost" size="icon" onClick={() => setExamDialog({isOpen: true, course: course, exam: exam})} title="Edit exam">
                                                                         <Pencil className="h-4 w-4" />
                                                                     </Button>
-                                                                    <Button variant="destructive" size="icon" onClick={() => setDeletingExam({ exam, courseId: course.id })}>
+                                                                    <Button variant="destructive" size="icon" onClick={() => setDeletingExam({ exam, courseId: course.id })} title="Delete exam">
                                                                         <Trash className="h-4 w-4" />
                                                                     </Button>
                                                                 </div>
                                                             </div>
                                                         </CardHeader>
                                                         <CardContent className="space-y-2">
-                                                            <Button className="w-full" variant="outline" onClick={() => setQuestionDialog({ isOpen: true, exam, courseId: course.id })}>
-                                                                <PlusCircle className="mr-2 h-4 w-4" /> Add Question
-                                                            </Button>
+                                                            <div className="flex gap-2">
+                                                                <Button className="w-full" variant="outline" onClick={() => setQuestionDialog({ isOpen: true, exam, courseId: course.id })}>
+                                                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Question
+                                                                </Button>
+                                                                <Button className="w-full" onClick={() => setViewingResultsFor(exam)}>
+                                                                    <BarChart className="mr-2 h-4 w-4" /> View Results
+                                                                </Button>
+                                                            </div>
                                                                 {exam.questions.map((q, index) => (
                                                                 <div key={q.id} className="p-3 rounded-md bg-secondary/50 flex items-center justify-between group">
                                                                     <div className="flex items-start gap-3">
@@ -377,5 +475,4 @@ export default function ExamsPage() {
         </>
     );
 }
-
 

@@ -3,8 +3,8 @@
 "use client";
 
 import { useEffect, useState, useRef, useTransition } from 'react';
-import { notFound, useParams } from 'next/navigation';
-import { getCourseById, getParticipantByIitpNo, saveExamProgress } from '@/app/actions';
+import { notFound, useParams, useRouter } from 'next/navigation';
+import { getCourseById, getParticipantByIitpNo, saveExamProgress, submitExam } from '@/app/actions';
 import type { Course, Exam, Participant, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,12 @@ import { ChevronLeft, ChevronRight, Loader2, Send, ShieldAlert } from 'lucide-re
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ExamPage() {
     const params = useParams();
+    const router = useRouter();
     const { iitpNo, courseId, examId } = params as { iitpNo: string; courseId: string; examId: string };
     
     const [exam, setExam] = useState<Exam | null>(null);
@@ -26,6 +29,9 @@ export default function ExamPage() {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [isLocked, setIsLocked] = useState(false);
     const [isSaving, startSaving] = useTransition();
+    const [isSubmitting, startSubmitting] = useTransition();
+    const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -44,11 +50,16 @@ export default function ExamPage() {
                 notFound();
             }
             
+            const savedAttempt = participantData.examProgress?.[examId];
+            if (savedAttempt?.isSubmitted) {
+                // If already submitted, redirect to results
+                router.replace(`/student/results/${iitpNo}/${examId}`);
+                return;
+            }
+
             setExam(foundExam);
             setParticipant(participantData);
             
-            // Load saved answers
-            const savedAttempt = participantData.examProgress?.[examId];
             if (savedAttempt?.answers) {
                 setAnswers(savedAttempt.answers);
             }
@@ -57,7 +68,7 @@ export default function ExamPage() {
         };
 
         fetchData();
-    }, [courseId, examId, iitpNo]);
+    }, [courseId, examId, iitpNo, router]);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -95,9 +106,23 @@ export default function ExamPage() {
     };
     
     const handleSubmit = () => {
-        // TODO: Implement submission logic
-        console.log("Submitting answers:", answers);
-        alert("Submission functionality is not yet implemented.");
+        startSubmitting(async () => {
+            if (!participant) return;
+            const result = await submitExam({
+                participantId: participant.id,
+                courseId: courseId,
+                examId: examId,
+                answers: answers,
+            });
+
+            if(result.success) {
+                toast({ title: "Exam Submitted Successfully!" });
+                router.push(`/student/results/${iitpNo}/${examId}`);
+            } else {
+                toast({ variant: 'destructive', title: "Submission Failed", description: result.error });
+            }
+        });
+        setIsConfirmingSubmit(false);
     };
     
     const goToQuestion = (index: number) => {
@@ -115,6 +140,7 @@ export default function ExamPage() {
     }
 
     if (!exam || !participant) {
+        // This case should be handled by the loading state and redirection, but as a fallback.
         return notFound();
     }
     
@@ -122,8 +148,27 @@ export default function ExamPage() {
     const totalQuestions = exam.questions.length;
     const currentQuestion = exam.questions[currentQuestionIndex];
     const progressPercentage = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
+    const allQuestionsAnswered = answeredCount === totalQuestions;
 
     return (
+        <>
+        <AlertDialog open={isConfirmingSubmit} onOpenChange={setIsConfirmingSubmit}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        You have answered {answeredCount} out of {totalQuestions} questions. You will not be able to change your answers after submission.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Yes, Submit'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
         <main className="container mx-auto p-4 md:p-8 relative">
             {isLocked && (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center text-white text-center p-8">
@@ -174,7 +219,7 @@ export default function ExamPage() {
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                             </Button>
                             {currentQuestionIndex === totalQuestions - 1 ? (
-                                <Button onClick={handleSubmit}>
+                                <Button onClick={() => setIsConfirmingSubmit(true)} disabled={!allQuestionsAnswered}>
                                     <Send className="mr-2 h-4 w-4" /> Submit Exam
                                 </Button>
                             ) : (
@@ -213,9 +258,15 @@ export default function ExamPage() {
                                 ))}
                             </div>
                         </CardContent>
+                        <CardFooter>
+                             <Button onClick={() => setIsConfirmingSubmit(true)} className="w-full" disabled={!allQuestionsAnswered}>
+                                <Send className="mr-2 h-4 w-4" /> Submit
+                            </Button>
+                        </CardFooter>
                     </Card>
                 </aside>
             </div>
         </main>
+        </>
     );
 }
