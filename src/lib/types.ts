@@ -110,6 +110,7 @@ export type Exam = {
     questions: Question[];
     duration?: number; // Duration in minutes
     createdAt?: string; // ISO 8601 string
+    status?: 'active' | 'inactive';
 };
 
 export type Course = {

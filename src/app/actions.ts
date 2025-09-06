@@ -1527,6 +1527,7 @@ const addExamSchema = z.object({
     courseId: z.string().min(1),
     title: z.string().min(2, "Exam title is required."),
     duration: z.number().positive().optional(),
+    status: z.enum(['active', 'inactive']).optional(),
 });
 
 export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ success: boolean, error?: string }> {
@@ -1534,7 +1535,7 @@ export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ su
     if (!validated.success) return { success: false, error: "Invalid data." };
 
     try {
-        const { courseId, title, duration } = validated.data;
+        const { courseId, title, duration, status } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -1545,6 +1546,7 @@ export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ su
             questions: [],
             duration,
             createdAt: new Date().toISOString(),
+            status: status || 'active',
         };
         
         await updateDoc(courseDocRef, {
@@ -1571,7 +1573,7 @@ export async function updateExam(data: z.infer<typeof updateExamSchema>): Promis
     }
 
     try {
-        const { courseId, examId, title, duration } = validated.data;
+        const { courseId, examId, title, duration, status } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -1582,6 +1584,7 @@ export async function updateExam(data: z.infer<typeof updateExamSchema>): Promis
 
         exams[examIndex].title = title;
         exams[examIndex].duration = duration;
+        exams[examIndex].status = status || 'active';
 
         await updateDoc(courseDocRef, { exams });
         return { success: true };
@@ -2021,19 +2024,25 @@ export async function verifyExamAccess(data: z.infer<typeof verifyExamAccessSche
         const coursesSnapshot = await getDocs(collection(db, 'courses'));
         let foundCourseId: string | null = null;
         let foundCourseName: string | null = null;
+        let foundExam: Exam | null = null;
         
         for (const courseDoc of coursesSnapshot.docs) {
             const courseData = courseDoc.data() as Course;
-            const examExists = courseData.exams?.some(e => e.id === examId);
+            const examExists = courseData.exams?.find(e => e.id === examId);
             if (examExists) {
                 foundCourseId = courseDoc.id;
                 foundCourseName = courseData.name;
+                foundExam = examExists;
                 break;
             }
         }
 
-        if (!foundCourseId || !foundCourseName) {
+        if (!foundCourseId || !foundCourseName || !foundExam) {
             return { success: false, error: "Exam not found in any course." };
+        }
+
+        if (foundExam.status === 'inactive') {
+            return { success: false, error: "This exam is not currently active. Please contact an administrator." };
         }
 
         const isEnrolled = participant.enrolledCourses?.some(enrolledCourseName => 

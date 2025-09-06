@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -6,8 +7,9 @@ import { notFound, useParams, useRouter } from 'next/navigation';
 import { getCourses, verifyExamAccess } from '@/app/actions';
 import type { Course, Exam } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { ExamLoginForm } from '@/components/features/exam-login-form';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function ExamDirectAccessPage() {
     const params = useParams();
@@ -17,6 +19,7 @@ export default function ExamDirectAccessPage() {
     const [exam, setExam] = useState<Exam | null>(null);
     const [course, setCourse] = useState<Course | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const findExam = async () => {
@@ -27,6 +30,10 @@ export default function ExamDirectAccessPage() {
                 if (foundExam) {
                     setExam(foundExam);
                     setCourse(course);
+
+                    if (foundExam.status === 'inactive') {
+                        setError('This exam is not currently active. Please contact an administrator.');
+                    }
                     break;
                 }
             }
@@ -68,10 +75,18 @@ export default function ExamDirectAccessPage() {
                         <CardDescription>Enter your IITP No. to begin the exam.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ExamLoginForm 
-                            examId={examId}
-                            onSuccess={handleLoginSuccess}
-                        />
+                        {error ? (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Access Denied</AlertTitle>
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        ) : (
+                             <ExamLoginForm 
+                                examId={examId}
+                                onSuccess={handleLoginSuccess}
+                            />
+                        )}
                     </CardContent>
                 </Card>
             </div>

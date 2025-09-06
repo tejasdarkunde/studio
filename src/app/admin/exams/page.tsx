@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -19,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 
 const ManageExamDialog = ({
     isOpen,
@@ -29,12 +31,13 @@ const ManageExamDialog = ({
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: { courseId: string; title: string; duration?: number }) => Promise<void>;
+    onSave: (data: { courseId: string; title: string; duration?: number, status?: 'active' | 'inactive' }) => Promise<void>;
     courses: Course[];
     initialData?: Exam & { courseId: string };
 }) => {
     const [title, setTitle] = useState('');
     const [duration, setDuration] = useState('');
+    const [status, setStatus] = useState<'active' | 'inactive'>('active');
     const [selectedCourseId, setSelectedCourseId] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
@@ -44,6 +47,7 @@ const ManageExamDialog = ({
             setTitle(initialData?.title || '');
             setDuration(initialData?.duration?.toString() || '');
             setSelectedCourseId(initialData?.courseId || '');
+            setStatus(initialData?.status || 'active');
             setIsSaving(false);
         }
     }, [isOpen, initialData]);
@@ -58,6 +62,7 @@ const ManageExamDialog = ({
             courseId: selectedCourseId,
             title,
             duration: duration ? parseInt(duration, 10) : undefined,
+            status,
         });
         setIsSaving(false);
     };
@@ -92,6 +97,21 @@ const ManageExamDialog = ({
                     <div>
                         <Label htmlFor="exam-duration">Duration (minutes)</Label>
                         <Input id="exam-duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g., 60 (leave blank for no timer)" />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <Label>Exam Status</Label>
+                            <p className="text-xs text-muted-foreground">Inactive exams cannot be accessed by students.</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <Switch
+                                checked={status === 'active'}
+                                onCheckedChange={(checked) => setStatus(checked ? 'active' : 'inactive')}
+                            />
+                            <span className={status === 'active' ? 'font-medium text-green-600' : 'font-medium text-red-600'}>
+                                {status === 'active' ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <DialogFooter>
@@ -297,7 +317,7 @@ export default function ExamsPage() {
         return allExams.filter(exam => exam.courseName === courseFilter);
     }, [allExams, courseFilter]);
 
-     const handleSaveExam = async (data: { courseId: string; title: string; duration?: number }) => {
+     const handleSaveExam = async (data: { courseId: string; title: string; duration?: number; status?: 'active' | 'inactive' }) => {
         const isEditing = !!examDialog.exam;
         
         const action = isEditing ? updateExam : addExam;
@@ -395,6 +415,7 @@ export default function ExamsPage() {
                                         <TableHead>Course</TableHead>
                                         <TableHead>Questions</TableHead>
                                         <TableHead>Duration</TableHead>
+                                        <TableHead>Status</TableHead>
                                         <TableHead>Date Created</TableHead>
                                         <TableHead>Submissions</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
@@ -407,6 +428,11 @@ export default function ExamsPage() {
                                             <TableCell><Badge variant="secondary">{exam.courseName}</Badge></TableCell>
                                             <TableCell>{exam.questions.length}</TableCell>
                                             <TableCell>{exam.duration ? `${exam.duration} min` : 'N/A'}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={exam.status === 'active' ? 'default' : 'destructive'}>
+                                                    {exam.status === 'active' ? 'Active' : 'Inactive'}
+                                                </Badge>
+                                            </TableCell>
                                             <TableCell>{exam.createdAt ? new Date(exam.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
                                             <TableCell>
                                                 <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setViewingResultsFor(exam)}>
@@ -417,9 +443,12 @@ export default function ExamsPage() {
                                                 <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)} title="Copy direct link">
                                                     <LinkIcon className="h-4 w-4"/>
                                                 </Button>
+                                                 <Button variant="ghost" size="icon" onClick={() => setExamDialog({isOpen: true, exam: exam as any})} title="Edit exam details">
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
                                                 <Button asChild variant="ghost" size="icon" title="Manage questions">
                                                     <Link href={`/admin/exams/${exam.courseId}/${exam.id}`}>
-                                                        <Pencil className="h-4 w-4" />
+                                                        <FileQuestion className="h-4 w-4" />
                                                     </Link>
                                                 </Button>
                                                 <Button variant="ghost" size="icon" onClick={() => setViewingResultsFor(exam)} title="View results">
@@ -432,7 +461,7 @@ export default function ExamsPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center h-24">No exams found for the selected filter.</TableCell>
+                                            <TableCell colSpan={8} className="text-center h-24">No exams found for the selected filter.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
