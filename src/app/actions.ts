@@ -1542,7 +1542,7 @@ export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ su
 
         const newExam: Omit<Exam, 'id'> = {
             title,
-            courseId,
+            courseId: courseId,
             questions: [],
             duration,
             createdAt: new Date().toISOString(),
@@ -1568,6 +1568,7 @@ const updateExamSchema = addExamSchema.extend({ examId: z.string().min(1) });
 export async function updateExam(data: z.infer<typeof updateExamSchema>): Promise<{ success: boolean; error?: string }> {
     const validated = updateExamSchema.safeParse(data);
     if (!validated.success) {
+        console.log(validated.error.flatten().fieldErrors);
         return { success: false, error: "Invalid data." };
     }
 
