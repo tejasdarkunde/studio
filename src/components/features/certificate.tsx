@@ -11,7 +11,7 @@ type CertificateProps = {
 
 export const Certificate = forwardRef<HTMLDivElement, CertificateProps>(({ studentName, courseName, date }, ref) => {
     return (
-        <div ref={ref} className="w-[1123px] h-[794px] bg-white p-12 flex flex-col items-center justify-center border-4 border-primary font-serif" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <div ref={ref} className="w-[1123px] h-[794px] bg-white p-12 flex flex-col items-center justify-center border-4 border-primary font-serif">
             <div className="w-full h-full border-2 border-primary flex flex-col items-center justify-center text-center p-8 relative">
 
                 {/* Decorative Elements */}
