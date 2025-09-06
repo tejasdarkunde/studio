@@ -376,6 +376,7 @@ export default function ExamsPage() {
                                         <TableHead>Course</TableHead>
                                         <TableHead>Questions</TableHead>
                                         <TableHead>Duration</TableHead>
+                                        <TableHead>Date Created</TableHead>
                                         <TableHead>Submissions</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
@@ -387,6 +388,7 @@ export default function ExamsPage() {
                                             <TableCell><Badge variant="secondary">{exam.courseName}</Badge></TableCell>
                                             <TableCell>{exam.questions.length}</TableCell>
                                             <TableCell>{exam.duration ? `${exam.duration} min` : 'N/A'}</TableCell>
+                                            <TableCell>{exam.createdAt ? new Date(exam.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
                                             <TableCell>{resultCounts[exam.id] || 0}</TableCell>
                                             <TableCell className="text-right space-x-1">
                                                 <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)} title="Copy direct link">
@@ -407,7 +409,7 @@ export default function ExamsPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center h-24">No exams created yet.</TableCell>
+                                            <TableCell colSpan={7} className="text-center h-24">No exams created yet.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

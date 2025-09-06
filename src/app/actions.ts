@@ -1544,6 +1544,7 @@ export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ su
             courseId,
             questions: [],
             duration,
+            createdAt: new Date().toISOString(),
         };
         
         await updateDoc(courseDocRef, {

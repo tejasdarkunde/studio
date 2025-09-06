@@ -109,6 +109,7 @@ export type Exam = {
     courseId: string;
     questions: Question[];
     duration?: number; // Duration in minutes
+    createdAt?: string; // ISO 8601 string
 };
 
 export type Course = {
