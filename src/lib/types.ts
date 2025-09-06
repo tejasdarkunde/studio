@@ -52,6 +52,12 @@ export type MeetingLinks = {
   advanceDiplomaZoomLink: string;
 };
 
+export type ExamAttempt = {
+  answers: { [questionId: string]: number };
+  score?: number;
+  submittedAt?: string; // ISO 8601 string
+};
+
 export type Participant = {
     id: string;
     name: string;
@@ -62,6 +68,9 @@ export type Participant = {
     enrolledCourses?: string[];
     completedLessons?: string[];
     deniedCourses?: string[]; // Array of course IDs
+    examProgress?: {
+        [examId: string]: ExamAttempt;
+    }
 }
 
 export type Lesson = {

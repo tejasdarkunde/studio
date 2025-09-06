@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -455,6 +455,7 @@ export async function getParticipants(): Promise<Participant[]> {
                 enrolledCourses: data.enrolledCourses || [], 
                 completedLessons: data.completedLessons || [],
                 deniedCourses: data.deniedCourses || [],
+                examProgress: data.examProgress || {},
             };
         });
 
@@ -491,6 +492,7 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
             enrolledCourses: data.enrolledCourses || [],
             completedLessons: data.completedLessons || [],
             deniedCourses: data.deniedCourses || [],
+            examProgress: data.examProgress || {},
         };
     } catch (error) {
         console.error("Error fetching participant by IITP No.:", error);
@@ -507,6 +509,7 @@ const participantSchema = z.object({
   enrolledCourses: z.array(z.string()).optional(),
   completedLessons: z.array(z.string()).optional(),
   deniedCourses: z.array(z.string()).optional(),
+  examProgress: z.record(z.any()).optional(),
 });
 
 
@@ -532,6 +535,7 @@ export async function addParticipant(data: z.infer<typeof participantSchema>): P
             createdAt: serverTimestamp(),
             completedLessons: [], // Initialize empty
             deniedCourses: [], // Initialize empty
+            examProgress: {}, // Initialize empty
         });
         return { success: true };
     } catch (error) {
@@ -595,6 +599,7 @@ export async function addParticipantsInBulk(participants: Omit<Participant, 'id'
                 createdAt: serverTimestamp(),
                 completedLessons: [], // Initialize empty
                 deniedCourses: [], // Initialize empty
+                examProgress: {}, // Initialize empty
             });
             iitpNosInCurrentUpload.add(iitpNo);
         }
@@ -2017,5 +2022,33 @@ export async function verifyExamAccess(data: z.infer<typeof verifyExamAccessSche
     } catch (error) {
         console.error("Error verifying exam access:", error);
         return { success: false, error: "A database error occurred during verification." };
+    }
+}
+
+
+const saveExamProgressSchema = z.object({
+    participantId: z.string().min(1),
+    examId: z.string().min(1),
+    answers: z.record(z.number()),
+});
+
+export async function saveExamProgress(data: z.infer<typeof saveExamProgressSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = saveExamProgressSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { participantId, examId, answers } = validated.data;
+        const participantDocRef = doc(db, 'participants', participantId);
+        
+        const fieldToUpdate = `examProgress.${examId}.answers`;
+
+        await updateDoc(participantDocRef, {
+            [fieldToUpdate]: answers
+        });
+
+        return { success: true };
+    } catch(error) {
+        console.error("Error saving exam progress:", error);
+        return { success: false, error: "Could not save exam progress." };
     }
 }

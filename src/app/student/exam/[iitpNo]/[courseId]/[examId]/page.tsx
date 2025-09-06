@@ -1,9 +1,10 @@
 
+
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useTransition } from 'react';
 import { notFound, useParams } from 'next/navigation';
-import { getCourseById, getParticipantByIitpNo } from '@/app/actions';
+import { getCourseById, getParticipantByIitpNo, saveExamProgress } from '@/app/actions';
 import type { Course, Exam, Participant, Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ export default function ExamPage() {
     const [answers, setAnswers] = useState<{[questionId: string]: number}>({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [isLocked, setIsLocked] = useState(false);
+    const [isSaving, startSaving] = useTransition();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -44,6 +46,13 @@ export default function ExamPage() {
             
             setExam(foundExam);
             setParticipant(participantData);
+            
+            // Load saved answers
+            const savedAttempt = participantData.examProgress?.[examId];
+            if (savedAttempt?.answers) {
+                setAnswers(savedAttempt.answers);
+            }
+
             setLoading(false);
         };
 
@@ -71,7 +80,18 @@ export default function ExamPage() {
     }, []);
 
     const handleAnswerChange = (questionId: string, optionIndex: number) => {
-        setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+        const newAnswers = { ...answers, [questionId]: optionIndex };
+        setAnswers(newAnswers);
+
+        startSaving(async () => {
+            if (participant) {
+                await saveExamProgress({
+                    participantId: participant.id,
+                    examId: examId,
+                    answers: newAnswers,
+                });
+            }
+        });
     };
     
     const handleSubmit = () => {
