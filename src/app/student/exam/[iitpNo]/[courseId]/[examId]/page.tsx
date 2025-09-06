@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef, useTransition } from 'react';
+import { useEffect, useState, useRef, useTransition, useCallback } from 'react';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { getCourseById, getParticipantByIitpNo, saveExamProgress, submitExam } from '@/app/actions';
 import type { Course, Exam, Participant, Question } from '@/lib/types';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, Loader2, Send, ShieldAlert } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Send, ShieldAlert, Timer } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
@@ -31,7 +31,29 @@ export default function ExamPage() {
     const [isSaving, startSaving] = useTransition();
     const [isSubmitting, startSubmitting] = useTransition();
     const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
+    const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
     const { toast } = useToast();
+
+     const handleSubmit = useCallback(() => {
+        startSubmitting(async () => {
+            if (!participant) return;
+            const result = await submitExam({
+                participantId: participant.id,
+                courseId: courseId,
+                examId: examId,
+                answers: answers,
+            });
+
+            if(result.success) {
+                toast({ title: "Exam Submitted Successfully!" });
+                router.push(`/student/results/${iitpNo}/${examId}`);
+            } else {
+                toast({ variant: 'destructive', title: "Submission Failed", description: result.error });
+            }
+        });
+        setIsConfirmingSubmit(false);
+    }, [participant, courseId, examId, answers, iitpNo, router, toast]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -64,11 +86,48 @@ export default function ExamPage() {
                 setAnswers(savedAttempt.answers);
             }
 
+            // Start timer if not already started
+            if (foundExam.duration && !savedAttempt?.startedAt) {
+                await saveExamProgress({ participantId: participantData.id, examId, answers: savedAttempt?.answers || {}, startedAt: new Date().toISOString() });
+                // Re-fetch to get the server timestamp
+                const updatedParticipantData = await getParticipantByIitpNo(iitpNo);
+                setParticipant(updatedParticipantData);
+            }
+
             setLoading(false);
         };
 
         fetchData();
     }, [courseId, examId, iitpNo, router]);
+    
+     useEffect(() => {
+        if (!exam?.duration || !participant?.examProgress?.[examId]?.startedAt) {
+            return;
+        }
+
+        const startedAt = new Date(participant.examProgress[examId].startedAt!).getTime();
+        const endTime = startedAt + exam.duration * 60 * 1000;
+
+        const interval = setInterval(() => {
+            const now = new Date().getTime();
+            const remaining = endTime - now;
+            
+            if (remaining > 0) {
+                setTimeLeft(remaining);
+            } else {
+                setTimeLeft(0);
+                clearInterval(interval);
+                toast({
+                    title: "Time's Up!",
+                    description: "Your exam has been submitted automatically.",
+                });
+                handleSubmit();
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+
+    }, [exam, participant, examId, toast, handleSubmit]);
 
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -105,31 +164,20 @@ export default function ExamPage() {
         });
     };
     
-    const handleSubmit = () => {
-        startSubmitting(async () => {
-            if (!participant) return;
-            const result = await submitExam({
-                participantId: participant.id,
-                courseId: courseId,
-                examId: examId,
-                answers: answers,
-            });
-
-            if(result.success) {
-                toast({ title: "Exam Submitted Successfully!" });
-                router.push(`/student/results/${iitpNo}/${examId}`);
-            } else {
-                toast({ variant: 'destructive', title: "Submission Failed", description: result.error });
-            }
-        });
-        setIsConfirmingSubmit(false);
-    };
-    
     const goToQuestion = (index: number) => {
         if (index >= 0 && index < (exam?.questions.length || 0)) {
             setCurrentQuestionIndex(index);
         }
     }
+    
+     const formatTime = (ms: number | null) => {
+        if (ms === null) return "00:00:00";
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
 
     if (loading) {
         return (
@@ -192,8 +240,18 @@ export default function ExamPage() {
                 <div className="lg:col-span-3">
                     <Card className="flex flex-col min-h-[60vh]">
                         <CardHeader>
-                            <CardTitle className="text-3xl">{exam.title}</CardTitle>
-                            <CardDescription>Question {currentQuestionIndex + 1} of {totalQuestions}</CardDescription>
+                             <div className="flex justify-between items-start">
+                                <div>
+                                    <CardTitle className="text-3xl">{exam.title}</CardTitle>
+                                    <CardDescription>Question {currentQuestionIndex + 1} of {totalQuestions}</CardDescription>
+                                </div>
+                                {exam.duration && (
+                                    <div className="flex items-center gap-2 text-lg font-semibold text-destructive p-2 border border-destructive rounded-md">
+                                        <Timer className="h-5 w-5"/>
+                                        <span>{formatTime(timeLeft)}</span>
+                                    </div>
+                                )}
+                            </div>
                              <Progress value={progressPercentage} className="mt-2" />
                         </CardHeader>
                         <CardContent className="flex-grow">

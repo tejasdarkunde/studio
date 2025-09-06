@@ -57,6 +57,7 @@ export type ExamAttempt = {
   score?: number;
   submittedAt?: string; // ISO 8601 string
   isSubmitted: boolean;
+  startedAt?: string; // ISO 8601 string
 };
 
 export type Participant = {
@@ -107,6 +108,7 @@ export type Exam = {
     title: string;
     courseId: string;
     questions: Question[];
+    duration?: number; // Duration in minutes
 };
 
 export type Course = {

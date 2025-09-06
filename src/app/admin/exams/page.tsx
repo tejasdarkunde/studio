@@ -7,7 +7,7 @@ import type { Course, Exam, Question, ExamResult } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search, Clock } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults, deleteExamAttempt } from '@/app/actions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -129,16 +129,18 @@ const ManageExamDialog = ({
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (title: string) => Promise<void>;
+    onSave: (data: { title: string; duration?: number }) => Promise<void>;
     initialData?: Exam | null;
     courseName: string;
 }) => {
     const [title, setTitle] = useState('');
+    const [duration, setDuration] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setTitle(initialData?.title || '');
+            setDuration(initialData?.duration?.toString() || '');
             setIsSaving(false);
         }
     }, [isOpen, initialData]);
@@ -146,7 +148,10 @@ const ManageExamDialog = ({
     const handleSave = async () => {
         if (!title.trim()) return;
         setIsSaving(true);
-        await onSave(title);
+        await onSave({
+            title,
+            duration: duration ? parseInt(duration, 10) : undefined,
+        });
         setIsSaving(false);
     };
 
@@ -156,9 +161,15 @@ const ManageExamDialog = ({
                 <DialogHeader>
                     <DialogTitle>{initialData ? `Edit Exam in ${courseName}` : `Add New Exam to ${courseName}`}</DialogTitle>
                 </DialogHeader>
-                <div className="py-4">
-                    <Label htmlFor="exam-title">Exam Title</Label>
-                    <Input id="exam-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                <div className="py-4 space-y-4">
+                    <div>
+                        <Label htmlFor="exam-title">Exam Title</Label>
+                        <Input id="exam-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                    </div>
+                    <div>
+                        <Label htmlFor="exam-duration">Duration (minutes)</Label>
+                        <Input id="exam-duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g., 60 (leave blank for no timer)" />
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
@@ -337,13 +348,13 @@ export default function ExamsPage() {
         fetchCourses();
     }, [fetchCourses]);
 
-     const handleSaveExam = async (title: string) => {
+     const handleSaveExam = async (data: { title: string; duration?: number }) => {
         if (!examDialog.course) return;
 
         const action = examDialog.exam ? updateExam : addExam;
         const payload = examDialog.exam
-            ? { courseId: examDialog.course.id, examId: examDialog.exam.id, title }
-            : { courseId: examDialog.course.id, title };
+            ? { courseId: examDialog.course.id, examId: examDialog.exam.id, ...data }
+            : { courseId: examDialog.course.id, ...data };
         
         const result = await action(payload as any);
         if (result.success) {
@@ -473,8 +484,15 @@ export default function ExamsPage() {
                                                 {(course.exams || []).map(exam => (
                                                     <Card key={exam.id}>
                                                         <CardHeader>
-                                                            <div className="flex justify-between items-center">
-                                                                <CardTitle className="text-xl">{exam.title}</CardTitle>
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <CardTitle className="text-xl">{exam.title}</CardTitle>
+                                                                    {exam.duration && (
+                                                                        <CardDescription className="flex items-center gap-1 text-sm mt-1">
+                                                                            <Clock className="h-4 w-4" /> {exam.duration} minutes
+                                                                        </CardDescription>
+                                                                    )}
+                                                                </div>
                                                                 <div className="flex gap-2">
                                                                     <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)} title="Copy direct link">
                                                                         <LinkIcon className="h-4 w-4"/>

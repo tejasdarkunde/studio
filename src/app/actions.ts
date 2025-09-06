@@ -453,6 +453,9 @@ export async function getParticipants(): Promise<Participant[]> {
                 if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
                     attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
                 }
+                 if(attempt.startedAt && attempt.startedAt instanceof Timestamp) {
+                    attempt.startedAt = attempt.startedAt.toDate().toISOString();
+                }
             }
 
             return {
@@ -497,6 +500,9 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
             const attempt = examProgress[examId];
             if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
                 attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
+            }
+             if(attempt.startedAt && attempt.startedAt instanceof Timestamp) {
+                attempt.startedAt = attempt.startedAt.toDate().toISOString();
             }
         }
 
@@ -1520,6 +1526,7 @@ export async function deleteLesson(data: z.infer<typeof deleteLessonSchema>): Pr
 const addExamSchema = z.object({
     courseId: z.string().min(1),
     title: z.string().min(2, "Exam title is required."),
+    duration: z.number().positive().optional(),
 });
 
 export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ success: boolean, error?: string }> {
@@ -1527,7 +1534,7 @@ export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ su
     if (!validated.success) return { success: false, error: "Invalid data." };
 
     try {
-        const { courseId, title } = validated.data;
+        const { courseId, title, duration } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -1536,6 +1543,7 @@ export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ su
             title,
             courseId,
             questions: [],
+            duration,
         };
         
         await updateDoc(courseDocRef, {
@@ -1556,10 +1564,13 @@ const updateExamSchema = addExamSchema.extend({ examId: z.string().min(1) });
 
 export async function updateExam(data: z.infer<typeof updateExamSchema>): Promise<{ success: boolean; error?: string }> {
     const validated = updateExamSchema.safeParse(data);
-    if (!validated.success) return { success: false, error: "Invalid data." };
+    if (!validated.success) {
+        console.log(validated.error.flatten().fieldErrors);
+        return { success: false, error: "Invalid data." };
+    }
 
     try {
-        const { courseId, examId, title } = validated.data;
+        const { courseId, examId, title, duration } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -1569,6 +1580,7 @@ export async function updateExam(data: z.infer<typeof updateExamSchema>): Promis
         if (examIndex === -1) return { success: false, error: "Exam not found." };
 
         exams[examIndex].title = title;
+        exams[examIndex].duration = duration;
 
         await updateDoc(courseDocRef, { exams });
         return { success: true };
@@ -2049,6 +2061,7 @@ const saveExamProgressSchema = z.object({
     participantId: z.string().min(1),
     examId: z.string().min(1),
     answers: z.record(z.number()),
+    startedAt: z.string().optional(),
 });
 
 export async function saveExamProgress(data: z.infer<typeof saveExamProgressSchema>): Promise<{ success: boolean; error?: string }> {
@@ -2056,14 +2069,23 @@ export async function saveExamProgress(data: z.infer<typeof saveExamProgressSche
     if (!validated.success) return { success: false, error: "Invalid data." };
 
     try {
-        const { participantId, examId, answers } = validated.data;
+        const { participantId, examId, answers, startedAt } = validated.data;
         const participantDocRef = doc(db, 'participants', participantId);
-        
-        const fieldToUpdate = `examProgress.${examId}.answers`;
 
-        await updateDoc(participantDocRef, {
-            [fieldToUpdate]: answers
-        });
+        const updateData: { [key: string]: any } = {
+            [`examProgress.${examId}.answers`]: answers
+        };
+
+        if (startedAt) {
+            const participantDoc = await getDoc(participantDocRef);
+            const participantData = participantDoc.data() as Participant;
+            // Only set startedAt if it doesn't exist
+            if (!participantData.examProgress?.[examId]?.startedAt) {
+                updateData[`examProgress.${examId}.startedAt`] = serverTimestamp();
+            }
+        }
+
+        await updateDoc(participantDocRef, updateData);
 
         return { success: true };
     } catch(error) {
