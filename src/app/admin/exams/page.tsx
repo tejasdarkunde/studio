@@ -256,6 +256,7 @@ export default function ExamsPage() {
     const [examDialog, setExamDialog] = useState<{isOpen: boolean; exam?: Exam & { courseId: string } }>({isOpen: false});
     const [viewingResultsFor, setViewingResultsFor] = useState<Exam | null>(null);
     const [resultCounts, setResultCounts] = useState<Record<string, number>>({});
+    const [courseFilter, setCourseFilter] = useState<string>('all');
 
     const { toast } = useToast();
 
@@ -288,6 +289,13 @@ export default function ExamsPage() {
             }))
         ).sort((a, b) => a.title.localeCompare(b.title));
     }, [courses]);
+
+    const filteredExams = useMemo(() => {
+        if (courseFilter === 'all') {
+            return allExams;
+        }
+        return allExams.filter(exam => exam.courseName === courseFilter);
+    }, [allExams, courseFilter]);
 
      const handleSaveExam = async (data: { courseId: string; title: string; duration?: number }) => {
         const isEditing = !!examDialog.exam;
@@ -368,6 +376,17 @@ export default function ExamsPage() {
                         </Button>
                     </CardHeader>
                     <CardContent>
+                       <div className="flex justify-end mb-4">
+                            <Select value={courseFilter} onValueChange={setCourseFilter}>
+                                <SelectTrigger className="w-[240px]">
+                                    <SelectValue placeholder="Filter by course..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Courses</SelectItem>
+                                    {courses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                       </div>
                        <div className="border rounded-lg">
                             <Table>
                                 <TableHeader>
@@ -382,14 +401,18 @@ export default function ExamsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {allExams.length > 0 ? allExams.map(exam => (
+                                    {filteredExams.length > 0 ? filteredExams.map(exam => (
                                         <TableRow key={exam.id}>
                                             <TableCell className="font-medium">{exam.title}</TableCell>
                                             <TableCell><Badge variant="secondary">{exam.courseName}</Badge></TableCell>
                                             <TableCell>{exam.questions.length}</TableCell>
                                             <TableCell>{exam.duration ? `${exam.duration} min` : 'N/A'}</TableCell>
                                             <TableCell>{exam.createdAt ? new Date(exam.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
-                                            <TableCell>{resultCounts[exam.id] || 0}</TableCell>
+                                            <TableCell>
+                                                <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setViewingResultsFor(exam)}>
+                                                    {resultCounts[exam.id] || 0}
+                                                </Button>
+                                            </TableCell>
                                             <TableCell className="text-right space-x-1">
                                                 <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)} title="Copy direct link">
                                                     <LinkIcon className="h-4 w-4"/>
@@ -409,7 +432,7 @@ export default function ExamsPage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center h-24">No exams created yet.</TableCell>
+                                            <TableCell colSpan={7} className="text-center h-24">No exams found for the selected filter.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
