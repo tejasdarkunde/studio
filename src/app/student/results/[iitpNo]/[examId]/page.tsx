@@ -1,7 +1,7 @@
 
 "use client";
 
-import { getCourseById, getParticipantByIitpNo } from '@/app/actions';
+import { getCourseById, getParticipantByIitpNo, getCourses } from '@/app/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,8 +12,6 @@ import { Award, ChevronLeft, Check, X, ClipboardCheck } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 
 const QuestionReview = ({ question, selectedAnswer }: { question: Question; selectedAnswer: number | undefined }) => {
@@ -148,19 +146,3 @@ export default function ExamResultPage() {
         </main>
     );
 }
-
-// Dummy getCourses from a previous step, assuming it exists
-async function getCourses() {
-    const coursesSnapshot = await getDocs(collection(db, 'courses'));
-    const courses: any[] = [];
-     for (const courseDoc of coursesSnapshot.docs) {
-        const courseData = courseDoc.data();
-        courses.push({
-            id: courseDoc.id,
-            ...courseData,
-        });
-    }
-    return courses;
-}
-
-      
