@@ -1,17 +1,19 @@
 
 "use client";
 
-import { getCourseById, getParticipantByIitpNo, getCourses } from '@/app/actions';
+import { getParticipantByIitpNo, getCourses } from '@/app/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import type { Course, Exam, Participant, Question } from '@/lib/types';
+import type { Exam, Participant, Question, Course } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Award, ChevronLeft, Check, X, ClipboardCheck } from 'lucide-react';
+import { Award, ChevronLeft, Check, X, ClipboardCheck, Download, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { toPng } from 'html-to-image';
+import { Certificate } from '@/components/features/certificate';
 
 
 const QuestionReview = ({ question, selectedAnswer }: { question: Question; selectedAnswer: number | undefined }) => {
@@ -56,8 +58,11 @@ export default function ExamResultPage() {
     const { iitpNo, examId } = params as { iitpNo: string; examId: string };
 
     const [exam, setExam] = useState<Exam | null>(null);
+    const [course, setCourse] = useState<Course | null>(null);
     const [participant, setParticipant] = useState<Participant | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const certificateRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!iitpNo || !examId) return;
@@ -70,10 +75,11 @@ export default function ExamResultPage() {
             setParticipant(participantData);
 
             const allCourses = await getCourses();
-            for (const course of allCourses) {
-                const foundExam = course.exams?.find(e => e.id === examId);
+            for (const c of allCourses) {
+                const foundExam = c.exams?.find(e => e.id === examId);
                 if (foundExam) {
                     setExam(foundExam);
+                    setCourse(c);
                     break;
                 }
             }
@@ -81,12 +87,33 @@ export default function ExamResultPage() {
         };
         fetchResults();
     }, [iitpNo, examId]);
+    
+    const handleDownloadCertificate = useCallback(() => {
+        if (!certificateRef.current) {
+            return;
+        }
+        setIsDownloading(true);
+        toPng(certificateRef.current, { cacheBust: true, pixelRatio: 1.5 })
+            .then((dataUrl) => {
+                const link = document.createElement('a');
+                link.download = `BSA_Certificate_${participant?.name.replace(/ /g, '_')}.png`;
+                link.href = dataUrl;
+                link.click();
+            })
+            .catch((err) => {
+                console.error('Failed to generate certificate', err);
+            })
+            .finally(() => {
+                setIsDownloading(false);
+            });
+    }, [participant?.name]);
+
 
     if (loading) {
         return <div>Loading...</div>
     }
 
-    if (!participant || !exam) {
+    if (!participant || !exam || !course) {
         notFound();
     }
     
@@ -99,8 +126,20 @@ export default function ExamResultPage() {
     const totalQuestions = exam.questions.length;
     const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
 
+    const canGetCertificate = percentage >= 80;
+
     return (
         <main className="container mx-auto p-4 md:p-8">
+             {/* Hidden certificate for rendering */}
+             <div className="fixed -left-[9999px] top-0">
+                <Certificate
+                    ref={certificateRef}
+                    studentName={participant.name}
+                    courseName={course.name}
+                    date={new Date(attempt.submittedAt!).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                />
+            </div>
+
             <div className="mb-8">
                 <Button asChild variant="outline">
                     <Link href={`/student/courses/${iitpNo}`}>
@@ -118,12 +157,17 @@ export default function ExamResultPage() {
                     <CardTitle className="text-4xl">Exam Result</CardTitle>
                     <CardDescription className="text-lg">Result for: {exam.title}</CardDescription>
                 </CardHeader>
-                <CardContent className="flex justify-center">
+                <CardContent className="flex flex-col items-center gap-4">
                      <div className="flex items-baseline gap-4">
                         <p className="text-7xl font-bold text-primary">{score}</p>
                         <p className="text-3xl text-muted-foreground">/ {totalQuestions}</p>
-                        <Badge className="text-xl" variant={percentage > 50 ? 'default' : 'destructive'}>{percentage}%</Badge>
+                        <Badge className="text-xl" variant={percentage >= 50 ? 'default' : 'destructive'}>{percentage}%</Badge>
                      </div>
+                      {canGetCertificate && (
+                        <Button onClick={handleDownloadCertificate} disabled={isDownloading}>
+                            {isDownloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Generating...</> : <><Download className="mr-2 h-4 w-4" /> Download Certificate</>}
+                        </Button>
+                    )}
                 </CardContent>
                 <CardFooter className="flex-col gap-4">
                     <p className="text-muted-foreground">Submitted on: {new Date(attempt.submittedAt!).toLocaleString()}</p>
