@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, Loader2, Send } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ExamPage() {
     const params = useParams();
@@ -23,6 +24,7 @@ export default function ExamPage() {
     const [loading, setLoading] = useState(true);
     const [answers, setAnswers] = useState<{[questionId: string]: number}>({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const { toast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -48,6 +50,36 @@ export default function ExamPage() {
 
         fetchData();
     }, [courseId, examId, iitpNo]);
+
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                toast({
+                    variant: "destructive",
+                    title: "Warning: Focus Lost",
+                    description: "You have switched tabs or minimized the window. This action may be flagged.",
+                    duration: 5000,
+                });
+            }
+        };
+
+        const handleBlur = () => {
+             toast({
+                variant: "destructive",
+                title: "Warning: Focus Lost",
+                description: "You have switched to another window. This action may be flagged.",
+                duration: 5000,
+            });
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('blur', handleBlur);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, [toast]);
 
     const handleAnswerChange = (questionId: string, optionIndex: number) => {
         setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
