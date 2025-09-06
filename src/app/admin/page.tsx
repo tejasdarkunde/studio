@@ -1551,6 +1551,28 @@ export default function AdminPage() {
   };
 
 
+  const SuperAdminTabs = () => (
+    <TabsList className="grid w-full grid-cols-9">
+        <TabsTrigger value="reports">Reports</TabsTrigger>
+        <TabsTrigger value="trainings">Trainings</TabsTrigger>
+        <TabsTrigger value="courses">Courses</TabsTrigger>
+        <TabsTrigger value="exams" onClick={() => router.push('/admin/exams')}>Exams</TabsTrigger>
+        <TabsTrigger value="users">All Users</TabsTrigger>
+        <TabsTrigger value="trainers">Trainers</TabsTrigger>
+        <TabsTrigger value="organizations">Organizations</TabsTrigger>
+        <TabsTrigger value="admins">Admins</TabsTrigger>
+        <TabsTrigger value="attendance">Attendance</TabsTrigger>
+    </TabsList>
+  );
+
+  const TrainerTabs = () => (
+    <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="trainings">My Trainings</TabsTrigger>
+        <TabsTrigger value="attendance">My Attendance</TabsTrigger>
+    </TabsList>
+  );
+
+
   return (
     <>
       <CancelBatchDialog 
@@ -1682,8 +1704,8 @@ export default function AdminPage() {
         description={`This will permanently delete the admin account for "${deletingOrgAdmin?.name}". This action cannot be undone.`}
       />
 
-        <main className="flex-grow">
-            <Tabs defaultValue="reports" className="w-full">
+        <Tabs defaultValue="reports" className="w-full">
+            {isClient && (userRole === 'superadmin' ? <SuperAdminTabs /> : <TrainerTabs />)}
             
             {userRole === 'superadmin' && (
                 <TabsContent value="reports" className="mt-6">
@@ -2333,7 +2355,6 @@ export default function AdminPage() {
             </TabsContent>
 
             </Tabs>
-        </main>
     </>
   );
 }
