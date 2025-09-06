@@ -9,9 +9,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, Loader2, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Send } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
 
 export default function ExamPage() {
     const params = useParams();
@@ -21,9 +22,7 @@ export default function ExamPage() {
     const [participant, setParticipant] = useState<Participant | null>(null);
     const [loading, setLoading] = useState(true);
     const [answers, setAnswers] = useState<{[questionId: string]: number}>({});
-    
-    // Create a ref for each question card
-    const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -42,9 +41,6 @@ export default function ExamPage() {
                 notFound();
             }
             
-            // Initialize refs array
-            questionRefs.current = foundExam.questions.map(() => null);
-
             setExam(foundExam);
             setParticipant(participantData);
             setLoading(false);
@@ -57,18 +53,17 @@ export default function ExamPage() {
         setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
     };
     
-    const scrollToQuestion = (index: number) => {
-        questionRefs.current[index]?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-        });
-    };
-
     const handleSubmit = () => {
         // TODO: Implement submission logic
         console.log("Submitting answers:", answers);
         alert("Submission functionality is not yet implemented.");
     };
+    
+    const goToQuestion = (index: number) => {
+        if (index >= 0 && index < (exam?.questions.length || 0)) {
+            setCurrentQuestionIndex(index);
+        }
+    }
 
     if (loading) {
         return (
@@ -84,6 +79,8 @@ export default function ExamPage() {
     
     const answeredCount = Object.keys(answers).length;
     const totalQuestions = exam.questions.length;
+    const currentQuestion = exam.questions[currentQuestionIndex];
+    const progressPercentage = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
 
     return (
         <main className="container mx-auto p-4 md:p-8">
@@ -98,33 +95,43 @@ export default function ExamPage() {
             
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-3">
-                    <Card>
+                    <Card className="flex flex-col min-h-[60vh]">
                         <CardHeader>
                             <CardTitle className="text-3xl">{exam.title}</CardTitle>
-                            <CardDescription>Please answer all questions to the best of your ability.</CardDescription>
+                            <CardDescription>Question {currentQuestionIndex + 1} of {totalQuestions}</CardDescription>
+                             <Progress value={progressPercentage} className="mt-2" />
                         </CardHeader>
-                        <CardContent className="space-y-8">
-                            {exam.questions.map((question, qIndex) => (
-                                <div key={question.id} ref={el => questionRefs.current[qIndex] = el} className="p-6 border rounded-lg scroll-mt-24">
-                                   <p className="font-semibold mb-4">{qIndex + 1}. {question.text}</p>
+                        <CardContent className="flex-grow">
+                             {currentQuestion && (
+                                <div key={currentQuestion.id} className="p-2 md:p-6">
+                                   <p className="font-semibold text-lg mb-6">{currentQuestion.text}</p>
                                     <RadioGroup 
-                                        onValueChange={(value) => handleAnswerChange(question.id, parseInt(value))}
-                                        value={answers[question.id]?.toString()}
+                                        onValueChange={(value) => handleAnswerChange(currentQuestion.id, parseInt(value))}
+                                        value={answers[currentQuestion.id]?.toString()}
                                     >
-                                        {question.options.map((option, oIndex) => (
-                                            <div key={oIndex} className="flex items-center space-x-2">
-                                                <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}-o${oIndex}`} />
-                                                <Label htmlFor={`q${qIndex}-o${oIndex}`} className="font-normal">{option}</Label>
+                                        {currentQuestion.options.map((option, oIndex) => (
+                                            <div key={oIndex} className="flex items-center space-x-3 p-3 rounded-lg border has-[:checked]:bg-secondary has-[:checked]:border-primary transition-colors">
+                                                <RadioGroupItem value={oIndex.toString()} id={`q${currentQuestionIndex}-o${oIndex}`} />
+                                                <Label htmlFor={`q${currentQuestionIndex}-o${oIndex}`} className="font-normal text-base cursor-pointer flex-grow">{option}</Label>
                                             </div>
                                         ))}
                                     </RadioGroup>
                                 </div>
-                            ))}
+                            )}
                         </CardContent>
-                        <CardFooter>
-                            <Button onClick={handleSubmit} className="w-full md:w-auto ml-auto">
-                                <Send className="mr-2 h-4 w-4" /> Submit Exam
+                        <CardFooter className="border-t pt-6 flex justify-between">
+                             <Button variant="outline" onClick={() => goToQuestion(currentQuestionIndex - 1)} disabled={currentQuestionIndex === 0}>
+                                <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                             </Button>
+                            {currentQuestionIndex === totalQuestions - 1 ? (
+                                <Button onClick={handleSubmit}>
+                                    <Send className="mr-2 h-4 w-4" /> Submit Exam
+                                </Button>
+                            ) : (
+                                <Button onClick={() => goToQuestion(currentQuestionIndex + 1)} disabled={currentQuestionIndex === totalQuestions - 1}>
+                                    Next <ChevronRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            )}
                         </CardFooter>
                     </Card>
                 </div>
@@ -144,8 +151,12 @@ export default function ExamPage() {
                                         key={question.id}
                                         variant={answers[question.id] !== undefined ? 'default' : 'outline'}
                                         size="icon"
-                                        onClick={() => scrollToQuestion(index)}
-                                        className={cn("h-10 w-10", answers[question.id] !== undefined && "bg-green-600 hover:bg-green-700")}
+                                        onClick={() => goToQuestion(index)}
+                                        className={cn(
+                                            "h-10 w-10",
+                                            answers[question.id] !== undefined && "bg-green-600 hover:bg-green-700",
+                                            index === currentQuestionIndex && "ring-2 ring-primary ring-offset-2"
+                                        )}
                                     >
                                         {index + 1}
                                     </Button>
