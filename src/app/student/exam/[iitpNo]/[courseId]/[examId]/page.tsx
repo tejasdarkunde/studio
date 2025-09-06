@@ -139,7 +139,7 @@ export default function ExamPage() {
                 <aside className="lg:col-span-1">
                     <Card className="sticky top-24">
                         <CardHeader>
-                            <CardTitle>Question Palette</CardTitle>
+                            <CardTitle>Questions</CardTitle>
                             <CardDescription>
                                 Answered: {answeredCount} of {totalQuestions}
                             </CardDescription>
