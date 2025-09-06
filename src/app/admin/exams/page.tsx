@@ -321,6 +321,7 @@ export default function ExamsPage() {
         const isEditing = !!examDialog.exam;
         
         const action = isEditing ? updateExam : addExam;
+        
         const payload = isEditing
             ? { ...data, examId: examDialog.exam!.id }
             : data;
