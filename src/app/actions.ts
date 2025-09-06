@@ -2169,6 +2169,41 @@ export async function getExamResults(examId: string): Promise<ExamResult[]> {
     }
 }
 
+const deleteExamAttemptSchema = z.object({
+  participantId: z.string().min(1),
+  examId: z.string().min(1),
+});
 
+export async function deleteExamAttempt(data: z.infer<typeof deleteExamAttemptSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = deleteExamAttemptSchema.safeParse(data);
+    if (!validated.success) {
+        return { success: false, error: "Invalid data" };
+    }
+    
+    try {
+        const { participantId, examId } = validated.data;
+        const participantRef = doc(db, "participants", participantId);
+        const participantSnap = await getDoc(participantRef);
+
+        if (!participantSnap.exists()) {
+            return { success: false, error: "Participant not found." };
+        }
+        
+        const participantData = participantSnap.data();
+        
+        if (participantData.examProgress && participantData.examProgress[examId]) {
+            delete participantData.examProgress[examId];
+            await updateDoc(participantRef, {
+                examProgress: participantData.examProgress
+            });
+        }
+        
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error deleting exam attempt:", error);
+        return { success: false, error: "Could not delete exam attempt." };
+    }
+}
       
     

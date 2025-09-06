@@ -7,9 +7,9 @@ import type { Course, Exam, Question, ExamResult } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults } from '@/app/actions';
+import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults, deleteExamAttempt } from '@/app/actions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -175,30 +175,37 @@ const ViewResultsDialog = ({
     isOpen,
     onClose,
     exam,
+    onUpdateNeeded,
 }: {
     isOpen: boolean;
     onClose: () => void;
     exam: Exam | null;
+    onUpdateNeeded: () => void;
 }) => {
     const [results, setResults] = useState<ExamResult[]>([]);
     const [loading, setLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [deletingResult, setDeletingResult] = useState<ExamResult | null>(null);
+    const { toast } = useToast();
+
+    const fetchResults = useCallback(async () => {
+        if (exam) {
+            setLoading(true);
+            const fetchedResults = await getExamResults(exam.id);
+            setResults(fetchedResults);
+            setLoading(false);
+        }
+    }, [exam]);
 
     useEffect(() => {
         if (isOpen && exam) {
-            const fetchResults = async () => {
-                setLoading(true);
-                const fetchedResults = await getExamResults(exam.id);
-                setResults(fetchedResults);
-                setLoading(false);
-            };
             fetchResults();
         }
-    }, [isOpen, exam]);
+    }, [isOpen, exam, fetchResults]);
     
     const handleDownloadResults = () => {
-        // Simple CSV export
         const headers = "Rank,Name,IITP No,Score\n";
-        const csvRows = results.map((res, index) => 
+        const csvRows = filteredResults.map((res, index) => 
             `${index + 1},"${res.participantName}","${res.iitpNo}",${res.score}/${res.totalQuestions}`
         ).join('\n');
         const csv = headers + csvRows;
@@ -210,51 +217,100 @@ const ViewResultsDialog = ({
         a.click();
         URL.revokeObjectURL(url);
     }
+    
+    const handleDeleteResult = async () => {
+        if (!deletingResult || !exam) return;
+
+        const result = await deleteExamAttempt({ participantId: deletingResult.participantId, examId: exam.id });
+
+        if (result.success) {
+            toast({ title: "Result Deleted" });
+            fetchResults(); // Refresh the results list
+            onUpdateNeeded(); // Refresh main page data if needed
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error });
+        }
+        setDeletingResult(null);
+    }
+
+    const filteredResults = results.filter(res => 
+        res.participantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        res.iitpNo.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
-         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>Results for: {exam?.title}</DialogTitle>
-                </DialogHeader>
-                 <div className="py-4">
-                    {loading ? (
-                        <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
-                    ) : results.length > 0 ? (
-                        <ScrollArea className="h-96">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Rank</TableHead>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>IITP No</TableHead>
-                                        <TableHead>Score</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {results.map((res, index) => (
-                                        <TableRow key={res.participantId}>
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>{res.participantName}</TableCell>
-                                            <TableCell>{res.iitpNo}</TableCell>
-                                            <TableCell>{res.score} / {res.totalQuestions}</TableCell>
+        <>
+            <ConfirmDialog
+                isOpen={!!deletingResult}
+                onClose={() => setDeletingResult(null)}
+                onConfirm={handleDeleteResult}
+                title="Delete Exam Result?"
+                description={`This will permanently delete the exam submission for ${deletingResult?.participantName}. This action cannot be undone and will allow the student to retake the exam.`}
+            />
+             <Dialog open={isOpen} onOpenChange={onClose}>
+                <DialogContent className="sm:max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Results for: {exam?.title}</DialogTitle>
+                    </DialogHeader>
+                     <div className="py-4 space-y-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search by name or IITP No..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                        {loading ? (
+                            <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                        ) : filteredResults.length > 0 ? (
+                            <ScrollArea className="h-96">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Rank</TableHead>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>IITP No</TableHead>
+                                            <TableHead>Score</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
-                    ) : (
-                        <p className="text-center text-muted-foreground py-16">No results submitted for this exam yet.</p>
-                    )}
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>Close</Button>
-                    <Button onClick={handleDownloadResults} disabled={results.length === 0 || loading}>
-                        <Download className="mr-2 h-4 w-4" /> Download CSV
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredResults.map((res, index) => (
+                                            <TableRow key={res.participantId}>
+                                                <TableCell>{index + 1}</TableCell>
+                                                <TableCell>{res.participantName}</TableCell>
+                                                <TableCell>{res.iitpNo}</TableCell>
+                                                <TableCell>{res.score} / {res.totalQuestions}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button asChild variant="ghost" size="icon" title="View Submission">
+                                                        <a href={`/student/results/${res.iitpNo}/${exam?.id}`} target="_blank">
+                                                            <View className="h-4 w-4" />
+                                                        </a>
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeletingResult(res)} title="Delete Submission">
+                                                        <Trash className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        ) : (
+                            <p className="text-center text-muted-foreground py-16">No results found for your search or no results submitted yet.</p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={onClose}>Close</Button>
+                        <Button onClick={handleDownloadResults} disabled={filteredResults.length === 0 || loading}>
+                            <Download className="mr-2 h-4 w-4" /> Download CSV
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     )
 }
 
@@ -370,6 +426,7 @@ export default function ExamsPage() {
                 isOpen={!!viewingResultsFor}
                 onClose={() => setViewingResultsFor(null)}
                 exam={viewingResultsFor}
+                onUpdateNeeded={fetchCourses}
             />
              <ConfirmDialog 
                 isOpen={!!deletingExam}
