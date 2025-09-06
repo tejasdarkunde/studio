@@ -9,11 +9,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, Loader2, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Send, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
 
 export default function ExamPage() {
     const params = useParams();
@@ -24,7 +23,7 @@ export default function ExamPage() {
     const [loading, setLoading] = useState(true);
     const [answers, setAnswers] = useState<{[questionId: string]: number}>({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const { toast } = useToast();
+    const [isLocked, setIsLocked] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -54,22 +53,12 @@ export default function ExamPage() {
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
-                toast({
-                    variant: "destructive",
-                    title: "Warning: Focus Lost",
-                    description: "You have switched tabs or minimized the window. This action may be flagged.",
-                    duration: 5000,
-                });
+                setIsLocked(true);
             }
         };
 
         const handleBlur = () => {
-             toast({
-                variant: "destructive",
-                title: "Warning: Focus Lost",
-                description: "You have switched to another window. This action may be flagged.",
-                duration: 5000,
-            });
+            setIsLocked(true);
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -79,7 +68,7 @@ export default function ExamPage() {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('blur', handleBlur);
         };
-    }, [toast]);
+    }, []);
 
     const handleAnswerChange = (questionId: string, optionIndex: number) => {
         setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
@@ -115,7 +104,16 @@ export default function ExamPage() {
     const progressPercentage = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
 
     return (
-        <main className="container mx-auto p-4 md:p-8">
+        <main className="container mx-auto p-4 md:p-8 relative">
+            {isLocked && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center text-white text-center p-8">
+                    <div className="flex flex-col items-center gap-4">
+                        <ShieldAlert className="h-16 w-16 text-destructive" />
+                        <h2 className="text-3xl font-bold">Exam Locked</h2>
+                        <p className="max-w-md">You have navigated away from the exam window. To prevent cheating, the exam has been locked. Please contact your proctor or administrator to continue.</p>
+                    </div>
+                </div>
+            )}
              <div className="mb-8">
                 <Button asChild variant="outline">
                     <Link href={`/student/courses/${iitpNo}/${courseId}`}>
