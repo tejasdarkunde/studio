@@ -6,12 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import type { Exam, Participant, Question } from '@/lib/types';
+import type { Course, Exam, Participant, Question } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Award, ChevronLeft, Check, X, ClipboardCheck } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 
 const QuestionReview = ({ question, selectedAnswer }: { question: Question; selectedAnswer: number | undefined }) => {
@@ -160,3 +162,5 @@ async function getCourses() {
     }
     return courses;
 }
+
+      

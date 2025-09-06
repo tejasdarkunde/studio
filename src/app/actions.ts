@@ -481,6 +481,15 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
         const participantDoc = querySnapshot.docs[0];
         const data = participantDoc.data();
         const createdAt = data.createdAt as Timestamp;
+        
+        const examProgress = data.examProgress || {};
+        for(const examId in examProgress) {
+            const attempt = examProgress[examId];
+            if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
+                attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
+            }
+        }
+
 
         return {
             id: participantDoc.id,
@@ -492,7 +501,7 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
             enrolledCourses: data.enrolledCourses || [],
             completedLessons: data.completedLessons || [],
             deniedCourses: data.deniedCourses || [],
-            examProgress: data.examProgress || {},
+            examProgress: examProgress,
         };
     } catch (error) {
         console.error("Error fetching participant by IITP No.:", error);
@@ -2130,13 +2139,14 @@ export async function getExamResults(examId: string): Promise<ExamResult[]> {
             const attempt = p.examProgress?.[examId];
 
             if (attempt && attempt.isSubmitted) {
+                const submittedAtTimestamp = attempt.submittedAt as unknown as Timestamp;
                 results.push({
                     participantId: doc.id,
                     participantName: p.name,
                     iitpNo: p.iitpNo,
                     score: attempt.score ?? 0,
                     totalQuestions: exam?.questions.length ?? 0,
-                    submittedAt: (attempt.submittedAt as any)?.toDate()?.toISOString() || new Date().toISOString(),
+                    submittedAt: submittedAtTimestamp?.toDate().toISOString() || new Date().toISOString(),
                 });
             }
         });
@@ -2149,3 +2159,5 @@ export async function getExamResults(examId: string): Promise<ExamResult[]> {
     }
 }
 
+
+      
