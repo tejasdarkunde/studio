@@ -196,7 +196,8 @@ export default function ExamPage() {
     const totalQuestions = exam.questions.length;
     const currentQuestion = exam.questions[currentQuestionIndex];
     const progressPercentage = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
-    const allQuestionsAnswered = answeredCount === totalQuestions;
+    
+    const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
 
     return (
         <>
@@ -276,12 +277,12 @@ export default function ExamPage() {
                              <Button variant="outline" onClick={() => goToQuestion(currentQuestionIndex - 1)} disabled={currentQuestionIndex === 0}>
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                             </Button>
-                            {currentQuestionIndex === totalQuestions - 1 ? (
-                                <Button onClick={() => setIsConfirmingSubmit(true)} disabled={!allQuestionsAnswered}>
+                            {isLastQuestion ? (
+                                <Button onClick={() => setIsConfirmingSubmit(true)}>
                                     <Send className="mr-2 h-4 w-4" /> Submit Exam
                                 </Button>
                             ) : (
-                                <Button onClick={() => goToQuestion(currentQuestionIndex + 1)} disabled={currentQuestionIndex === totalQuestions - 1}>
+                                <Button onClick={() => goToQuestion(currentQuestionIndex + 1)} disabled={isLastQuestion}>
                                     Next <ChevronRight className="ml-2 h-4 w-4" />
                                 </Button>
                             )}
@@ -317,7 +318,7 @@ export default function ExamPage() {
                             </div>
                         </CardContent>
                         <CardFooter>
-                             <Button onClick={() => setIsConfirmingSubmit(true)} className="w-full" disabled={!allQuestionsAnswered}>
+                             <Button onClick={() => setIsConfirmingSubmit(true)} className="w-full">
                                 <Send className="mr-2 h-4 w-4" /> Submit
                             </Button>
                         </CardFooter>
@@ -328,3 +329,5 @@ export default function ExamPage() {
         </>
     );
 }
+
+    

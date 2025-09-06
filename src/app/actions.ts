@@ -1568,7 +1568,6 @@ const updateExamSchema = addExamSchema.extend({ examId: z.string().min(1) });
 export async function updateExam(data: z.infer<typeof updateExamSchema>): Promise<{ success: boolean; error?: string }> {
     const validated = updateExamSchema.safeParse(data);
     if (!validated.success) {
-        console.log(validated.error.flatten().fieldErrors);
         return { success: false, error: "Invalid data." };
     }
 
@@ -2138,8 +2137,14 @@ export async function submitExam(data: z.infer<typeof submitExamSchema>): Promis
         const participantDocRef = doc(db, 'participants', participantId);
         const fieldToUpdate = `examProgress.${examId}`;
         
+        const participantDoc = await getDoc(participantDocRef);
+        const participantData = participantDoc.data() as Participant;
+        const attemptData = participantData.examProgress?.[examId] || {};
+
+
         await updateDoc(participantDocRef, {
             [fieldToUpdate]: {
+                ...attemptData,
                 answers,
                 score,
                 isSubmitted: true,
@@ -2238,4 +2243,6 @@ export async function deleteExamAttempt(data: z.infer<typeof deleteExamAttemptSc
     }
 }
       
+    
+
     
