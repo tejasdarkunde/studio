@@ -1660,28 +1660,6 @@ export default function AdminPage() {
   };
 
 
-  const SuperAdminTabs = () => (
-    <TabsList className="grid w-full grid-cols-9">
-        <TabsTrigger value="reports">Reports</TabsTrigger>
-        <TabsTrigger value="trainings">Trainings</TabsTrigger>
-        <TabsTrigger value="courses">Courses</TabsTrigger>
-        <TabsTrigger value="exams">Exams</TabsTrigger>
-        <TabsTrigger value="users">All Users</TabsTrigger>
-        <TabsTrigger value="trainers">Trainers</TabsTrigger>
-        <TabsTrigger value="organizations">Organizations</TabsTrigger>
-        <TabsTrigger value="admins">Admins</TabsTrigger>
-        <TabsTrigger value="attendance">Attendance</TabsTrigger>
-    </TabsList>
-  );
-
-  const TrainerTabs = () => (
-    <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="trainings">My Trainings</TabsTrigger>
-        <TabsTrigger value="attendance">My Attendance</TabsTrigger>
-    </TabsList>
-  );
-
-
   return (
     <>
       <ConfirmDialog 
@@ -1833,38 +1811,8 @@ export default function AdminPage() {
         description={`This will permanently delete the admin account for "${deletingOrgAdmin?.name}". This action cannot be undone.`}
       />
 
-      <div className="min-h-screen flex flex-col">
-        <header className="bg-background border-b sticky top-0 z-10">
-            <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
-                 <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
-                <div className="flex items-center gap-2">
-                    {userRole === 'superadmin' && currentUser && (
-                        <Button variant="outline" size="sm" onClick={() => setEditingAdmin(currentUser)}>
-                            <UserCircle className="mr-2 h-4 w-4"/> My Profile
-                        </Button>
-                    )}
-                    <Button variant="outline" onClick={() => {
-                            sessionStorage.clear();
-                            router.push('/login');
-                    }}>Logout</Button>
-                </div>
-            </div>
-        </header>
-
-        <main className="container mx-auto p-4 md:p-8 flex-grow">
-            <div className="flex justify-between items-start mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">
-                        {currentUser ? `Welcome, ${currentUser.name}` : (userRole === 'superadmin' ? 'Admin Dashboard' : 'Trainer Dashboard')}
-                    </h1>
-                    <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
-                        {userRole === 'superadmin' ? 'Manage training batches, registrations, and participants.' : 'Manage your assigned training batches.'}
-                    </p>
-                </div>
-            </div>
-
+        <main className="flex-grow">
             <Tabs defaultValue="reports" className="w-full">
-            {userRole === 'superadmin' ? <SuperAdminTabs /> : <TrainerTabs />}
             
             {userRole === 'superadmin' && (
                 <TabsContent value="reports" className="mt-6">
@@ -2161,98 +2109,6 @@ export default function AdminPage() {
                             <p>Loading course data...</p>
                             </div>
                         )}
-                    </TabsContent>
-
-                    <TabsContent value="exams" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Exam Management</CardTitle>
-                                <CardDescription>Create and manage exams for each course.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {courses.length > 0 ? (
-                                    <Accordion type="multiple" className="w-full space-y-4">
-                                        {courses.map(course => (
-                                            <AccordionItem key={course.id} value={course.id} className="border rounded-lg">
-                                                <AccordionTrigger className="p-4 hover:no-underline text-lg font-semibold">
-                                                    {course.name}
-                                                </AccordionTrigger>
-                                                <AccordionContent className="p-4 pt-0 space-y-4">
-                                                    <div className="flex justify-end">
-                                                        <Button size="sm" onClick={async () => {
-                                                            const title = prompt("Enter new exam title:");
-                                                            if (title) {
-                                                                const result = await addExam({ courseId: course.id, title });
-                                                                if (result.success) {
-                                                                    toast({ title: "Exam Added" });
-                                                                    fetchAllData();
-                                                                } else {
-                                                                    toast({ variant: 'destructive', title: 'Error', description: result.error });
-                                                                }
-                                                            }
-                                                        }}>
-                                                            <PlusCircle className="mr-2 h-4 w-4" /> Add New Exam
-                                                        </Button>
-                                                    </div>
-                                                    <div className="space-y-4">
-                                                        {(course.exams || []).map(exam => (
-                                                            <Card key={exam.id}>
-                                                                <CardHeader>
-                                                                    <div className="flex justify-between items-center">
-                                                                        <CardTitle className="text-xl">{exam.title}</CardTitle>
-                                                                        <div className="flex gap-2">
-                                                                            <Button variant="ghost" size="icon" onClick={async () => {
-                                                                                const newTitle = prompt("Enter new exam title:", exam.title);
-                                                                                if (newTitle) {
-                                                                                    const result = await updateExam({ courseId: course.id, examId: exam.id, title: newTitle });
-                                                                                     if (result.success) {
-                                                                                        toast({ title: "Exam Updated" });
-                                                                                        fetchAllData();
-                                                                                    } else {
-                                                                                        toast({ variant: 'destructive', title: 'Error', description: result.error });
-                                                                                    }
-                                                                                }
-                                                                            }}>
-                                                                                <Pencil className="h-4 w-4" />
-                                                                            </Button>
-                                                                            <Button variant="destructive" size="icon" onClick={() => setDeletingExam({ exam, courseId: course.id })}>
-                                                                                <Trash className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                </CardHeader>
-                                                                <CardContent className="space-y-2">
-                                                                    <Button className="w-full" variant="outline" onClick={() => setQuestionDialog({ isOpen: true, exam, courseId: course.id })}>
-                                                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Question
-                                                                    </Button>
-                                                                     {exam.questions.map((q, index) => (
-                                                                        <div key={q.id} className="p-3 rounded-md bg-secondary/50 flex items-center justify-between group">
-                                                                            <div className="flex items-start gap-3">
-                                                                                <span className="text-sm font-bold text-muted-foreground">{index + 1}.</span>
-                                                                                <p className="text-sm font-medium">{q.text}</p>
-                                                                            </div>
-                                                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                                                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setQuestionDialog({ isOpen: true, exam, courseId: course.id, question: q })}><Pencil className="h-4 w-4" /></Button>
-                                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeletingQuestion({ question: q, examId: exam.id, courseId: course.id })}><Trash className="h-4 w-4" /></Button>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                    {exam.questions.length === 0 && <p className="text-center text-xs text-muted-foreground py-2">No questions in this exam yet.</p>}
-                                                                </CardContent>
-                                                            </Card>
-                                                        ))}
-                                                    </div>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        ))}
-                                    </Accordion>
-                                ) : (
-                                    <div className="text-center py-12 text-muted-foreground">
-                                        <p>No courses found. Create a course first to add exams.</p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
                     </TabsContent>
 
                     <TabsContent value="users" className="mt-6">
@@ -2602,8 +2458,6 @@ export default function AdminPage() {
 
             </Tabs>
         </main>
-      </div>
     </>
   );
 }
-
