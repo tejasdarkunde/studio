@@ -1,10 +1,11 @@
 
+
 "use server";
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -997,6 +998,7 @@ export async function addCourse(data: z.infer<typeof addCourseSchema>): Promise<
             name,
             status,
             subjects: [],
+            exams: [],
             createdAt: serverTimestamp(),
         });
         return { success: true };
@@ -1023,12 +1025,17 @@ export async function getCourses(): Promise<Course[]> {
                     lessons: unit.lessons || []
                 }))
             }));
+            const exams: Exam[] = (courseData.exams || []).map((exam: any) => ({
+                ...exam,
+                questions: exam.questions || []
+            }));
 
             courses.push({
                 id: courseDoc.id,
                 name: courseData.name,
                 subjects: subjects.sort((a, b) => a.name.localeCompare(b.name)),
                 status: courseData.status || 'active',
+                exams: exams,
             });
         }
         
@@ -1056,12 +1063,17 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
                 lessons: unit.lessons || []
             }))
         }));
+        const exams: Exam[] = (courseData.exams || []).map((exam: any) => ({
+                ...exam,
+                questions: exam.questions || []
+        }));
 
         return {
             id: courseDoc.id,
             name: courseData.name,
             subjects: subjects.sort((a, b) => a.name.localeCompare(b.name)),
             status: courseData.status || 'active',
+            exams: exams,
         };
     } catch (error) {
         console.error("Error fetching course by ID:", error);
@@ -1477,6 +1489,205 @@ export async function deleteLesson(data: z.infer<typeof deleteLessonSchema>): Pr
     } catch (error) {
         console.error("Error deleting lesson:", error);
         return { success: false, error: "Could not delete lesson." };
+    }
+}
+
+// EXAM ACTIONS
+const addExamSchema = z.object({
+    courseId: z.string().min(1),
+    title: z.string().min(2, "Exam title is required."),
+});
+
+export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ success: boolean, error?: string }> {
+    const validated = addExamSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, title } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const newExam: Omit<Exam, 'id'> = {
+            title,
+            courseId,
+            questions: [],
+        };
+        
+        await updateDoc(courseDocRef, {
+            exams: arrayUnion({
+                id: doc(collection(db, '_')).id,
+                ...newExam,
+            })
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding exam:", error);
+        return { success: false, error: "Could not add exam." };
+    }
+}
+
+const updateExamSchema = addExamSchema.extend({ examId: z.string().min(1) });
+
+export async function updateExam(data: z.infer<typeof updateExamSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = updateExamSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, examId, title } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const exams: Exam[] = courseDoc.data().exams || [];
+        const examIndex = exams.findIndex(e => e.id === examId);
+        if (examIndex === -1) return { success: false, error: "Exam not found." };
+
+        exams[examIndex].title = title;
+
+        await updateDoc(courseDocRef, { exams });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating exam:", error);
+        return { success: false, error: "Could not update exam." };
+    }
+}
+
+const deleteExamSchema = z.object({
+    courseId: z.string().min(1),
+    examId: z.string().min(1),
+});
+
+export async function deleteExam(data: z.infer<typeof deleteExamSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = deleteExamSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+    
+    try {
+        const { courseId, examId } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const exams: Exam[] = courseDoc.data().exams || [];
+        const examToDelete = exams.find(e => e.id === examId);
+        if (!examToDelete) return { success: false, error: "Exam not found." };
+
+        await updateDoc(courseDocRef, {
+            exams: arrayRemove(examToDelete)
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting exam:", error);
+        return { success: false, error: "Could not delete exam." };
+    }
+}
+
+
+// QUESTION ACTIONS
+const questionSchema = z.object({
+    text: z.string().min(5, "Question text is required."),
+    options: z.array(z.string().min(1)).min(2, "At least two options are required."),
+    correctAnswer: z.number().min(0),
+});
+
+const addQuestionSchema = questionSchema.extend({
+    courseId: z.string().min(1),
+    examId: z.string().min(1),
+});
+
+export async function addQuestion(data: z.infer<typeof addQuestionSchema>): Promise<{ success: boolean, error?: string }> {
+    const validated = addQuestionSchema.safeParse(data);
+    if (!validated.success) {
+      console.log(validated.error.flatten().fieldErrors);
+      return { success: false, error: "Invalid question data." };
+    }
+
+    try {
+        const { courseId, examId, ...questionData } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const exams: Exam[] = courseDoc.data().exams || [];
+        const examIndex = exams.findIndex(e => e.id === examId);
+        if (examIndex === -1) return { success: false, error: "Exam not found." };
+
+        const newQuestion: Question = {
+            id: doc(collection(db, '_')).id,
+            ...questionData,
+        };
+
+        exams[examIndex].questions.push(newQuestion);
+        
+        await updateDoc(courseDocRef, { exams });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding question:", error);
+        return { success: false, error: "Could not add question." };
+    }
+}
+
+const updateQuestionSchema = addQuestionSchema.extend({ questionId: z.string().min(1) });
+
+export async function updateQuestion(data: z.infer<typeof updateQuestionSchema>): Promise<{ success: boolean, error?: string }> {
+    const validated = updateQuestionSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+
+    try {
+        const { courseId, examId, questionId, ...questionData } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const exams: Exam[] = courseDoc.data().exams || [];
+        const examIndex = exams.findIndex(e => e.id === examId);
+        if (examIndex === -1) return { success: false, error: "Exam not found." };
+
+        const questionIndex = exams[examIndex].questions.findIndex(q => q.id === questionId);
+        if (questionIndex === -1) return { success: false, error: "Question not found." };
+
+        exams[examIndex].questions[questionIndex] = {
+            id: questionId,
+            ...questionData,
+        };
+
+        await updateDoc(courseDocRef, { exams });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating question:", error);
+        return { success: false, error: "Could not update question." };
+    }
+}
+
+const deleteQuestionSchema = z.object({
+    courseId: z.string().min(1),
+    examId: z.string().min(1),
+    questionId: z.string().min(1),
+});
+
+export async function deleteQuestion(data: z.infer<typeof deleteQuestionSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = deleteQuestionSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data." };
+    
+    try {
+        const { courseId, examId, questionId } = validated.data;
+        const courseDocRef = doc(db, `courses/${courseId}`);
+        const courseDoc = await getDoc(courseDocRef);
+        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
+
+        const exams: Exam[] = courseDoc.data().exams || [];
+        const examIndex = exams.findIndex(e => e.id === examId);
+        if (examIndex === -1) return { success: false, error: "Exam not found." };
+
+        exams[examIndex].questions = exams[examIndex].questions.filter(q => q.id !== questionId);
+        
+        await updateDoc(courseDocRef, { exams });
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting question:", error);
+        return { success: false, error: "Could not delete question." };
     }
 }
 

@@ -85,11 +85,26 @@ export type Subject = {
   units: Unit[];
 };
 
+export type Question = {
+    id: string;
+    text: string;
+    options: string[];
+    correctAnswer: number; // index of the correct answer in the options array
+};
+
+export type Exam = {
+    id: string;
+    title: string;
+    courseId: string;
+    questions: Question[];
+};
+
 export type Course = {
   id: string;
   name: string;
   subjects: Subject[];
   status?: 'active' | 'coming-soon' | 'deactivated';
+  exams?: Exam[];
 };
 
 export type Organization = {
