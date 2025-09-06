@@ -2,7 +2,7 @@
 "use client";
 
 import { getCourseById, getParticipantByIitpNo, markLessonAsComplete } from '@/app/actions';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
