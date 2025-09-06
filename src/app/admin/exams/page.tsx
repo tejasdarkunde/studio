@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Course, Exam, Question } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -89,13 +89,13 @@ const ManageQuestionDialog = ({
                         <Textarea id="question-text" value={text} onChange={(e) => setText(e.target.value)} placeholder="What is the capital of France?" />
                     </div>
                     <div>
-                        <Label>Options *</Label>
+                        <Label>Options * (Select the correct answer)</Label>
                         <RadioGroup value={String(correctAnswer)} onValueChange={(val) => setCorrectAnswer(Number(val))} className="space-y-2 mt-2">
                             {options.map((option, index) => (
                                 <div key={index} className="flex items-center gap-2">
                                     <RadioGroupItem value={String(index)} id={`option-${index}`} />
                                     <Input value={option} onChange={(e) => handleOptionChange(index, e.target.value)} placeholder={`Option ${index + 1}`} />
-                                    <Button variant="ghost" size="icon" onClick={() => removeOption(index)} className="text-destructive h-8 w-8">
+                                    <Button variant="ghost" size="icon" onClick={() => removeOption(index)} disabled={options.length <= 2} className="text-destructive h-8 w-8">
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -117,11 +117,63 @@ const ManageQuestionDialog = ({
     )
 }
 
+const ManageExamDialog = ({
+    isOpen,
+    onClose,
+    onSave,
+    initialData,
+    courseName,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (title: string) => Promise<void>;
+    initialData?: Exam | null;
+    courseName: string;
+}) => {
+    const [title, setTitle] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setTitle(initialData?.title || '');
+            setIsSaving(false);
+        }
+    }, [isOpen, initialData]);
+
+    const handleSave = async () => {
+        if (!title.trim()) return;
+        setIsSaving(true);
+        await onSave(title);
+        setIsSaving(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{initialData ? `Edit Exam in ${courseName}` : `Add New Exam to ${courseName}`}</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="exam-title">Exam Title</Label>
+                    <Input id="exam-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+                    <Button onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 export default function ExamsPage() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [deletingExam, setDeletingExam] = useState<{exam: Exam, courseId: string} | null>(null);
+    const [examDialog, setExamDialog] = useState<{isOpen: boolean; course?: Course; exam?: Exam | null}>({isOpen: false});
     const [questionDialog, setQuestionDialog] = useState<{isOpen: boolean; exam?: Exam; courseId?: string; question?: Question | null}>({isOpen: false});
     const [deletingQuestion, setDeletingQuestion] = useState<{question: Question; examId: string; courseId: string;} | null>(null);
 
@@ -137,6 +189,25 @@ export default function ExamsPage() {
     useEffect(() => {
         fetchCourses();
     }, [fetchCourses]);
+
+     const handleSaveExam = async (title: string) => {
+        if (!examDialog.course) return;
+
+        const action = examDialog.exam ? updateExam : addExam;
+        const payload = examDialog.exam
+            ? { courseId: examDialog.course.id, examId: examDialog.exam.id, title }
+            : { courseId: examDialog.course.id, title };
+        
+        const result = await action(payload as any);
+        if (result.success) {
+            toast({ title: `Exam ${examDialog.exam ? 'Updated' : 'Added'}` });
+            fetchCourses();
+            setExamDialog({ isOpen: false });
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error });
+        }
+    };
+
 
     const handleSaveQuestion = async (data: Omit<Question, 'id'>) => {
         if (!questionDialog.courseId || !questionDialog.exam) return;
@@ -191,6 +262,13 @@ export default function ExamsPage() {
 
     return (
         <>
+            <ManageExamDialog
+                isOpen={examDialog.isOpen}
+                onClose={() => setExamDialog({isOpen: false})}
+                onSave={handleSaveExam}
+                initialData={examDialog.exam}
+                courseName={examDialog.course?.name || ''}
+            />
              <ConfirmDialog 
                 isOpen={!!deletingExam}
                 onClose={() => setDeletingExam(null)}
@@ -216,6 +294,7 @@ export default function ExamsPage() {
                  <Card>
                     <CardHeader>
                         <CardTitle>Exam Management</CardTitle>
+                        <CardDescription>Create and manage exams and their questions for each course.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {courses.length > 0 ? (
@@ -227,18 +306,7 @@ export default function ExamsPage() {
                                         </AccordionTrigger>
                                         <AccordionContent className="p-4 pt-0 space-y-4">
                                             <div className="flex justify-end">
-                                                <Button size="sm" onClick={async () => {
-                                                    const title = prompt("Enter new exam title:");
-                                                    if (title) {
-                                                        const result = await addExam({ courseId: course.id, title });
-                                                        if (result.success) {
-                                                            toast({ title: "Exam Added" });
-                                                            fetchCourses();
-                                                        } else {
-                                                            toast({ variant: 'destructive', title: 'Error', description: result.error });
-                                                        }
-                                                    }
-                                                }}>
+                                                <Button size="sm" onClick={() => setExamDialog({isOpen: true, course: course})}>
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Add New Exam
                                                 </Button>
                                             </div>
@@ -249,18 +317,7 @@ export default function ExamsPage() {
                                                             <div className="flex justify-between items-center">
                                                                 <CardTitle className="text-xl">{exam.title}</CardTitle>
                                                                 <div className="flex gap-2">
-                                                                    <Button variant="ghost" size="icon" onClick={async () => {
-                                                                        const newTitle = prompt("Enter new exam title:", exam.title);
-                                                                        if (newTitle) {
-                                                                            const result = await updateExam({ courseId: course.id, examId: exam.id, title: newTitle });
-                                                                                if (result.success) {
-                                                                                toast({ title: "Exam Updated" });
-                                                                                fetchCourses();
-                                                                            } else {
-                                                                                toast({ variant: 'destructive', title: 'Error', description: result.error });
-                                                                            }
-                                                                        }
-                                                                    }}>
+                                                                    <Button variant="ghost" size="icon" onClick={() => setExamDialog({isOpen: true, course: course, exam: exam})}>
                                                                         <Pencil className="h-4 w-4" />
                                                                     </Button>
                                                                     <Button variant="destructive" size="icon" onClick={() => setDeletingExam({ exam, courseId: course.id })}>
@@ -289,6 +346,11 @@ export default function ExamsPage() {
                                                         </CardContent>
                                                     </Card>
                                                 ))}
+                                                 {course.exams?.length === 0 && (
+                                                    <p className="text-center text-sm text-muted-foreground py-8">
+                                                        No exams created for this course yet.
+                                                    </p>
+                                                )}
                                             </div>
                                         </AccordionContent>
                                     </AccordionItem>
@@ -305,3 +367,4 @@ export default function ExamsPage() {
         </>
     );
 }
+
