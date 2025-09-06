@@ -23,7 +23,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, cancelBatch, unCancelBatch, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, cancelBatch, unCancelBatch, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getAnnouncement, updateAnnouncement } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -830,23 +830,26 @@ export default function AdminPage() {
   const [newOrgName, setNewOrgName] = useState('');
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [scheduleDateRange, setScheduleDateRange] = useState<{from?: Date, to?: Date}>({});
+  const [announcement, setAnnouncement] = useState('');
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
 
 
   const { toast } = useToast();
 
   const fetchAllData = useCallback(async () => {
     const role = sessionStorage.getItem('userRole');
-    const actions: Promise<any>[] = [getBatches(), getParticipants(), getTrainers(), getCourses()];
+    const actions: Promise<any>[] = [getBatches(), getParticipants(), getTrainers(), getCourses(), getAnnouncement()];
     if (role === 'superadmin') {
         actions.push(getSuperAdmins(), getOrganizations(), getOrganizationAdmins());
     }
     
-    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, fetchedAdmins, fetchedOrgs, fetchedOrgAdmins] = await Promise.all(actions);
+    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, fetchedAnnouncement, fetchedAdmins, fetchedOrgs, fetchedOrgAdmins] = await Promise.all(actions);
 
     setBatches(fetchedBatches);
     setParticipants(fetchedParticipants);
     setTrainers(fetchedTrainers);
     setCourses(fetchedCourses);
+    setAnnouncement(fetchedAnnouncement);
     if(fetchedOrgs) setOrganizations(fetchedOrgs);
     if(fetchedOrgAdmins) setOrganizationAdmins(fetchedOrgAdmins);
 
@@ -1426,6 +1429,17 @@ export default function AdminPage() {
       }
       setIsBackfilling(false);
   }
+  
+    const handleSaveAnnouncement = async () => {
+        setIsSavingAnnouncement(true);
+        const result = await updateAnnouncement(announcement);
+        if(result.success) {
+            toast({ title: 'Announcement Updated' });
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.error });
+        }
+        setIsSavingAnnouncement(false);
+    }
 
     const formatTime = (timeString: string) => {
         if (!timeString) return '';
@@ -1673,84 +1687,67 @@ export default function AdminPage() {
             
             {userRole === 'superadmin' && (
                 <TabsContent value="reports" className="mt-6">
-                    <Card>
-                    <CardHeader>
-                        <CardTitle>Reports</CardTitle>
-                        <CardDescription>A high-level overview of your training statistics.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
-                        <h3 className="text-lg font-medium text-primary">Student Enrollments</h3>
-                        <Separator className="my-2" />
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Card className="p-4 text-center">
-                                <div className="flex flex-col items-center gap-2">
-                                <Users className="h-8 w-8 text-primary" />
-                                <p className="text-2xl font-bold">{reportStats.totalActiveEnrollments}</p>
-                                <p className="text-sm text-muted-foreground">Total Active Enrollments</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Reports</CardTitle>
+                                <CardDescription>A high-level overview of your training statistics.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Card className="p-4 text-center">
+                                        <div className="flex flex-col items-center gap-2">
+                                        <Users className="h-8 w-8 text-primary" />
+                                        <p className="text-2xl font-bold">{reportStats.totalActiveEnrollments}</p>
+                                        <p className="text-sm text-muted-foreground">Total Active Enrollments</p>
+                                        </div>
+                                    </Card>
+                                     <Card className="p-4 text-center">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Presentation className="h-8 w-8 text-primary" />
+                                            <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
+                                            <p className="text-sm text-muted-foreground">Total Sessions</p>
+                                        </div>
+                                    </Card>
+                                    <Card className="p-4 text-center">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Building className="h-8 w-8 text-primary" />
+                                            <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
+                                            <p className="text-sm text-muted-foreground">Total Organizations</p>
+                                        </div>
+                                    </Card>
+                                    <Card className="p-4 text-center">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <UserCog className="h-8 w-8 text-primary" />
+                                            <p className="text-2xl font-bold">{reportStats.totalTrainers}</p>
+                                            <p className="text-sm text-muted-foreground">Total Trainers</p>
+                                        </div>
+                                    </Card>
                                 </div>
-                            </Card>
-                            {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
-                                stats.enrollments > 0 && (
-                                    <Card key={courseName} className="p-4 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                        <BookUser className="h-8 w-8 text-primary" />
-                                        <p className="text-2xl font-bold">{stats.enrollments}</p>
-                                        <p className="text-sm text-muted-foreground">{courseName} Students</p>
-                                        </div>
-                                    </Card>
-                                )
-                                ))}
-                        </div>
-                        </div>
-
-                        <div>
-                        <h3 className="text-lg font-medium text-primary">Training Sessions</h3>
-                        <Separator className="my-2" />
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Card className="p-4 text-center">
-                            <div className="flex flex-col items-center gap-2">
-                                <Presentation className="h-8 w-8 text-primary" />
-                                <p className="text-2xl font-bold">{reportStats.totalSessions}</p>
-                                <p className="text-sm text-muted-foreground">Total Sessions</p>
-                            </div>
-                            </Card>
-                            {Object.entries(reportStats.courseStats).map(([courseName, stats]) => (
-                                stats.sessions > 0 && (
-                                    <Card key={courseName} className="p-4 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <School className="h-8 w-8 text-primary" />
-                                            <p className="text-2xl font-bold">{stats.sessions}</p>
-                                            <p className="text-sm text-muted-foreground">{courseName} Sessions</p>
-                                        </div>
-                                    </Card>
-                                )
-                            ))}
-                        </div>
-                        </div>
-                        
-                        <div>
-                        <h3 className="text-lg font-medium text-primary">Other</h3>
-                        <Separator className="my-2" />
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Card className="p-4 text-center">
-                            <div className="flex flex-col items-center gap-2">
-                                <Building className="h-8 w-8 text-primary" />
-                                <p className="text-2xl font-bold">{reportStats.totalOrganizations}</p>
-                                <p className="text-sm text-muted-foreground">Total Organizations</p>
-                            </div>
-                            </Card>
-                            <Card className="p-4 text-center">
-                            <div className="flex flex-col items-center gap-2">
-                                <UserCog className="h-8 w-8 text-primary" />
-                                <p className="text-2xl font-bold">{reportStats.totalTrainers}</p>
-                                <p className="text-sm text-muted-foreground">Total Trainers</p>
-                            </div>
-                            </Card>
-                        </div>
-                        </div>
-                    </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Site Settings</CardTitle>
+                                <CardDescription>Manage global settings for the site.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div>
+                                    <Label htmlFor="announcement-text">Homepage Announcement</Label>
+                                    <Textarea 
+                                        id="announcement-text" 
+                                        value={announcement}
+                                        onChange={(e) => setAnnouncement(e.target.value)}
+                                        placeholder="Enter a site-wide announcement..."
+                                        rows={4}
+                                    />
+                                </div>
+                                <Button onClick={handleSaveAnnouncement} disabled={isSavingAnnouncement}>
+                                    {isSavingAnnouncement ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save Announcement'}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
             )}
             

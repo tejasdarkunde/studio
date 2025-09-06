@@ -1537,9 +1537,7 @@ export async function addExam(data: z.infer<typeof addExamSchema>): Promise<{ su
     try {
         const { courseId, title, duration, status } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
-        const courseDoc = await getDoc(courseDocRef);
-        if (!courseDoc.exists()) return { success: false, error: "Course not found." };
-
+        
         const newExam: Omit<Exam, 'id'> = {
             title,
             courseId: courseId,
@@ -2241,6 +2239,34 @@ export async function deleteExamAttempt(data: z.infer<typeof deleteExamAttemptSc
     } catch (error) {
         console.error("Error deleting exam attempt:", error);
         return { success: false, error: "Could not delete exam attempt." };
+    }
+}
+
+// SITE SETTINGS
+export async function getAnnouncement(): Promise<string> {
+    try {
+        const settingsDocRef = doc(db, 'siteSettings', 'announcement');
+        const docSnap = await getDoc(settingsDocRef);
+
+        if (docSnap.exists() && docSnap.data().text) {
+            return docSnap.data().text;
+        }
+        // Return a default message if not set
+        return 'Welcome to the new training portal. All upcoming sessions and important notices will be posted here. Please check back regularly for updates.';
+    } catch(error) {
+        console.error("Error fetching announcement:", error);
+        return 'Could not load announcement.';
+    }
+}
+
+export async function updateAnnouncement(text: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const settingsDocRef = doc(db, 'siteSettings', 'announcement');
+        await setDoc(settingsDocRef, { text: text }, { merge: true });
+        return { success: true };
+    } catch(error) {
+        console.error("Error updating announcement:", error);
+        return { success: false, error: 'Could not update announcement in the database.' };
     }
 }
       

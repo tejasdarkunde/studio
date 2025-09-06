@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Calendar, Clock, Users, XCircle, Megaphone } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
-import { getBatches } from './actions';
+import { getBatches, getAnnouncement } from './actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -126,16 +127,21 @@ const LoadingSkeleton = () => (
 
 export default function Home() {
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [announcement, setAnnouncement] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchBatches() {
+    async function fetchData() {
       setLoading(true);
-      const fetchedBatches = await getBatches();
+      const [fetchedBatches, fetchedAnnouncement] = await Promise.all([
+        getBatches(),
+        getAnnouncement()
+      ]);
       setBatches(fetchedBatches);
+      setAnnouncement(fetchedAnnouncement);
       setLoading(false);
     }
-    fetchBatches();
+    fetchData();
   }, []);
 
   const now = new Date();
@@ -190,7 +196,7 @@ export default function Home() {
             <Megaphone className="h-4 w-4" />
             <AlertTitle>Announcements & Notices</AlertTitle>
             <AlertDescription>
-                Welcome to the new training portal. All upcoming sessions and important notices will be posted here. Please check back regularly for updates.
+                {announcement}
             </AlertDescription>
         </Alert>
 
