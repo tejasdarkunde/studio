@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Calendar, Clock, Users, XCircle } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, Users, XCircle, Megaphone } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
 import { getBatches } from './actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
   const formatDate = (dateString: string) => {
@@ -185,6 +186,14 @@ export default function Home() {
             </p>
         </div>
         
+        <Alert className="mb-12 bg-secondary">
+            <Megaphone className="h-4 w-4" />
+            <AlertTitle>Announcements & Notices</AlertTitle>
+            <AlertDescription>
+                Welcome to the new training portal. All upcoming sessions and important notices will be posted here. Please check back regularly for updates.
+            </AlertDescription>
+        </Alert>
+
         <div className="flex flex-col items-center gap-12 w-full">
           {loading ? (
             <LoadingSkeleton />
