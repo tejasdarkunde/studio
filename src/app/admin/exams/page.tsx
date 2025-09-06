@@ -7,7 +7,7 @@ import type { Course, Exam, Question, ExamResult } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search, Clock, Users } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search, Clock, Users, ChevronLeft } from 'lucide-react';
 import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults, deleteExamAttempt } from '@/app/actions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -386,6 +386,13 @@ export default function ExamsPage() {
             />
             
             <main className="mt-6">
+                 <div className="mb-6">
+                    <Button asChild variant="outline">
+                        <Link href="/admin">
+                            <ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+                        </Link>
+                    </Button>
+                </div>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
