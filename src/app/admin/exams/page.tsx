@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +6,7 @@ import type { Course, Exam, Question, ExamResult } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search, Clock } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search, Clock, Users } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults, deleteExamAttempt } from '@/app/actions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -232,6 +231,7 @@ export default function ExamsPage() {
     const [deletingExam, setDeletingExam] = useState<{exam: Exam, courseId: string} | null>(null);
     const [examDialog, setExamDialog] = useState<{isOpen: boolean; course?: Course; exam?: Exam | null}>({isOpen: false});
     const [viewingResultsFor, setViewingResultsFor] = useState<Exam | null>(null);
+    const [resultCounts, setResultCounts] = useState<Record<string, number>>({});
 
     const { toast } = useToast();
 
@@ -239,6 +239,16 @@ export default function ExamsPage() {
         setLoading(true);
         const fetchedCourses = await getCourses();
         setCourses(fetchedCourses);
+
+        // Fetch result counts for all exams
+        const allExams = fetchedCourses.flatMap(c => c.exams || []);
+        const counts: Record<string, number> = {};
+        for (const exam of allExams) {
+            const results = await getExamResults(exam.id);
+            counts[exam.id] = results.length;
+        }
+        setResultCounts(counts);
+
         setLoading(false);
     }, []);
 
@@ -345,6 +355,7 @@ export default function ExamsPage() {
                                                                         {exam.duration && (
                                                                             <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {exam.duration} minutes</span>
                                                                         )}
+                                                                        <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {resultCounts[exam.id] || 0} Submissions</span>
                                                                     </CardDescription>
                                                                 </div>
                                                                 <div className="flex gap-2">
@@ -364,7 +375,7 @@ export default function ExamsPage() {
                                                                 </Link>
                                                             </Button>
                                                             <Button className="w-full" onClick={() => setViewingResultsFor(exam)}>
-                                                                <BarChart className="mr-2 h-4 w-4" /> View Results
+                                                                <BarChart className="mr-2 h-4 w-4" /> View Results ({resultCounts[exam.id] || 0})
                                                             </Button>
                                                         </CardFooter>
                                                     </Card>
@@ -391,3 +402,4 @@ export default function ExamsPage() {
     );
 }
 
+    
