@@ -1964,3 +1964,58 @@ export async function deleteOrganizationAdmin(id: string): Promise<{ success: bo
         return { success: false, error: "Could not delete organization admin." };
     }
 }
+
+const verifyExamAccessSchema = z.object({
+  iitpNo: z.string().min(1),
+  examId: z.string().min(1),
+});
+
+export async function verifyExamAccess(data: z.infer<typeof verifyExamAccessSchema>): Promise<{ success: boolean; error?: string, courseId?: string; }> {
+    const validated = verifyExamAccessSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data" };
+
+    try {
+        const { iitpNo, examId } = validated.data;
+        const participant = await getParticipantByIitpNo(iitpNo);
+        if (!participant) {
+            return { success: false, error: "No participant found with this IITP No." };
+        }
+
+        const coursesSnapshot = await getDocs(collection(db, 'courses'));
+        let foundCourseId: string | null = null;
+        let foundCourseName: string | null = null;
+        
+        for (const courseDoc of coursesSnapshot.docs) {
+            const courseData = courseDoc.data() as Course;
+            const examExists = courseData.exams?.some(e => e.id === examId);
+            if (examExists) {
+                foundCourseId = courseDoc.id;
+                foundCourseName = courseData.name;
+                break;
+            }
+        }
+
+        if (!foundCourseId || !foundCourseName) {
+            return { success: false, error: "Exam not found in any course." };
+        }
+
+        const isEnrolled = participant.enrolledCourses?.some(enrolledCourseName => 
+            enrolledCourseName.toLowerCase() === foundCourseName?.toLowerCase()
+        );
+
+        if (!isEnrolled) {
+            return { success: false, error: `You are not enrolled in the course required for this exam (${foundCourseName}).` };
+        }
+        
+        const isAccessDenied = participant.deniedCourses?.includes(foundCourseId);
+        if(isAccessDenied) {
+             return { success: false, error: `Your access to the course for this exam has been revoked. Please contact an admin.` };
+        }
+
+        return { success: true, courseId: foundCourseId };
+
+    } catch (error) {
+        console.error("Error verifying exam access:", error);
+        return { success: false, error: "A database error occurred during verification." };
+    }
+}

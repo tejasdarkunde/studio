@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,7 +7,7 @@ import type { Course, Exam, Question } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2 } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion } from '@/app/actions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -252,6 +253,12 @@ export default function ExamsPage() {
         setDeletingExam(null);
     }
 
+    const handleCopyLink = (examId: string) => {
+        const url = `${window.location.origin}/exam/${examId}`;
+        navigator.clipboard.writeText(url);
+        toast({ title: "Link Copied!", description: "The exam link has been copied to your clipboard."});
+    }
+
     if (loading) {
         return (
              <div className="flex justify-center items-center h-64">
@@ -317,6 +324,9 @@ export default function ExamsPage() {
                                                             <div className="flex justify-between items-center">
                                                                 <CardTitle className="text-xl">{exam.title}</CardTitle>
                                                                 <div className="flex gap-2">
+                                                                    <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)}>
+                                                                        <LinkIcon className="h-4 w-4"/>
+                                                                    </Button>
                                                                     <Button variant="ghost" size="icon" onClick={() => setExamDialog({isOpen: true, course: course, exam: exam})}>
                                                                         <Pencil className="h-4 w-4" />
                                                                     </Button>
@@ -367,4 +377,5 @@ export default function ExamsPage() {
         </>
     );
 }
+
 
