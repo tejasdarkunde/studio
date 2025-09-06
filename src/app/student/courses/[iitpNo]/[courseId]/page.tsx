@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText, PlayCircle, ChevronRight } from 'lucide-react';
+import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText, PlayCircle, ChevronRight, FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Course, Lesson, Participant, Subject } from '@/lib/types';
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
@@ -335,6 +335,32 @@ const CourseContentPageClient = () => {
                     </Card>
                 </div>
 
+                {course.exams && course.exams.length > 0 && (
+                    <div className="mb-12">
+                        <h2 className="text-2xl font-bold tracking-tight mb-4">Exams</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {course.exams.map(exam => (
+                                <Card key={exam.id}>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <FileQuestion className="h-5 w-5 text-primary" />
+                                            {exam.title}
+                                        </CardTitle>
+                                        <CardDescription>{exam.questions.length} questions</CardDescription>
+                                    </CardHeader>
+                                    <CardFooter>
+                                        <Button asChild className="w-full">
+                                            <Link href={`/student/exam/${iitpNo}/${course.id}/${exam.id}`}>
+                                                Start Exam <ChevronRight className="ml-2 h-4 w-4"/>
+                                            </Link>
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
 
                 <div ref={contentRef}>
                     {course.subjects.length > 0 ? (
@@ -416,7 +442,3 @@ export default function CourseContentPage() {
     // but we need client-side hooks like useState and useEffect for interactivity.
     return <CourseContentPageClient />;
 }
-
-    
-
-
