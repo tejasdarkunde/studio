@@ -18,107 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/features/confirm-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-const ManageQuestionDialog = ({
-    isOpen,
-    onClose,
-    onSave,
-    initialData,
-}: {
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (data: Omit<Question, 'id'>) => Promise<void>;
-    initialData?: Question | null;
-}) => {
-    const [text, setText] = useState('');
-    const [options, setOptions] = useState<string[]>(['', '']);
-    const [correctAnswer, setCorrectAnswer] = useState(0);
-    const [isSaving, setIsSaving] = useState(false);
-    const { toast } = useToast();
-
-    useEffect(() => {
-        if (isOpen) {
-            setText(initialData?.text || '');
-            setOptions(initialData?.options || ['', '']);
-            setCorrectAnswer(initialData?.correctAnswer || 0);
-            setIsSaving(false);
-        }
-    }, [isOpen, initialData]);
-
-    const handleOptionChange = (index: number, value: string) => {
-        const newOptions = [...options];
-        newOptions[index] = value;
-        setOptions(newOptions);
-    };
-
-    const addOption = () => setOptions([...options, '']);
-    const removeOption = (index: number) => {
-        if (options.length <= 2) {
-            toast({ variant: 'destructive', title: 'Cannot remove option', description: 'An MCQ must have at least two options.' });
-            return;
-        }
-        setOptions(options.filter((_, i) => i !== index));
-        if (correctAnswer === index) {
-            setCorrectAnswer(0);
-        } else if (correctAnswer > index) {
-            setCorrectAnswer(prev => prev -1);
-        }
-    };
-
-    const handleSave = async () => {
-        if (!text.trim()) {
-            toast({ variant: 'destructive', title: 'Question text is required.' });
-            return;
-        }
-        if (options.some(opt => !opt.trim())) {
-            toast({ variant: 'destructive', title: 'All options must be filled.' });
-            return;
-        }
-        
-        setIsSaving(true);
-        await onSave({ text, options, correctAnswer });
-        setIsSaving(false);
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>{initialData ? 'Edit Question' : 'Add New Question'}</DialogTitle>
-                </DialogHeader>
-                <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-                    <div>
-                        <Label htmlFor="question-text">Question Text *</Label>
-                        <Textarea id="question-text" value={text} onChange={(e) => setText(e.target.value)} placeholder="What is the capital of France?" />
-                    </div>
-                    <div>
-                        <Label>Options * (Select the correct answer)</Label>
-                        <RadioGroup value={String(correctAnswer)} onValueChange={(val) => setCorrectAnswer(Number(val))} className="space-y-2 mt-2">
-                            {options.map((option, index) => (
-                                <div key={index} className="flex items-center gap-2">
-                                    <RadioGroupItem value={String(index)} id={`option-${index}`} />
-                                    <Input value={option} onChange={(e) => handleOptionChange(index, e.target.value)} placeholder={`Option ${index + 1}`} />
-                                    <Button variant="ghost" size="icon" onClick={() => removeOption(index)} disabled={options.length <= 2} className="text-destructive h-8 w-8">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={addOption}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Option
-                    </Button>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
-                    <Button onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save Question'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
-}
+import Link from 'next/link';
 
 const ManageExamDialog = ({
     isOpen,
@@ -331,8 +231,6 @@ export default function ExamsPage() {
     const [loading, setLoading] = useState(true);
     const [deletingExam, setDeletingExam] = useState<{exam: Exam, courseId: string} | null>(null);
     const [examDialog, setExamDialog] = useState<{isOpen: boolean; course?: Course; exam?: Exam | null}>({isOpen: false});
-    const [questionDialog, setQuestionDialog] = useState<{isOpen: boolean; exam?: Exam; courseId?: string; question?: Question | null}>({isOpen: false});
-    const [deletingQuestion, setDeletingQuestion] = useState<{question: Question; examId: string; courseId: string;} | null>(null);
     const [viewingResultsFor, setViewingResultsFor] = useState<Exam | null>(null);
 
     const { toast } = useToast();
@@ -365,38 +263,6 @@ export default function ExamsPage() {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
         }
     };
-
-
-    const handleSaveQuestion = async (data: Omit<Question, 'id'>) => {
-        if (!questionDialog.courseId || !questionDialog.exam) return;
-        
-        const action = questionDialog.question ? updateQuestion : addQuestion;
-        
-        const payload = questionDialog.question
-            ? { ...data, questionId: questionDialog.question.id, examId: questionDialog.exam.id, courseId: questionDialog.courseId }
-            : { ...data, examId: questionDialog.exam.id, courseId: questionDialog.courseId };
-
-        const result = await action(payload as any);
-        if(result.success) {
-            toast({ title: `Question ${questionDialog.question ? 'Updated' : 'Added'}` });
-            fetchCourses();
-            setQuestionDialog({ isOpen: false });
-        } else {
-            toast({ variant: 'destructive', title: 'Error', description: result.error });
-        }
-    }
-    
-    const handleDeleteQuestion = async () => {
-        if (!deletingQuestion) return;
-        const result = await deleteQuestion(deletingQuestion);
-        if (result.success) {
-            toast({ title: "Question Deleted" });
-            fetchCourses();
-        } else {
-            toast({ variant: 'destructive', title: 'Error', description: result.error });
-        }
-        setDeletingQuestion(null);
-    }
     
     const handleDeleteExam = async () => {
         if (!deletingExam) return;
@@ -446,25 +312,12 @@ export default function ExamsPage() {
                 title="Delete Exam?"
                 description={`Permanently delete the exam "${deletingExam?.exam.title}". All questions and results will also be deleted.`}
             />
-            <ConfirmDialog 
-                isOpen={!!deletingQuestion}
-                onClose={() => setDeletingQuestion(null)}
-                onConfirm={handleDeleteQuestion}
-                title="Delete Question?"
-                description={`Permanently delete this question. This action cannot be undone.`}
-            />
-            <ManageQuestionDialog
-                isOpen={questionDialog.isOpen}
-                onClose={() => setQuestionDialog({ isOpen: false })}
-                onSave={handleSaveQuestion}
-                initialData={questionDialog.question}
-            />
-
+            
             <main className="mt-6">
                  <Card>
                     <CardHeader>
                         <CardTitle>Exam Management</CardTitle>
-                        <CardDescription>Create and manage exams and their questions for each course.</CardDescription>
+                        <CardDescription>Create and manage exams for each course. Click "Manage" to add questions and adjust settings.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {courses.length > 0 ? (
@@ -487,48 +340,33 @@ export default function ExamsPage() {
                                                             <div className="flex justify-between items-start">
                                                                 <div>
                                                                     <CardTitle className="text-xl">{exam.title}</CardTitle>
-                                                                    {exam.duration && (
-                                                                        <CardDescription className="flex items-center gap-1 text-sm mt-1">
-                                                                            <Clock className="h-4 w-4" /> {exam.duration} minutes
-                                                                        </CardDescription>
-                                                                    )}
+                                                                    <CardDescription className="flex items-center gap-4 text-sm mt-1">
+                                                                        <span className="flex items-center gap-1"><FileQuestion className="h-4 w-4" /> {exam.questions.length} Questions</span>
+                                                                        {exam.duration && (
+                                                                            <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {exam.duration} minutes</span>
+                                                                        )}
+                                                                    </CardDescription>
                                                                 </div>
                                                                 <div className="flex gap-2">
                                                                     <Button variant="ghost" size="icon" onClick={() => handleCopyLink(exam.id)} title="Copy direct link">
                                                                         <LinkIcon className="h-4 w-4"/>
                                                                     </Button>
-                                                                    <Button variant="ghost" size="icon" onClick={() => setExamDialog({isOpen: true, course: course, exam: exam})} title="Edit exam">
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button variant="destructive" size="icon" onClick={() => setDeletingExam({ exam, courseId: course.id })} title="Delete exam">
+                                                                     <Button variant="destructive" size="icon" onClick={() => setDeletingExam({ exam, courseId: course.id })} title="Delete exam">
                                                                         <Trash className="h-4 w-4" />
                                                                     </Button>
                                                                 </div>
                                                             </div>
                                                         </CardHeader>
-                                                        <CardContent className="space-y-2">
-                                                            <div className="flex gap-2">
-                                                                <Button className="w-full" variant="outline" onClick={() => setQuestionDialog({ isOpen: true, exam, courseId: course.id })}>
-                                                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Question
-                                                                </Button>
-                                                                <Button className="w-full" onClick={() => setViewingResultsFor(exam)}>
-                                                                    <BarChart className="mr-2 h-4 w-4" /> View Results
-                                                                </Button>
-                                                            </div>
-                                                                {exam.questions.map((q, index) => (
-                                                                <div key={q.id} className="p-3 rounded-md bg-secondary/50 flex items-center justify-between group">
-                                                                    <div className="flex items-start gap-3">
-                                                                        <span className="text-sm font-bold text-muted-foreground">{index + 1}.</span>
-                                                                        <p className="text-sm font-medium">{q.text}</p>
-                                                                    </div>
-                                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setQuestionDialog({ isOpen: true, exam, courseId: course.id, question: q })}><Pencil className="h-4 w-4" /></Button>
-                                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeletingQuestion({ question: q, examId: exam.id, courseId: course.id })}><Trash className="h-4 w-4" /></Button>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                            {exam.questions.length === 0 && <p className="text-center text-xs text-muted-foreground py-2">No questions in this exam yet.</p>}
-                                                        </CardContent>
+                                                        <CardFooter className="flex gap-2">
+                                                            <Button asChild className="w-full" variant="outline">
+                                                                <Link href={`/admin/exams/${course.id}/${exam.id}`}>
+                                                                    <Pencil className="mr-2 h-4 w-4" /> Manage
+                                                                </Link>
+                                                            </Button>
+                                                            <Button className="w-full" onClick={() => setViewingResultsFor(exam)}>
+                                                                <BarChart className="mr-2 h-4 w-4" /> View Results
+                                                            </Button>
+                                                        </CardFooter>
                                                     </Card>
                                                 ))}
                                                  {course.exams?.length === 0 && (
