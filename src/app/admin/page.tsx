@@ -1546,16 +1546,16 @@ export default function AdminPage() {
   };
 
   const SuperAdminTabs = () => (
-    <Tabs defaultValue="dashboard" className="flex flex-col md:flex-row gap-6 md:gap-8">
-        <TabsList className="flex flex-col h-auto items-start shrink-0">
-            <TabsTrigger value="dashboard" className="justify-start"><LayoutDashboard className="mr-2"/>Dashboard</TabsTrigger>
-            <TabsTrigger value="trainings" className="justify-start"><Presentation className="mr-2"/>Trainings</TabsTrigger>
-            <TabsTrigger value="content" className="justify-start"><FileText className="mr-2"/>Content</TabsTrigger>
-            <TabsTrigger value="users" className="justify-start"><Users className="mr-2"/>Users</TabsTrigger>
-            <TabsTrigger value="attendance" className="justify-start"><CalendarCheck className="mr-2"/>Attendance</TabsTrigger>
-            <TabsTrigger value="settings" className="justify-start"><Settings className="mr-2"/>Settings</TabsTrigger>
+    <Tabs defaultValue="dashboard">
+        <TabsList>
+            <TabsTrigger value="dashboard"><LayoutDashboard className="mr-2"/>Dashboard</TabsTrigger>
+            <TabsTrigger value="trainings"><Presentation className="mr-2"/>Trainings</TabsTrigger>
+            <TabsTrigger value="content"><FileText className="mr-2"/>Content</TabsTrigger>
+            <TabsTrigger value="users"><Users className="mr-2"/>Users</TabsTrigger>
+            <TabsTrigger value="attendance"><CalendarCheck className="mr-2"/>Attendance</TabsTrigger>
+            <TabsTrigger value="settings"><Settings className="mr-2"/>Settings</TabsTrigger>
         </TabsList>
-        <div className="flex-grow">
+        <div className="mt-6">
             <TabsContent value="dashboard" className="mt-0">
                 <Card>
                     <CardHeader>
