@@ -132,10 +132,10 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-grow space-y-2 min-w-[200px]">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="w-full md:w-auto md:flex-grow space-y-2">
                 <Label>Date Range</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
@@ -160,7 +160,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
                     </Popover>
                 </div>
             </div>
-            <div className="flex-grow space-y-2 min-w-[150px]">
+            <div className="w-full md:w-auto md:flex-grow space-y-2">
                 <Label htmlFor="trainer-filter">Trainer</Label>
                 <Select onValueChange={setSelectedTrainer} value={selectedTrainer}>
                     <SelectTrigger id="trainer-filter">
@@ -172,7 +172,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
                     </SelectContent>
                 </Select>
             </div>
-             <div className="flex-grow space-y-2 min-w-[150px]">
+             <div className="w-full md:w-auto md:flex-grow space-y-2">
                 <Label htmlFor="course-filter">Course</Label>
                 <Select onValueChange={setSelectedCourse} value={selectedCourse}>
                     <SelectTrigger id="course-filter">
@@ -184,7 +184,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
                     </SelectContent>
                 </Select>
             </div>
-            <Button onClick={handleExport} disabled={isExporting} className="w-full sm:w-auto">
+            <Button onClick={handleExport} disabled={isExporting} className="w-full md:w-auto">
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                 Export Reports
             </Button>
@@ -193,3 +193,4 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
     </Card>
   );
 }
+
