@@ -196,3 +196,4 @@ export function AttendanceReport({ participants, batches, courses }: AttendanceR
     </Tabs>
   );
 }
+
