@@ -132,8 +132,8 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-            <div className="space-y-2">
+        <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-grow space-y-2 min-w-[200px]">
                 <Label>Date Range</Label>
                 <div className="flex gap-2">
                     <Popover>
@@ -160,7 +160,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
                     </Popover>
                 </div>
             </div>
-            <div className="space-y-2">
+            <div className="flex-grow space-y-2 min-w-[150px]">
                 <Label htmlFor="trainer-filter">Trainer</Label>
                 <Select onValueChange={setSelectedTrainer} value={selectedTrainer}>
                     <SelectTrigger id="trainer-filter">
@@ -172,7 +172,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
                     </SelectContent>
                 </Select>
             </div>
-             <div className="space-y-2">
+             <div className="flex-grow space-y-2 min-w-[150px]">
                 <Label htmlFor="course-filter">Course</Label>
                 <Select onValueChange={setSelectedCourse} value={selectedCourse}>
                     <SelectTrigger id="course-filter">
@@ -184,7 +184,7 @@ export function AdvancedAttendanceExport({ batches, trainers, courses }: Advance
                     </SelectContent>
                 </Select>
             </div>
-            <Button onClick={handleExport} disabled={isExporting}>
+            <Button onClick={handleExport} disabled={isExporting} className="w-full sm:w-auto">
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                 Export Reports
             </Button>
