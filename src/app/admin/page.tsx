@@ -1547,7 +1547,7 @@ export default function AdminPage() {
 
   const SuperAdminTabs = () => (
     <Tabs defaultValue="dashboard" className="flex flex-col md:flex-row gap-6 md:gap-8">
-        <TabsList className="flex flex-row md:flex-col md:h-auto md:w-48 shrink-0 overflow-x-auto justify-start">
+        <TabsList className="flex flex-col h-auto items-start shrink-0">
             <TabsTrigger value="dashboard" className="justify-start"><LayoutDashboard className="mr-2"/>Dashboard</TabsTrigger>
             <TabsTrigger value="trainings" className="justify-start"><Presentation className="mr-2"/>Trainings</TabsTrigger>
             <TabsTrigger value="content" className="justify-start"><FileText className="mr-2"/>Content</TabsTrigger>
@@ -1838,7 +1838,7 @@ export default function AdminPage() {
                  <Tabs defaultValue="courses">
                     <TabsList>
                         <TabsTrigger value="courses">Courses</TabsTrigger>
-                        <TabsTrigger value="exams" onClick={() => router.push('/admin/exams')}>Exams</TabsTrigger>
+                        <TabsTrigger value="exams" asChild><Link href="/admin/exams">Exams</Link></TabsTrigger>
                     </TabsList>
                     <TabsContent value="courses" className="mt-6">
                         <div className="flex justify-end mb-4">
