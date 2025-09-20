@@ -7,7 +7,7 @@ import type { Participant, Batch, Course } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type AttendanceReportProps = {
@@ -25,10 +25,14 @@ type AttendanceGrid = {
 };
 
 const generateAttendanceGrid = (courseName: string, participants: Participant[], batches: Batch[]): AttendanceGrid => {
-    // 1. Filter batches that belong to the course
+    // 1. Filter batches that belong to the course and sort them by date
     const courseBatches = batches
         .filter(b => b.course === courseName)
-        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        .sort((a, b) => {
+            const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+            const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+            return dateB - dateA; // Sort descending (most recent first)
+        });
     
     const headers = courseBatches.map(b => {
         const date = b.startDate ? new Date(b.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'No Date';
@@ -94,6 +98,16 @@ const exportGridToCsv = (grid: AttendanceGrid, courseName: string) => {
 
 const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseName: string }) => {
     const { toast } = useToast();
+    const SESSIONS_PER_PAGE = 2;
+    const [currentPage, setCurrentPage] = useState(0);
+
+    const paginatedHeaders = useMemo(() => {
+        const startIndex = currentPage * SESSIONS_PER_PAGE;
+        const endIndex = startIndex + SESSIONS_PER_PAGE;
+        return grid.headers.slice(startIndex, endIndex);
+    }, [grid.headers, currentPage]);
+
+    const totalPages = Math.ceil(grid.headers.length / SESSIONS_PER_PAGE);
 
     const handleExport = () => {
         if (!grid.headers.length || !grid.rows.length) {
@@ -113,10 +127,33 @@ const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseNam
     
     return (
         <div className="space-y-4">
-            <div className="flex justify-end">
-                <Button onClick={handleExport} disabled={!grid.headers.length || !grid.rows.length}>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setCurrentPage(p => p - 1)}
+                        disabled={currentPage === 0}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                        Showing sessions {currentPage * SESSIONS_PER_PAGE + 1}-
+                        {Math.min((currentPage + 1) * SESSIONS_PER_PAGE, grid.headers.length)}
+                        {' '} of {grid.headers.length}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={currentPage >= totalPages - 1}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+                 <Button onClick={handleExport} disabled={!grid.headers.length || !grid.rows.length}>
                     <Download className="mr-2 h-4 w-4" />
-                    Export {courseName} Report
+                    Export Full Report
                 </Button>
             </div>
             {grid.headers.length > 0 && grid.rows.length > 0 ? (
@@ -126,7 +163,7 @@ const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseNam
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-background z-20 min-w-[200px]">Participant Name</TableHead>
                                 <TableHead className="sticky left-[200px] bg-background z-20 min-w-[150px]">IITP No</TableHead>
-                                {grid.headers.map(header => (
+                                {paginatedHeaders.map(header => (
                                     <TableHead key={header.id} className="min-w-[200px]">{header.name}</TableHead>
                                 ))}
                             </TableRow>
@@ -136,7 +173,7 @@ const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseNam
                                 <TableRow key={row.participant.id}>
                                     <TableCell className="sticky left-0 bg-background z-10 font-medium">{row.participant.name}</TableCell>
                                     <TableCell className="sticky left-[200px] bg-background z-10">{row.participant.iitpNo}</TableCell>
-                                    {grid.headers.map(header => (
+                                    {paginatedHeaders.map(header => (
                                         <TableCell key={header.id} className={`text-center font-bold ${row.attendance[header.id] === 'P' ? 'text-green-600' : 'text-red-600'}`}>
                                             {row.attendance[header.id]}
                                         </TableCell>
@@ -196,4 +233,3 @@ export function AttendanceReport({ participants, batches, courses }: AttendanceR
     </Tabs>
   );
 }
-
