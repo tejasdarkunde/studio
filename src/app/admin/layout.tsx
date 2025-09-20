@@ -57,7 +57,7 @@ export default function AdminLayout({
                         {currentUser ? `Welcome, ${currentUser.name}` : (userRole === 'superadmin' ? 'Admin Dashboard' : 'Trainer Dashboard')}
                     </h1>
                     <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
-                        {userRole === 'superadmin' ? 'Manage training batches, registrations, and participants.' : 'Manage your assigned training batches.'}
+                        {userRole === 'superadmin' ? 'Manage training batches, registrations, and participants.' : 'Manage your assigned training batches and exams.'}
                     </p>
                 </div>
             </div>

@@ -1546,12 +1546,13 @@ export default function AdminPage() {
   };
 
   const SuperAdminTabs = () => (
-    <Tabs defaultValue="dashboard">
+     <Tabs defaultValue="dashboard">
         <TabsList>
             <TabsTrigger value="dashboard"><LayoutDashboard className="mr-2"/>Dashboard</TabsTrigger>
             <TabsTrigger value="trainings"><Presentation className="mr-2"/>Trainings</TabsTrigger>
             <TabsTrigger value="content"><FileText className="mr-2"/>Content</TabsTrigger>
             <TabsTrigger value="users"><Users className="mr-2"/>Users</TabsTrigger>
+             <TabsTrigger value="exams" asChild><Link href="/admin/exams">Exams</Link></TabsTrigger>
             <TabsTrigger value="attendance"><CalendarCheck className="mr-2"/>Attendance</TabsTrigger>
             <TabsTrigger value="settings"><Settings className="mr-2"/>Settings</TabsTrigger>
         </TabsList>
@@ -1835,35 +1836,24 @@ export default function AdminPage() {
                 </Card>
             </TabsContent>
             <TabsContent value="content" className="mt-0">
-                 <Tabs defaultValue="courses">
-                    <TabsList>
-                        <TabsTrigger value="courses">Courses</TabsTrigger>
-                        <TabsTrigger value="exams" asChild><Link href="/admin/exams">Exams</Link></TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="courses" className="mt-6">
-                        <div className="flex justify-end mb-4">
-                            <Button onClick={() => setAddCourseOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add New Course
-                            </Button>
+                 <div className="space-y-6">
+                    {courses.length > 0 ? (
+                        <div className="space-y-6">
+                            {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
+                                <CourseContentManager 
+                                    key={course.id}
+                                    course={course}
+                                    onContentUpdated={fetchAllData}
+                                />
+                            ))}
                         </div>
-                        {courses.length > 0 ? (
-                            <div className="space-y-6">
-                                {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
-                                    <CourseContentManager 
-                                        key={course.id}
-                                        course={course}
-                                        onContentUpdated={fetchAllData}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-12 text-muted-foreground">
-                            <Loader2 className="mx-auto h-8 w-8 animate-spin mb-4" />
-                            <p>Loading course data...</p>
-                            </div>
-                        )}
-                    </TabsContent>
-                </Tabs>
+                    ) : (
+                        <div className="text-center py-12 text-muted-foreground">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin mb-4" />
+                        <p>Loading course data...</p>
+                        </div>
+                    )}
+                 </div>
             </TabsContent>
             <TabsContent value="users" className="mt-0">
                 <Tabs defaultValue="directory">
@@ -2226,9 +2216,10 @@ export default function AdminPage() {
   );
 
   const TrainerTabs = () => (
-    <Tabs defaultValue="trainings" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+    <Tabs defaultValue="trainings">
+        <TabsList>
             <TabsTrigger value="trainings">My Trainings</TabsTrigger>
+            <TabsTrigger value="exams" asChild><Link href="/admin/exams">Exams</Link></TabsTrigger>
             <TabsTrigger value="attendance">My Attendance</TabsTrigger>
         </TabsList>
          <TabsContent value="trainings" className="mt-6">
