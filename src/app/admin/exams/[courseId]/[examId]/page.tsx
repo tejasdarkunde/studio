@@ -44,7 +44,9 @@ const ManageQuestionDialog = ({
             setType(qType);
             setText(initialData?.text || '');
             setOptions(initialData?.options?.length ? initialData.options : ['', '']);
-            setCorrectAnswers(initialData?.correctAnswers || []);
+            // Compatibility for old data model where it was a single number
+            const answers = initialData?.correctAnswers || (initialData as any)?.correctAnswer !== undefined ? [(initialData as any).correctAnswer] : [];
+            setCorrectAnswers(answers);
             setRationale(initialData?.rationale || '');
             setIsSaving(false);
         }
@@ -105,9 +107,9 @@ const ManageQuestionDialog = ({
     
     const handleCheckboxChange = (index: number, checked: boolean) => {
         if (checked) {
-            setCorrectAnswers(prev => [...prev, index]);
+            setCorrectAnswers(prev => [...prev, index].sort());
         } else {
-            setCorrectAnswers(prev => (prev as number[]).filter(i => i !== index));
+            setCorrectAnswers(prev => (prev as number[]).filter(i => i !== index).sort());
         }
     }
 
@@ -341,13 +343,13 @@ export default function ManageExamPage() {
         setDeletingQuestion(null);
     }
     
-    const getIconForType = (type: QuestionType) => {
+    const getIconForType = (type?: QuestionType) => {
         switch (type) {
             case 'mcq': return <Type className="h-4 w-4" />;
             case 'checkbox': return <CheckSquare className="h-4 w-4" />;
             case 'short-answer': return <MessageSquare className="h-4 w-4" />;
             case 'paragraph': return <MessageSquare className="h-4 w-4" />;
-            default: return <FileQuestion className="h-4 w-4" />;
+            default: return <Type className="h-4 w-4" />; // Default to mcq icon
         }
     }
     
@@ -420,9 +422,9 @@ export default function ManageExamPage() {
                                         <span className="text-sm font-bold text-muted-foreground">{index + 1}.</span>
                                         <div className="flex-grow">
                                             <p className="text-sm font-medium">{q.text}</p>
-                                            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1 capitalize">
                                                 {getIconForType(q.type)}
-                                                <span>{q.type.replace('-', ' ')}</span>
+                                                <span>{(q.type || 'mcq').replace('-', ' ')}</span>
                                             </div>
                                         </div>
                                     </div>

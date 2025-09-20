@@ -1,11 +1,10 @@
 
-
 "use client";
 
 import { useEffect, useState, useRef, useTransition, useCallback } from 'react';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { getCourseById, getParticipantByIitpNo, saveExamProgress, submitExam } from '@/app/actions';
-import type { Course, Exam, Participant, Question } from '@/lib/types';
+import type { Course, Exam, Participant, Question, QuestionType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -16,6 +15,58 @@ import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+
+const QuestionRenderer = ({ question, answer, onAnswerChange }: { question: Question; answer: any; onAnswerChange: (questionId: string, answer: any) => void; }) => {
+    const type = question.type || 'mcq';
+
+    switch(type) {
+        case 'mcq':
+            return (
+                <RadioGroup 
+                    onValueChange={(value) => onAnswerChange(question.id, parseInt(value))}
+                    value={answer?.toString()}
+                >
+                    {question.options.map((option, oIndex) => (
+                        <div key={oIndex} className="flex items-center space-x-3 p-3 rounded-lg border has-[:checked]:bg-secondary has-[:checked]:border-primary transition-colors">
+                            <RadioGroupItem value={oIndex.toString()} id={`q${question.id}-o${oIndex}`} />
+                            <Label htmlFor={`q${question.id}-o${oIndex}`} className="font-normal text-base cursor-pointer flex-grow">{option}</Label>
+                        </div>
+                    ))}
+                </RadioGroup>
+            );
+        case 'checkbox':
+            const currentAnswers = Array.isArray(answer) ? answer : [];
+            return (
+                 <div>
+                    {question.options.map((option, oIndex) => (
+                        <div key={oIndex} className="flex items-center space-x-3 p-3 rounded-lg border has-[:checked]:bg-secondary has-[:checked]:border-primary transition-colors mb-2">
+                           <Checkbox
+                                id={`q${question.id}-o${oIndex}`}
+                                checked={currentAnswers.includes(oIndex)}
+                                onCheckedChange={(checked) => {
+                                    const newAnswers = checked
+                                        ? [...currentAnswers, oIndex]
+                                        : currentAnswers.filter(i => i !== oIndex);
+                                    onAnswerChange(question.id, newAnswers.sort());
+                                }}
+                            />
+                            <Label htmlFor={`q${question.id}-o${oIndex}`} className="font-normal text-base cursor-pointer flex-grow">{option}</Label>
+                        </div>
+                    ))}
+                </div>
+            );
+        case 'short-answer':
+            return <Input value={answer || ''} onChange={(e) => onAnswerChange(question.id, e.target.value)} placeholder="Type your answer here..." />;
+        case 'paragraph':
+            return <Textarea value={answer || ''} onChange={(e) => onAnswerChange(question.id, e.target.value)} placeholder="Type your answer here..." rows={5} />;
+        default:
+            return <p>Unsupported question type</p>;
+    }
+}
+
 
 export default function ExamPage() {
     const params = useParams();
@@ -25,7 +76,7 @@ export default function ExamPage() {
     const [exam, setExam] = useState<Exam | null>(null);
     const [participant, setParticipant] = useState<Participant | null>(null);
     const [loading, setLoading] = useState(true);
-    const [answers, setAnswers] = useState<{[questionId: string]: number}>({});
+    const [answers, setAnswers] = useState<{[questionId: string]: number | number[] | string}>({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [isLocked, setIsLocked] = useState(false);
     const [isSaving, startSaving] = useTransition();
@@ -38,11 +89,19 @@ export default function ExamPage() {
      const handleSubmit = useCallback(() => {
         startSubmitting(async () => {
             if (!participant) return;
+            // For paragraph questions, we don't save the answer in the submission for now as they aren't graded
+            const answersToSubmit = {...answers};
+            exam?.questions.forEach(q => {
+                if (q.type === 'paragraph') {
+                    delete answersToSubmit[q.id];
+                }
+            });
+
             const result = await submitExam({
                 participantId: participant.id,
                 courseId: courseId,
                 examId: examId,
-                answers: answers,
+                answers: answersToSubmit as any,
             });
 
             if(result.success) {
@@ -53,7 +112,7 @@ export default function ExamPage() {
             }
         });
         setIsConfirmingSubmit(false);
-    }, [participant, courseId, examId, answers, iitpNo, router, toast]);
+    }, [participant, courseId, examId, answers, iitpNo, router, toast, exam]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -149,8 +208,8 @@ export default function ExamPage() {
         };
     }, []);
 
-    const handleAnswerChange = (questionId: string, optionIndex: number) => {
-        const newAnswers = { ...answers, [questionId]: optionIndex };
+    const handleAnswerChange = (questionId: string, answer: any) => {
+        const newAnswers = { ...answers, [questionId]: answer };
         setAnswers(newAnswers);
 
         startSaving(async () => {
@@ -158,7 +217,7 @@ export default function ExamPage() {
                 await saveExamProgress({
                     participantId: participant.id,
                     examId: examId,
-                    answers: newAnswers,
+                    answers: newAnswers as any,
                 });
             }
         });
@@ -192,7 +251,11 @@ export default function ExamPage() {
         return notFound();
     }
     
-    const answeredCount = Object.keys(answers).length;
+    const answeredCount = Object.keys(answers).filter(k => {
+        const answer = answers[k];
+        if (Array.isArray(answer)) return answer.length > 0;
+        return answer !== undefined && answer !== '';
+    }).length;
     const totalQuestions = exam.questions.length;
     const currentQuestion = exam.questions[currentQuestionIndex];
     const progressPercentage = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
@@ -259,17 +322,11 @@ export default function ExamPage() {
                              {currentQuestion && (
                                 <div key={currentQuestion.id} className="p-2 md:p-6">
                                    <p className="font-semibold text-lg mb-6">{currentQuestion.text}</p>
-                                    <RadioGroup 
-                                        onValueChange={(value) => handleAnswerChange(currentQuestion.id, parseInt(value))}
-                                        value={answers[currentQuestion.id]?.toString()}
-                                    >
-                                        {currentQuestion.options.map((option, oIndex) => (
-                                            <div key={oIndex} className="flex items-center space-x-3 p-3 rounded-lg border has-[:checked]:bg-secondary has-[:checked]:border-primary transition-colors">
-                                                <RadioGroupItem value={oIndex.toString()} id={`q${currentQuestionIndex}-o${oIndex}`} />
-                                                <Label htmlFor={`q${currentQuestionIndex}-o${oIndex}`} className="font-normal text-base cursor-pointer flex-grow">{option}</Label>
-                                            </div>
-                                        ))}
-                                    </RadioGroup>
+                                   <QuestionRenderer
+                                        question={currentQuestion}
+                                        answer={answers[currentQuestion.id]}
+                                        onAnswerChange={handleAnswerChange}
+                                   />
                                 </div>
                             )}
                         </CardContent>
@@ -300,21 +357,27 @@ export default function ExamPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-5 gap-2">
-                                {exam.questions.map((question, index) => (
-                                    <Button
-                                        key={question.id}
-                                        variant={answers[question.id] !== undefined ? 'default' : 'outline'}
-                                        size="icon"
-                                        onClick={() => goToQuestion(index)}
-                                        className={cn(
-                                            "h-10 w-10",
-                                            answers[question.id] !== undefined && "bg-green-600 hover:bg-green-700",
-                                            index === currentQuestionIndex && "ring-2 ring-primary ring-offset-2"
-                                        )}
-                                    >
-                                        {index + 1}
-                                    </Button>
-                                ))}
+                                {exam.questions.map((question, index) => {
+                                    const answer = answers[question.id];
+                                    const isAnswered = Array.isArray(answer)
+                                        ? answer.length > 0
+                                        : answer !== undefined && answer !== '';
+                                    return (
+                                        <Button
+                                            key={question.id}
+                                            variant={isAnswered ? 'default' : 'outline'}
+                                            size="icon"
+                                            onClick={() => goToQuestion(index)}
+                                            className={cn(
+                                                "h-10 w-10",
+                                                isAnswered && "bg-green-600 hover:bg-green-700",
+                                                index === currentQuestionIndex && "ring-2 ring-primary ring-offset-2"
+                                            )}
+                                        >
+                                            {index + 1}
+                                        </Button>
+                                    )
+                                })}
                             </div>
                         </CardContent>
                         <CardFooter>
