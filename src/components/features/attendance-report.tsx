@@ -7,7 +7,6 @@ import type { Participant, Batch, Course } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -121,8 +120,8 @@ const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseNam
                 </Button>
             </div>
             {grid.headers.length > 0 && grid.rows.length > 0 ? (
-                <ScrollArea className="w-full whitespace-nowrap rounded-md border" style={{ height: '60vh' }}>
-                    <Table className="min-w-full">
+                <div className="relative w-full overflow-auto rounded-md border" style={{ height: '60vh' }}>
+                    <Table>
                         <TableHeader className="sticky top-0 bg-background z-10">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-background z-20 min-w-[200px]">Participant Name</TableHead>
@@ -146,7 +145,7 @@ const AttendanceTable = ({ grid, courseName }: { grid: AttendanceGrid, courseNam
                             ))}
                         </TableBody>
                     </Table>
-                </ScrollArea>
+                </div>
             ) : (
                 <div className="flex flex-col items-center justify-center h-64 border rounded-md">
                     <p className="text-muted-foreground">No attendance data to display for {courseName}.</p>
