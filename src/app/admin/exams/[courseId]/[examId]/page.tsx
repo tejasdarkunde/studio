@@ -4,18 +4,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Course, Exam, Question } from '@/lib/types';
+import type { Course, Exam, Question, QuestionType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Clock, ChevronLeft } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Clock, ChevronLeft, Type, MessageSquare, CheckSquare } from 'lucide-react';
 import { getCourseById, updateExam, addQuestion, updateQuestion, deleteQuestion } from '@/app/actions';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/features/confirm-dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const ManageQuestionDialog = ({
     isOpen,
@@ -29,16 +31,21 @@ const ManageQuestionDialog = ({
     initialData?: Question | null;
 }) => {
     const [text, setText] = useState('');
+    const [type, setType] = useState<QuestionType>('mcq');
     const [options, setOptions] = useState<string[]>(['', '']);
-    const [correctAnswer, setCorrectAnswer] = useState(0);
+    const [correctAnswers, setCorrectAnswers] = useState<(string|number)[]>([]);
+    const [rationale, setRationale] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
         if (isOpen) {
+            const qType = initialData?.type || 'mcq';
+            setType(qType);
             setText(initialData?.text || '');
-            setOptions(initialData?.options || ['', '']);
-            setCorrectAnswer(initialData?.correctAnswer || 0);
+            setOptions(initialData?.options?.length ? initialData.options : ['', '']);
+            setCorrectAnswers(initialData?.correctAnswers || []);
+            setRationale(initialData?.rationale || '');
             setIsSaving(false);
         }
     }, [isOpen, initialData]);
@@ -52,14 +59,15 @@ const ManageQuestionDialog = ({
     const addOption = () => setOptions([...options, '']);
     const removeOption = (index: number) => {
         if (options.length <= 2) {
-            toast({ variant: 'destructive', title: 'Cannot remove option', description: 'An MCQ must have at least two options.' });
+            toast({ variant: 'destructive', title: 'Cannot remove option', description: 'At least two options are required.' });
             return;
         }
         setOptions(options.filter((_, i) => i !== index));
-        if (correctAnswer === index) {
-            setCorrectAnswer(0);
-        } else if (correctAnswer > index) {
-            setCorrectAnswer(prev => prev -1);
+        // Also remove from correct answers if it was selected
+        if (type === 'mcq' && correctAnswers[0] === index) {
+            setCorrectAnswers([]);
+        } else if (type === 'checkbox') {
+            setCorrectAnswers(prev => (prev as number[]).filter(i => i !== index).map(i => i > index ? i -1 : i));
         }
     };
 
@@ -68,15 +76,79 @@ const ManageQuestionDialog = ({
             toast({ variant: 'destructive', title: 'Question text is required.' });
             return;
         }
-        if (options.some(opt => !opt.trim())) {
-            toast({ variant: 'destructive', title: 'All options must be filled.' });
-            return;
+
+        let finalCorrectAnswers = correctAnswers;
+        let finalOptions = options;
+
+        if (type === 'mcq' || type === 'checkbox') {
+            if (options.some(opt => !opt.trim())) {
+                toast({ variant: 'destructive', title: 'All options must be filled.' });
+                return;
+            }
+             if (correctAnswers.length === 0) {
+                toast({ variant: 'destructive', title: 'A correct answer must be selected.' });
+                return;
+            }
+        } else if (type === 'short-answer' || type === 'paragraph') {
+            // For text-based answers, options are not relevant
+            finalOptions = [];
+             if (!correctAnswers[0] && type === 'short-answer') {
+                toast({ variant: 'destructive', title: 'Correct answer is required for Short Answer questions.' });
+                return;
+             }
         }
         
         setIsSaving(true);
-        await onSave({ text, options, correctAnswer });
+        await onSave({ text, type, options: finalOptions, correctAnswers: finalCorrectAnswers, rationale });
         setIsSaving(false);
     };
+    
+    const handleCheckboxChange = (index: number, checked: boolean) => {
+        if (checked) {
+            setCorrectAnswers(prev => [...prev, index]);
+        } else {
+            setCorrectAnswers(prev => (prev as number[]).filter(i => i !== index));
+        }
+    }
+
+    const renderAnswerFields = () => {
+        switch (type) {
+            case 'mcq':
+                return (
+                    <RadioGroup value={correctAnswers[0]?.toString()} onValueChange={(val) => setCorrectAnswers([Number(val)])} className="space-y-2 mt-2">
+                        {options.map((option, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                                <RadioGroupItem value={String(index)} id={`option-${index}`} />
+                                <Input value={option} onChange={(e) => handleOptionChange(index, e.target.value)} placeholder={`Option ${index + 1}`} />
+                                <Button variant="ghost" size="icon" onClick={() => removeOption(index)} disabled={options.length <= 2} className="text-destructive h-8 w-8">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </RadioGroup>
+                );
+            case 'checkbox':
+                return (
+                    <div className="space-y-2 mt-2">
+                        {options.map((option, index) => (
+                             <div key={index} className="flex items-center gap-2">
+                                <Checkbox id={`option-${index}`} checked={(correctAnswers as number[]).includes(index)} onCheckedChange={(checked) => handleCheckboxChange(index, !!checked)} />
+                                <Input value={option} onChange={(e) => handleOptionChange(index, e.target.value)} placeholder={`Option ${index + 1}`} />
+                                <Button variant="ghost" size="icon" onClick={() => removeOption(index)} disabled={options.length <= 2} className="text-destructive h-8 w-8">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                );
+            case 'short-answer':
+                return <Input value={correctAnswers[0] as string || ''} onChange={e => setCorrectAnswers([e.target.value])} placeholder="Enter the correct answer" />;
+            case 'paragraph':
+                 return <p className="text-sm text-muted-foreground p-2 bg-secondary rounded-md">Paragraph answers are for open-ended questions and do not have a single correct answer. They are not graded automatically.</p>;
+            default:
+                return null;
+        }
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -85,27 +157,41 @@ const ManageQuestionDialog = ({
                     <DialogTitle>{initialData ? 'Edit Question' : 'Add New Question'}</DialogTitle>
                 </DialogHeader>
                 <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                     <div>
+                        <Label htmlFor="question-type">Question Type *</Label>
+                        <Select value={type} onValueChange={(v) => { setType(v as QuestionType); setCorrectAnswers([])}}>
+                            <SelectTrigger id="question-type">
+                                <SelectValue placeholder="Select a question type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="mcq">Multiple Choice (Single Answer)</SelectItem>
+                                <SelectItem value="checkbox">Checkboxes (Multiple Answers)</SelectItem>
+                                <SelectItem value="short-answer">Short Answer</SelectItem>
+                                <SelectItem value="paragraph">Paragraph (Not Graded)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div>
                         <Label htmlFor="question-text">Question Text *</Label>
                         <Textarea id="question-text" value={text} onChange={(e) => setText(e.target.value)} placeholder="What is the capital of France?" />
                     </div>
+                    
                     <div>
-                        <Label>Options * (Select the correct answer)</Label>
-                        <RadioGroup value={String(correctAnswer)} onValueChange={(val) => setCorrectAnswer(Number(val))} className="space-y-2 mt-2">
-                            {options.map((option, index) => (
-                                <div key={index} className="flex items-center gap-2">
-                                    <RadioGroupItem value={String(index)} id={`option-${index}`} />
-                                    <Input value={option} onChange={(e) => handleOptionChange(index, e.target.value)} placeholder={`Option ${index + 1}`} />
-                                    <Button variant="ghost" size="icon" onClick={() => removeOption(index)} disabled={options.length <= 2} className="text-destructive h-8 w-8">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </RadioGroup>
+                        <Label>{type === 'mcq' || type === 'checkbox' ? 'Options * (Select correct answer(s))' : 'Correct Answer'}</Label>
+                        {renderAnswerFields()}
                     </div>
-                    <Button variant="outline" size="sm" onClick={addOption}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Option
-                    </Button>
+
+                    {(type === 'mcq' || type === 'checkbox') && (
+                        <Button variant="outline" size="sm" onClick={addOption}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Option
+                        </Button>
+                    )}
+
+                    <div>
+                        <Label htmlFor="rationale">Answer Rationale (Optional)</Label>
+                         <Textarea id="rationale" value={rationale} onChange={(e) => setRationale(e.target.value)} placeholder="Explain why the answer is correct. This will be shown to students after they submit the exam." />
+                    </div>
+
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
@@ -255,6 +341,16 @@ export default function ManageExamPage() {
         setDeletingQuestion(null);
     }
     
+    const getIconForType = (type: QuestionType) => {
+        switch (type) {
+            case 'mcq': return <Type className="h-4 w-4" />;
+            case 'checkbox': return <CheckSquare className="h-4 w-4" />;
+            case 'short-answer': return <MessageSquare className="h-4 w-4" />;
+            case 'paragraph': return <MessageSquare className="h-4 w-4" />;
+            default: return <FileQuestion className="h-4 w-4" />;
+        }
+    }
+    
     if (loading || !exam || !course) {
         return (
              <div className="flex justify-center items-center h-[calc(100vh-8rem)]">
@@ -322,7 +418,13 @@ export default function ManageExamPage() {
                                 <div key={q.id} className="p-3 rounded-md bg-secondary/50 flex items-center justify-between group">
                                     <div className="flex items-start gap-3">
                                         <span className="text-sm font-bold text-muted-foreground">{index + 1}.</span>
-                                        <p className="text-sm font-medium">{q.text}</p>
+                                        <div className="flex-grow">
+                                            <p className="text-sm font-medium">{q.text}</p>
+                                            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                                {getIconForType(q.type)}
+                                                <span>{q.type.replace('-', ' ')}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setQuestionDialog({ isOpen: true, question: q })}><Pencil className="h-4 w-4" /></Button>

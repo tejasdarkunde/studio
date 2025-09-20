@@ -53,7 +53,7 @@ export type MeetingLinks = {
 };
 
 export type ExamAttempt = {
-  answers: { [questionId: string]: number };
+  answers: { [questionId: string]: number | number[] | string }; // Updated to handle different answer types
   score?: number;
   submittedAt?: string; // ISO 8601 string
   isSubmitted: boolean;
@@ -96,11 +96,15 @@ export type Subject = {
   units: Unit[];
 };
 
+export type QuestionType = 'mcq' | 'checkbox' | 'short-answer' | 'paragraph';
+
 export type Question = {
     id: string;
     text: string;
+    type: QuestionType;
     options: string[];
-    correctAnswer: number; // index of the correct answer in the options array
+    correctAnswers: (number | string)[]; // index for mcq/checkbox, string for text answers
+    rationale?: string; // Optional explanation for the answer
 };
 
 export type Exam = {
