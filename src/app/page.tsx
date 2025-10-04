@@ -1,16 +1,11 @@
 
-
-"use client";
-
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Calendar, Clock, Users, XCircle, Megaphone } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import type { Batch } from '@/lib/types';
 import { getBatches, getAnnouncement } from './actions';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -106,43 +101,11 @@ const TrainingsSection = ({ title, batches, isPastSection = false }: { title: st
   );
 };
 
-const LoadingSkeleton = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-        {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-                <CardHeader>
-                    <Skeleton className="h-6 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2" />
-                </CardHeader>
-                <CardContent>
-                    <Skeleton className="h-4 w-1/3" />
-                </CardContent>
-                <CardFooter>
-                    <Skeleton className="h-10 w-full" />
-                </CardFooter>
-            </Card>
-        ))}
-    </div>
-);
-
-export default function Home() {
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [announcement, setAnnouncement] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      const [fetchedBatches, fetchedAnnouncement] = await Promise.all([
-        getBatches(),
-        getAnnouncement()
-      ]);
-      setBatches(fetchedBatches);
-      setAnnouncement(fetchedAnnouncement);
-      setLoading(false);
-    }
-    fetchData();
-  }, []);
+export default async function Home() {
+  const [batches, announcement] = await Promise.all([
+    getBatches(),
+    getAnnouncement()
+  ]);
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -201,17 +164,13 @@ export default function Home() {
         </Alert>
 
         <div className="flex flex-col items-center gap-12 w-full">
-          {loading ? (
-            <LoadingSkeleton />
-          ) : (
-            <>
-              <TrainingsSection title="Ongoing Trainings" batches={ongoing} />
-              <TrainingsSection title="Upcoming Trainings" batches={upcoming} />
-              <TrainingsSection title="Past Trainings" batches={past} isPastSection={true} />
-              <TrainingsSection title="Legacy Registrations" batches={legacy} isPastSection={true} />
-              {batches.length === 0 && !loading && <p>No training sessions found.</p>}
-            </>
-          )}
+          <>
+            <TrainingsSection title="Ongoing Trainings" batches={ongoing} />
+            <TrainingsSection title="Upcoming Trainings" batches={upcoming} />
+            <TrainingsSection title="Past Trainings" batches={past} isPastSection={true} />
+            <TrainingsSection title="Legacy Registrations" batches={legacy} isPastSection={true} />
+            {batches.length === 0 && <p>No training sessions found.</p>}
+          </>
         </div>
       </div>
     </main>
