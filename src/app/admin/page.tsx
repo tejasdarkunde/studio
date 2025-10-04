@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, HelpCircle, Check, Trash2, GraduationCap, LayoutDashboard, FileText, Settings } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, HelpCircle, Check, Trash2, GraduationCap, LayoutDashboard, FileText, Settings, Book } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1546,18 +1546,17 @@ export default function AdminPage() {
   };
 
   const SuperAdminTabs = () => (
-     <Tabs defaultValue="dashboard">
-        <TabsList>
-            <TabsTrigger value="dashboard"><LayoutDashboard className="mr-2"/>Dashboard</TabsTrigger>
-            <TabsTrigger value="trainings"><Presentation className="mr-2"/>Trainings</TabsTrigger>
-            <TabsTrigger value="content"><FileText className="mr-2"/>Content</TabsTrigger>
-            <TabsTrigger value="users"><Users className="mr-2"/>Users</TabsTrigger>
-             <TabsTrigger value="exams" asChild><Link href="/admin/exams">Exams</Link></TabsTrigger>
-            <TabsTrigger value="attendance"><CalendarCheck className="mr-2"/>Attendance</TabsTrigger>
-            <TabsTrigger value="settings"><Settings className="mr-2"/>Settings</TabsTrigger>
+     <Tabs defaultValue="dashboard" className="flex flex-col md:flex-row gap-6 md:gap-10">
+        <TabsList className="flex flex-row md:flex-col md:h-auto md:w-48 shrink-0 overflow-x-auto justify-start items-start">
+            <TabsTrigger value="dashboard" className="w-full justify-start"><LayoutDashboard className="mr-2"/>Dashboard</TabsTrigger>
+            <TabsTrigger value="content" className="w-full justify-start"><FileText className="mr-2"/>Content</TabsTrigger>
+            <TabsTrigger value="users" className="w-full justify-start"><Users className="mr-2"/>Users</TabsTrigger>
+            <TabsTrigger value="trainings" className="w-full justify-start"><Presentation className="mr-2"/>Trainings</TabsTrigger>
+            <TabsTrigger value="attendance" className="w-full justify-start"><CalendarCheck className="mr-2"/>Attendance</TabsTrigger>
+            <TabsTrigger value="settings" className="w-full justify-start"><Settings className="mr-2"/>Settings</TabsTrigger>
         </TabsList>
-        <div className="mt-6">
-            <TabsContent value="dashboard" className="mt-0">
+        <div className="flex-grow">
+            <TabsContent value="dashboard">
                 <Card>
                     <CardHeader>
                         <CardTitle>Reports</CardTitle>
@@ -1835,25 +1834,48 @@ export default function AdminPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="content" className="mt-0">
-                 <div className="space-y-6">
-                    {courses.length > 0 ? (
-                        <div className="space-y-6">
-                            {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
-                                <CourseContentManager 
-                                    key={course.id}
-                                    course={course}
-                                    onContentUpdated={fetchAllData}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12 text-muted-foreground">
-                        <Loader2 className="mx-auto h-8 w-8 animate-spin mb-4" />
-                        <p>Loading course data...</p>
-                        </div>
-                    )}
-                 </div>
+             <TabsContent value="content" className="mt-0">
+                <Tabs defaultValue="courses">
+                    <TabsList>
+                        <TabsTrigger value="courses">Courses</TabsTrigger>
+                        <TabsTrigger value="exams">Exams</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="courses" className="mt-6">
+                         <div className="space-y-6">
+                            {courses.length > 0 ? (
+                                <div className="space-y-6">
+                                    {courses.sort((a,b) => a.name.localeCompare(b.name)).map(course => (
+                                        <CourseContentManager 
+                                            key={course.id}
+                                            course={course}
+                                            onContentUpdated={fetchAllData}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-muted-foreground">
+                                <Loader2 className="mx-auto h-8 w-8 animate-spin mb-4" />
+                                <p>Loading course data...</p>
+                                </div>
+                            )}
+                         </div>
+                    </TabsContent>
+                    <TabsContent value="exams" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Exam Management</CardTitle>
+                                <CardDescription>This section has been moved. Click the button to go to the new exam management page.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button asChild>
+                                    <Link href="/admin/exams">
+                                        Go to Exam Management <ChevronRight className="ml-2"/>
+                                    </Link>
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             </TabsContent>
             <TabsContent value="users" className="mt-0">
                 <Tabs defaultValue="directory">
@@ -2219,7 +2241,7 @@ export default function AdminPage() {
     <Tabs defaultValue="trainings">
         <TabsList>
             <TabsTrigger value="trainings">My Trainings</TabsTrigger>
-            <TabsTrigger value="exams" asChild><Link href="/admin/exams">Exams</Link></TabsTrigger>
+            <TabsTrigger value="exams" asChild><Link href="/admin/exams"><Book className="mr-2 h-4 w-4"/>Exams</Link></TabsTrigger>
             <TabsTrigger value="attendance">My Attendance</TabsTrigger>
         </TabsList>
          <TabsContent value="trainings" className="mt-6">

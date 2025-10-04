@@ -35,13 +35,6 @@ export default function AdminLayout({
             <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
                  <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
                 <div className="flex items-center gap-2">
-                    {userRole === 'superadmin' && currentUser && (
-                         <Link href="/admin/profile" passHref>
-                            <Button variant="outline" size="sm">
-                                <UserCircle className="mr-2 h-4 w-4"/> My Profile
-                            </Button>
-                        </Link>
-                    )}
                     <Button variant="outline" onClick={() => {
                             sessionStorage.clear();
                             router.push('/login');

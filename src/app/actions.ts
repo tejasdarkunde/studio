@@ -1626,8 +1626,10 @@ export async function deleteExam(data: z.infer<typeof deleteExamSchema>): Promis
 // QUESTION ACTIONS
 const questionSchema = z.object({
     text: z.string().min(5, "Question text is required."),
-    options: z.array(z.string().min(1)).min(2, "At least two options are required."),
-    correctAnswer: z.number().min(0),
+    type: z.enum(['mcq', 'checkbox', 'short-answer', 'paragraph']),
+    options: z.array(z.string().min(1)),
+    correctAnswers: z.array(z.union([z.string(), z.number()])).min(0),
+    rationale: z.string().optional(),
 });
 
 const addQuestionSchema = questionSchema.extend({
@@ -1671,7 +1673,10 @@ const updateQuestionSchema = addQuestionSchema.extend({ questionId: z.string().m
 
 export async function updateQuestion(data: z.infer<typeof updateQuestionSchema>): Promise<{ success: boolean, error?: string }> {
     const validated = updateQuestionSchema.safeParse(data);
-    if (!validated.success) return { success: false, error: "Invalid data." };
+    if (!validated.success) {
+        console.log(validated.error.flatten().fieldErrors)
+        return { success: false, error: "Invalid data." };
+    }
 
     try {
         const { courseId, examId, questionId, ...questionData } = validated.data;
@@ -2068,7 +2073,7 @@ export async function verifyExamAccess(data: z.infer<typeof verifyExamAccessSche
 const saveExamProgressSchema = z.object({
     participantId: z.string().min(1),
     examId: z.string().min(1),
-    answers: z.record(z.number()),
+    answers: z.record(z.any()),
     startedAt: z.string().optional(),
 });
 
@@ -2107,7 +2112,7 @@ const submitExamSchema = z.object({
     participantId: z.string().min(1),
     courseId: z.string().min(1),
     examId: z.string().min(1),
-    answers: z.record(z.number()),
+    answers: z.record(z.any()),
 });
 
 export async function submitExam(data: z.infer<typeof submitExamSchema>): Promise<{ success: boolean; error?: string }> {
@@ -2127,8 +2132,21 @@ export async function submitExam(data: z.infer<typeof submitExamSchema>): Promis
         // 2. Calculate score
         let score = 0;
         for (const question of exam.questions) {
-            if (answers[question.id] === question.correctAnswer) {
-                score++;
+             if (question.type === 'paragraph') continue;
+
+            const correctAnswers = question.correctAnswers || [(question as any).correctAnswer];
+            const selectedAnswer = answers[question.id];
+
+            if (question.type === 'checkbox') {
+                 const correctSet = new Set(correctAnswers);
+                 const selectedSet = new Set(Array.isArray(selectedAnswer) ? selectedAnswer : []);
+                 if (correctSet.size === selectedSet.size && [...correctSet].every(val => selectedSet.has(val))) {
+                    score++;
+                }
+            } else {
+                if (Array.isArray(correctAnswers) && correctAnswers.includes(selectedAnswer)) {
+                    score++;
+                }
             }
         }
         
@@ -2179,6 +2197,9 @@ export async function getExamResults(examId: string): Promise<ExamResult[]> {
              exam = courseExams?.find(e => e.id === examId);
              if (exam) break;
         }
+        
+        const totalGradableQuestions = exam?.questions.filter(q => q.type !== 'paragraph').length || 0;
+
 
         snapshot.forEach(doc => {
             const p = doc.data() as Participant;
@@ -2191,7 +2212,7 @@ export async function getExamResults(examId: string): Promise<ExamResult[]> {
                     participantName: p.name,
                     iitpNo: p.iitpNo,
                     score: attempt.score ?? 0,
-                    totalQuestions: exam?.questions.length ?? 0,
+                    totalQuestions: totalGradableQuestions,
                     submittedAt: submittedAtTimestamp?.toDate().toISOString() || new Date().toISOString(),
                 });
             }
@@ -2273,3 +2294,4 @@ export async function updateAnnouncement(text: string): Promise<{ success: boole
     
 
     
+
