@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question } from '@/lib/types';
+import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, Registration } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
@@ -1505,6 +1505,97 @@ export default function AdminPage() {
         });
     }
 
+  const downloadCsv = (data: any[], filename: string) => {
+    if (data.length === 0) {
+      toast({ variant: 'destructive', title: 'No data to export' });
+      return;
+    }
+    const headers = Object.keys(data[0]);
+    const csvRows = [
+      headers.join(','),
+      ...data.map(row =>
+        headers.map(header => {
+          const value = String(row[header] ?? '');
+          return `"${value.replace(/"/g, '""')}"`;
+        }).join(',')
+      )
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `${filename}.csv`);
+    a.click();
+    toast({ title: 'Export Complete', description: `${filename}.csv has been downloaded.` });
+  };
+
+  const handleExportParticipants = () => {
+    const dataToExport = participants.map(p => ({
+      id: p.id,
+      name: p.name,
+      iitpNo: p.iitpNo,
+      mobile: p.mobile,
+      organization: p.organization,
+      createdAt: p.createdAt,
+      enrolledCourses: p.enrolledCourses?.join('; ') || '',
+      completedLessons: p.completedLessons?.join('; ') || '',
+      deniedCourses: p.deniedCourses?.join('; ') || ''
+    }));
+    downloadCsv(dataToExport, 'all_participants');
+  };
+
+  const handleExportTrainings = () => {
+    const dataToExport: any[] = [];
+    batches.forEach(batch => {
+      batch.registrations.forEach(reg => {
+        dataToExport.push({
+          batchId: batch.id,
+          batchName: batch.name,
+          course: batch.course,
+          batchStartDate: batch.startDate,
+          batchStartTime: batch.startTime,
+          batchEndTime: batch.endTime,
+          trainerId: batch.trainerId,
+          trainerName: trainers.find(t => t.id === batch.trainerId)?.name || '',
+          isCancelled: batch.isCancelled,
+          registrationId: reg.id,
+          participantName: reg.name,
+          participantIitpNo: reg.iitpNo,
+          participantMobile: reg.mobile,
+          participantOrganization: reg.organization,
+          registrationTime: reg.submissionTime
+        });
+      });
+    });
+    downloadCsv(dataToExport, 'all_trainings_with_registrations');
+  };
+
+  const handleExportCourses = () => {
+    const dataToExport: any[] = [];
+    courses.forEach(course => {
+      course.subjects.forEach(subject => {
+        subject.units.forEach(unit => {
+          unit.lessons.forEach(lesson => {
+            dataToExport.push({
+              courseId: course.id,
+              courseName: course.name,
+              courseStatus: course.status,
+              subjectId: subject.id,
+              subjectName: subject.name,
+              unitId: unit.id,
+              unitTitle: unit.title,
+              lessonId: lesson.id,
+              lessonTitle: lesson.title,
+              lessonDuration: lesson.duration,
+              lessonVideoUrl: lesson.videoUrl,
+            });
+          });
+        });
+      });
+    });
+    downloadCsv(dataToExport, 'all_course_structures');
+  };
+
   if (!isClient || loadingAuth) {
     return (
         <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
@@ -1546,17 +1637,16 @@ export default function AdminPage() {
   };
 
   const SuperAdminTabs = () => (
-     <Tabs defaultValue="dashboard" className="flex flex-col md:flex-row gap-6 md:gap-10">
-        <TabsList className="flex flex-row md:flex-col md:h-auto md:w-48 shrink-0 overflow-x-auto justify-start items-start">
-            <TabsTrigger value="dashboard" className="w-full justify-start"><LayoutDashboard className="mr-2"/>Dashboard</TabsTrigger>
-            <TabsTrigger value="content" className="w-full justify-start"><FileText className="mr-2"/>Content</TabsTrigger>
-            <TabsTrigger value="users" className="w-full justify-start"><Users className="mr-2"/>Users</TabsTrigger>
-            <TabsTrigger value="trainings" className="w-full justify-start"><Presentation className="mr-2"/>Trainings</TabsTrigger>
-            <TabsTrigger value="attendance" className="w-full justify-start"><CalendarCheck className="mr-2"/>Attendance</TabsTrigger>
-            <TabsTrigger value="settings" className="w-full justify-start"><Settings className="mr-2"/>Settings</TabsTrigger>
+     <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="trainings">Trainings</TabsTrigger>
+            <TabsTrigger value="content">Content</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
-        <div className="flex-grow">
-            <TabsContent value="dashboard">
+        <TabsContent value="dashboard" className="mt-6">
                 <Card>
                     <CardHeader>
                         <CardTitle>Reports</CardTitle>
@@ -1625,8 +1715,25 @@ export default function AdminPage() {
                         </div>
                     </CardContent>
                 </Card>
+                 <Card className="mt-6">
+                    <CardHeader>
+                        <CardTitle>Data Exports</CardTitle>
+                        <CardDescription>Download your core application data as CSV files for use in Looker Studio or other tools.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Button variant="outline" onClick={handleExportParticipants}>
+                            <Users className="mr-2"/> Export Participants
+                        </Button>
+                        <Button variant="outline" onClick={handleExportTrainings}>
+                            <Presentation className="mr-2"/> Export Trainings
+                        </Button>
+                        <Button variant="outline" onClick={handleExportCourses}>
+                            <BookCopy className="mr-2"/> Export Courses
+                        </Button>
+                    </CardContent>
+                </Card>
             </TabsContent>
-            <TabsContent value="trainings" className="mt-0">
+            <TabsContent value="trainings" className="mt-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                         <div>
@@ -1813,7 +1920,7 @@ export default function AdminPage() {
                         </CardContent>
                     </Card>
             </TabsContent>
-            <TabsContent value="attendance" className="mt-0">
+            <TabsContent value="attendance" className="mt-6">
                 <Card>
                     <CardHeader>
                         <CardTitle>Attendance Report</CardTitle>
@@ -1834,7 +1941,7 @@ export default function AdminPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
-             <TabsContent value="content" className="mt-0">
+             <TabsContent value="content" className="mt-6">
                 <Tabs defaultValue="courses">
                     <TabsList>
                         <TabsTrigger value="courses">Courses</TabsTrigger>
@@ -1877,7 +1984,7 @@ export default function AdminPage() {
                     </TabsContent>
                 </Tabs>
             </TabsContent>
-            <TabsContent value="users" className="mt-0">
+            <TabsContent value="users" className="mt-6">
                 <Tabs defaultValue="directory">
                     <TabsList>
                         <TabsTrigger value="directory">Directory</TabsTrigger>
@@ -2210,7 +2317,7 @@ export default function AdminPage() {
                     </TabsContent>
                 </Tabs>
             </TabsContent>
-             <TabsContent value="settings" className="mt-0">
+             <TabsContent value="settings" className="mt-6">
                 <Card>
                     <CardHeader>
                         <CardTitle>Site Settings</CardTitle>
@@ -2233,13 +2340,12 @@ export default function AdminPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
-        </div>
     </Tabs>
   );
 
   const TrainerTabs = () => (
-    <Tabs defaultValue="trainings">
-        <TabsList>
+    <Tabs defaultValue="trainings" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="trainings">My Trainings</TabsTrigger>
             <TabsTrigger value="exams" asChild><Link href="/admin/exams"><Book className="mr-2 h-4 w-4"/>Exams</Link></TabsTrigger>
             <TabsTrigger value="attendance">My Attendance</TabsTrigger>
