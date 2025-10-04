@@ -1,13 +1,18 @@
 
+"use client";
+
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Calendar, Clock, Users, XCircle, Megaphone } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, Users, XCircle, Megaphone, Loader2 } from 'lucide-react';
 import type { Batch } from '@/lib/types';
 import { getBatches, getAnnouncement } from './actions';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
   const formatDate = (dateString: string) => {
@@ -89,8 +94,33 @@ const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
   )
 };
 
-const TrainingsSection = ({ title, batches, isPastSection = false }: { title: string, batches: Batch[], isPastSection?: boolean }) => {
-  if (batches.length === 0) return null;
+const TrainingsSection = ({ title, batches, isPastSection = false, isLoading }: { title: string, batches?: Batch[], isPastSection?: boolean, isLoading?: boolean }) => {
+  if (isLoading) {
+      return (
+          <div className="w-full">
+            <h2 className="text-2xl font-semibold text-primary mb-4">{title}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader>
+                            <Skeleton className="h-5 w-2/4 mb-2" />
+                            <Skeleton className="h-7 w-3/4" />
+                            <Skeleton className="h-5 w-full mt-1" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-5 w-1/3" />
+                        </CardContent>
+                        <CardFooter>
+                            <Skeleton className="h-10 w-full" />
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        </div>
+      )
+  }
+  if (!batches || batches.length === 0) return null;
+
   return (
     <div className="w-full">
       <h2 className="text-2xl font-semibold text-primary mb-4">{title}</h2>
@@ -101,11 +131,23 @@ const TrainingsSection = ({ title, batches, isPastSection = false }: { title: st
   );
 };
 
-export default async function Home() {
-  const [batches, announcement] = await Promise.all([
-    getBatches(),
-    getAnnouncement()
-  ]);
+export default function Home() {
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [announcement, setAnnouncement] = useState('');
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    async function fetchData() {
+        const [fetchedBatches, fetchedAnnouncement] = await Promise.all([
+            getBatches(),
+            getAnnouncement()
+        ]);
+        setBatches(fetchedBatches);
+        setAnnouncement(fetchedAnnouncement);
+        setLoading(false);
+    }
+    fetchData();
+  }, []);
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -155,22 +197,25 @@ export default async function Home() {
             </p>
         </div>
         
-        <Alert className="mb-12 bg-secondary">
-            <Megaphone className="h-4 w-4" />
-            <AlertTitle>Announcements & Notices</AlertTitle>
-            <AlertDescription>
-                {announcement}
-            </AlertDescription>
-        </Alert>
+        {loading ? (
+             <Skeleton className="h-20 w-full mb-12" />
+        ) : (
+            <Alert className="mb-12 bg-secondary">
+                <Megaphone className="h-4 w-4" />
+                <AlertTitle>Announcements & Notices</AlertTitle>
+                <AlertDescription>
+                    {announcement}
+                </AlertDescription>
+            </Alert>
+        )}
+
 
         <div className="flex flex-col items-center gap-12 w-full">
-          <>
-            <TrainingsSection title="Ongoing Trainings" batches={ongoing} />
-            <TrainingsSection title="Upcoming Trainings" batches={upcoming} />
-            <TrainingsSection title="Past Trainings" batches={past} isPastSection={true} />
-            <TrainingsSection title="Legacy Registrations" batches={legacy} isPastSection={true} />
-            {batches.length === 0 && <p>No training sessions found.</p>}
-          </>
+            <TrainingsSection title="Ongoing Trainings" batches={ongoing} isLoading={loading} />
+            <TrainingsSection title="Upcoming Trainings" batches={upcoming} isLoading={loading} />
+            <TrainingsSection title="Past Trainings" batches={past} isPastSection={true} isLoading={loading} />
+            <TrainingsSection title="Legacy Registrations" batches={legacy} isPastSection={true} isLoading={loading}/>
+            {!loading && batches.length === 0 && <p>No training sessions found.</p>}
         </div>
       </div>
     </main>
