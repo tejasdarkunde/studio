@@ -135,9 +135,11 @@ export default function Home() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [announcement, setAnnouncement] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showAllPast, setShowAllPast] = useState(false);
   
   useEffect(() => {
     async function fetchData() {
+        setLoading(true);
         const [fetchedBatches, fetchedAnnouncement] = await Promise.all([
             getBatches(),
             getAnnouncement()
@@ -176,6 +178,8 @@ export default function Home() {
   
   const legacy = batches.filter(b => !b.startDate);
 
+  const displayedPast = showAllPast ? past : past.slice(0, 6);
+
   return (
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center min-h-screen">
       <div className="w-full max-w-6xl relative">
@@ -200,20 +204,29 @@ export default function Home() {
         {loading ? (
              <Skeleton className="h-20 w-full mb-12" />
         ) : (
-            <Alert className="mb-12 bg-secondary">
-                <Megaphone className="h-4 w-4" />
-                <AlertTitle>Announcements & Notices</AlertTitle>
-                <AlertDescription>
-                    {announcement}
-                </AlertDescription>
-            </Alert>
+            announcement && (
+                <Alert className="mb-12 bg-secondary">
+                    <Megaphone className="h-4 w-4" />
+                    <AlertTitle>Announcements & Notices</AlertTitle>
+                    <AlertDescription>
+                        {announcement}
+                    </AlertDescription>
+                </Alert>
+            )
         )}
 
 
         <div className="flex flex-col items-center gap-12 w-full">
             <TrainingsSection title="Ongoing Trainings" batches={ongoing} isLoading={loading} />
             <TrainingsSection title="Upcoming Trainings" batches={upcoming} isLoading={loading} />
-            <TrainingsSection title="Past Trainings" batches={past} isPastSection={true} isLoading={loading} />
+            <TrainingsSection title="Past Trainings" batches={displayedPast} isPastSection={true} isLoading={loading} />
+             {!loading && past.length > 6 && !showAllPast && (
+                <div className="w-full text-center -mt-6">
+                    <Button variant="secondary" onClick={() => setShowAllPast(true)}>
+                        Show All Past Trainings
+                    </Button>
+                </div>
+            )}
             <TrainingsSection title="Legacy Registrations" batches={legacy} isPastSection={true} isLoading={loading}/>
             {!loading && batches.length === 0 && <p>No training sessions found.</p>}
         </div>
