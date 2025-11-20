@@ -19,11 +19,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, HelpCircle, Check, Trash2, GraduationCap, LayoutDashboard, FileText, Settings, Book } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, HelpCircle, Check, Trash2, GraduationCap, LayoutDashboard, FileText, Settings, Book, Image as ImageIcon } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, cancelBatch, unCancelBatch, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getAnnouncement, updateAnnouncement } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, cancelBatch, unCancelBatch, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getSiteConfig, updateSiteConfig } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -831,25 +831,27 @@ export default function AdminPage() {
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [scheduleDateRange, setScheduleDateRange] = useState<{from?: Date, to?: Date}>({});
   const [announcement, setAnnouncement] = useState('');
-  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState('');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
 
   const { toast } = useToast();
 
   const fetchAllData = useCallback(async () => {
     const role = sessionStorage.getItem('userRole');
-    const actions: Promise<any>[] = [getBatches(), getParticipants(), getTrainers(), getCourses(), getAnnouncement()];
+    const actions: Promise<any>[] = [getBatches(), getParticipants(), getTrainers(), getCourses(), getSiteConfig()];
     if (role === 'superadmin') {
         actions.push(getSuperAdmins(), getOrganizations(), getOrganizationAdmins());
     }
     
-    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, fetchedAnnouncement, fetchedAdmins, fetchedOrgs, fetchedOrgAdmins] = await Promise.all(actions);
+    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, siteConfig, fetchedAdmins, fetchedOrgs, fetchedOrgAdmins] = await Promise.all(actions);
 
     setBatches(fetchedBatches);
     setParticipants(fetchedParticipants);
     setTrainers(fetchedTrainers);
     setCourses(fetchedCourses);
-    setAnnouncement(fetchedAnnouncement);
+    setAnnouncement(siteConfig.announcement);
+    setHeroImageUrl(siteConfig.heroImageUrl);
     if(fetchedOrgs) setOrganizations(fetchedOrgs);
     if(fetchedOrgAdmins) setOrganizationAdmins(fetchedOrgAdmins);
 
@@ -1425,15 +1427,15 @@ export default function AdminPage() {
       setIsBackfilling(false);
   }
   
-    const handleSaveAnnouncement = async () => {
-        setIsSavingAnnouncement(true);
-        const result = await updateAnnouncement(announcement);
+    const handleSaveSettings = async () => {
+        setIsSavingSettings(true);
+        const result = await updateSiteConfig({ announcement, heroImageUrl });
         if(result.success) {
-            toast({ title: 'Announcement Updated' });
+            toast({ title: 'Settings Updated' });
         } else {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
         }
-        setIsSavingAnnouncement(false);
+        setIsSavingSettings(false);
     }
 
     const formatTime = (timeString: string) => {
@@ -2323,9 +2325,9 @@ export default function AdminPage() {
                         <CardTitle>Site Settings</CardTitle>
                         <CardDescription>Manage global settings for the training portal.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <Label htmlFor="announcement-text">Homepage Announcement</Label>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="announcement-text" className="flex items-center gap-2"><Settings className="h-4 w-4"/> Homepage Announcement</Label>
                             <Textarea 
                                 id="announcement-text" 
                                 value={announcement}
@@ -2334,8 +2336,17 @@ export default function AdminPage() {
                                 rows={4}
                             />
                         </div>
-                        <Button onClick={handleSaveAnnouncement} disabled={isSavingAnnouncement}>
-                            {isSavingAnnouncement ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save Announcement'}
+                        <div className="space-y-2">
+                            <Label htmlFor="hero-image-url" className="flex items-center gap-2"><ImageIcon className="h-4 w-4"/> Homepage Hero Image URL</Label>
+                            <Input 
+                                id="hero-image-url" 
+                                value={heroImageUrl}
+                                onChange={(e) => setHeroImageUrl(e.target.value)}
+                                placeholder="https://example.com/your-image.jpg"
+                            />
+                        </div>
+                        <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
+                            {isSavingSettings ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save Settings'}
                         </Button>
                     </CardContent>
                 </Card>

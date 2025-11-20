@@ -2264,34 +2264,42 @@ export async function deleteExamAttempt(data: z.infer<typeof deleteExamAttemptSc
 }
 
 // SITE SETTINGS
-export async function getAnnouncement(): Promise<string> {
+export async function getSiteConfig(): Promise<{ announcement: string, heroImageUrl: string }> {
     try {
-        const settingsDocRef = doc(db, 'siteSettings', 'announcement');
-        const docSnap = await getDoc(settingsDocRef);
+        const docRef = doc(db, 'siteSettings', 'config');
+        const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists() && docSnap.data().text) {
-            return docSnap.data().text;
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            return {
+                announcement: data.announcement || 'Welcome to the new training portal. All upcoming sessions and important notices will be posted here. Please check back regularly for updates.',
+                heroImageUrl: data.heroImageUrl || 'https://picsum.photos/seed/tech/1600/600',
+            };
         }
-        // Return a default message if not set
-        return 'Welcome to the new training portal. All upcoming sessions and important notices will be posted here. Please check back regularly for updates.';
+        return {
+            announcement: 'Welcome to the new training portal. All upcoming sessions and important notices will be posted here. Please check back regularly for updates.',
+            heroImageUrl: 'https://picsum.photos/seed/tech/1600/600',
+        };
     } catch(error) {
-        console.error("Error fetching announcement:", error);
-        return 'Could not load announcement.';
+        console.error("Error fetching site config:", error);
+        return {
+            announcement: 'Could not load announcement.',
+            heroImageUrl: 'https://picsum.photos/seed/tech/1600/600',
+        };
     }
 }
 
-export async function updateAnnouncement(text: string): Promise<{ success: boolean; error?: string }> {
+export async function updateSiteConfig(data: { announcement?: string; heroImageUrl?: string }): Promise<{ success: boolean; error?: string }> {
     try {
-        const settingsDocRef = doc(db, 'siteSettings', 'announcement');
-        await setDoc(settingsDocRef, { text: text }, { merge: true });
+        const settingsDocRef = doc(db, 'siteSettings', 'config');
+        await setDoc(settingsDocRef, data, { merge: true });
         return { success: true };
     } catch(error) {
-        console.error("Error updating announcement:", error);
-        return { success: false, error: 'Could not update announcement in the database.' };
+        console.error("Error updating site config:", error);
+        return { success: false, error: 'Could not update site configuration in the database.' };
     }
 }
       
     
 
     
-

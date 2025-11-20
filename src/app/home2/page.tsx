@@ -1,6 +1,6 @@
 
 import Image from 'next/image';
-import { getBatches } from '@/app/actions';
+import { getBatches, getSiteConfig } from '@/app/actions';
 import type { Batch } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,13 +66,14 @@ const TrainingCard = ({ batch }: { batch: Batch }) => {
 export default async function Home2Page() {
   const allBatches = await getBatches();
   const recentBatches = allBatches.slice(0, 3);
+  const { heroImageUrl } = await getSiteConfig();
 
   return (
     <main>
-      <section className="relative w-full h-[400px] md:h-[500px] flex items-center justify-center text-white">
+      <section className="relative w-full h-[300px] md:h-[400px] flex items-center justify-center text-white">
         {/* Background Image */}
         <Image
-          src="https://picsum.photos/seed/tech/1600/600"
+          src={heroImageUrl}
           alt="Hero background"
           fill
           className="object-cover"
