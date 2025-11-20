@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Calendar, Clock, Users, XCircle, Megaphone, Loader2 } from 'lucide-react';
 import type { Batch } from '@/lib/types';
-import { getBatches, getAnnouncement } from '../actions';
+import { getBatches, getSiteConfig } from '../actions';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useEffect, useState } from 'react';
@@ -140,12 +140,12 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
         setLoading(true);
-        const [fetchedBatches, fetchedAnnouncement] = await Promise.all([
+        const [fetchedBatches, siteConfig] = await Promise.all([
             getBatches(),
-            getAnnouncement()
+            getSiteConfig()
         ]);
         setBatches(fetchedBatches);
-        setAnnouncement(fetchedAnnouncement);
+        setAnnouncement(siteConfig.announcement);
         setLoading(false);
     }
     fetchData();
@@ -174,7 +174,7 @@ export default function Home() {
     const eventDate = new Date(b.startDate);
     eventDate.setHours(0,0,0,0);
     return eventDate < today || (eventDate.getTime() === today.getTime() && b.endTime <= currentTime);
-  });
+  }).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
   
   const legacy = batches.filter(b => !b.startDate);
 
