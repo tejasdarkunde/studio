@@ -26,7 +26,7 @@ export default function RootLayout({
         <div className="min-h-screen flex flex-col">
            <header className="bg-background border-b sticky top-0 z-10">
             <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
-                 <Link href="/home" className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</Link>
+                 <Link href="/home2" className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</Link>
                 <div className="flex items-center gap-2">
                     <Button asChild variant="ghost"><Link href="/home">Home</Link></Button>
                     <div className="flex gap-4">
