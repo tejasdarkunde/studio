@@ -72,7 +72,7 @@ const TrainingCard = ({ batch, isPast }: { batch: Batch; isPast: boolean }) => {
                 <Tooltip>
                     <TooltipTrigger asChild>
                          <Button className="w-full" disabled>
-                           {batch.isCancelled ? 'Cancelled' : 'View Details'} <ArrowRight className="ml-2" />
+                           {batch.isCancelled ? 'Cancelled' : 'View Details'} { !batch.isCancelled && <ArrowRight className="ml-2" /> }
                         </Button>
                     </TooltipTrigger>
                      {batch.isCancelled && batch.cancellationReason && (
