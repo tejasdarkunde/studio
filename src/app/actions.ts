@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt, ExamResult } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt, ExamResult, FormAdmin } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -13,7 +13,7 @@ const loginSchema = z.object({
   password: z.string().min(1, { message: "Password is required." }),
 });
 
-export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer' | 'organization-admin'; user?: SuperAdmin | OrganizationAdmin; trainerId?: string; organizationName?: string; error?: string }> {
+export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer' | 'organization-admin' | 'formadmin'; user?: SuperAdmin | OrganizationAdmin | FormAdmin; trainerId?: string; organizationName?: string; error?: string }> {
     const validatedFields = loginSchema.safeParse(data);
     if (!validatedFields.success) {
         return { success: false, error: "Invalid login data." };
@@ -72,6 +72,21 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
                 const { password, ...user } = orgAdminData;
                 const createdAt = user.createdAt as unknown as Timestamp;
                 return { success: true, role: 'organization-admin', user: {id: orgAdminDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as OrganizationAdmin, organizationName: user.organizationName };
+            }
+        }
+
+        // 4. Check for Form Admin
+        const formAdminsCollection = collection(db, "formAdmins");
+        const faQuery = query(formAdminsCollection, where("username", "==", username));
+        const faSnapshot = await getDocs(faQuery);
+
+        if (!faSnapshot.empty) {
+            const formAdminDoc = faSnapshot.docs[0];
+            const formAdminData = formAdminDoc.data() as FormAdmin;
+            if (formAdminData.password === password) {
+                const { password, ...user } = formAdminData;
+                const createdAt = user.createdAt as unknown as Timestamp;
+                return { success: true, role: 'formadmin', user: {id: formAdminDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as FormAdmin };
             }
         }
         
@@ -2303,3 +2318,4 @@ export async function updateSiteConfig(data: { announcement?: string; heroImageU
     
 
     
+

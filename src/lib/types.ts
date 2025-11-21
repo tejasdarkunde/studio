@@ -31,6 +31,14 @@ export type Trainer = {
     createdAt: string; // ISO 8601 string format
 };
 
+export type FormAdmin = {
+    id: string;
+    name: string;
+    username: string;
+    password?: string;
+    createdAt: string; // ISO 8601 string format
+};
+
 export type Batch = {
   id: string;
   name: string;
