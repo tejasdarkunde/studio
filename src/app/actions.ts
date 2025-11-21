@@ -2023,6 +2023,115 @@ export async function deleteOrganizationAdmin(id: string): Promise<{ success: bo
     }
 }
 
+// FORM ADMIN ACTIONS
+const formAdminSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  username: z.string().min(3, "Username must be at least 3 characters."),
+  password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+});
+
+export async function getFormAdmins(): Promise<FormAdmin[]> {
+    try {
+        const formAdminsCollectionRef = collection(db, "formAdmins");
+        const q = query(formAdminsCollectionRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+            const { password, ...rest } = data;
+            return {
+                id: doc.id,
+                ...rest,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            } as FormAdmin;
+        });
+    } catch (error) {
+        console.error("Error fetching form admins:", error);
+        return [];
+    }
+}
+
+export async function addFormAdmin(data: z.infer<typeof formAdminSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = formAdminSchema.safeParse(data);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+    if (!validatedFields.data.password) {
+        return { success: false, error: "Password is required for new admins." };
+    }
+    
+    try {
+        const { username } = validatedFields.data;
+        const formAdminsCollection = collection(db, "formAdmins");
+        
+        const duplicateQuery = query(formAdminsCollection, where("username", "==", username));
+        const duplicateSnapshot = await getDocs(duplicateQuery);
+        if(!duplicateSnapshot.empty) {
+            return { success: false, error: "This username is already taken."};
+        }
+        
+        await addDoc(formAdminsCollection, {
+            ...validatedFields.data,
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding form admin:", error);
+        return { success: false, error: "Could not add form admin." };
+    }
+}
+
+const updateFormAdminSchema = formAdminSchema.extend({
+  id: z.string().min(1),
+});
+
+export async function updateFormAdmin(data: z.infer<typeof updateFormAdminSchema>): Promise<{ success: boolean; error?: string }> {
+    const { id, ...adminData } = data;
+    const validatedFields = formAdminSchema.safeParse(adminData);
+    if (!validatedFields.success) {
+        return { success: false, error: "Invalid data." };
+    }
+
+    try {
+        const adminDocRef = doc(db, 'formAdmins', id);
+        
+        const originalDoc = await getDoc(adminDocRef);
+        if (originalDoc.exists() && originalDoc.data().username !== validatedFields.data.username) {
+            const duplicateQuery = query(collection(db, "formAdmins"), where("username", "==", validatedFields.data.username));
+            const duplicateSnapshot = await getDocs(duplicateQuery);
+            if(!duplicateSnapshot.empty) {
+                return { success: false, error: "This username is already taken." };
+            }
+        }
+
+        const updateData: any = { ...validatedFields.data };
+        if (!updateData.password) {
+            delete updateData.password;
+        }
+
+        await updateDoc(adminDocRef, updateData);
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error updating form admin:", error);
+        return { success: false, error: "Could not update form admin." };
+    }
+}
+
+export async function deleteFormAdmin(id: string): Promise<{ success: boolean; error?: string }> {
+    if (!id) return { success: false, error: "Invalid ID." };
+    try {
+        const adminDocRef = doc(db, 'formAdmins', id);
+        await deleteDoc(adminDocRef);
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting form admin:", error);
+        return { success: false, error: "Could not delete form admin." };
+    }
+}
+
+
 const verifyExamAccessSchema = z.object({
   iitpNo: z.string().min(1),
   examId: z.string().min(1),
@@ -2318,4 +2427,5 @@ export async function updateSiteConfig(data: { announcement?: string; heroImageU
     
 
     
+
 

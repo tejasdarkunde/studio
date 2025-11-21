@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, Registration } from '@/lib/types';
+import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, Registration, FormAdmin } from '@/lib/types';
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
@@ -19,11 +19,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, HelpCircle, Check, Trash2, GraduationCap, LayoutDashboard, FileText, Settings, Book, Image as ImageIcon } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser, BookUp, Presentation, School, Building, Search, Loader2, UserCog, CalendarCheck, BookCopy, ListPlus, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Lock, Unlock, Replace, CircleDot, Circle, CircleSlash, ShieldCheck, ShieldOff, Phone, UserCircle, Briefcase, RefreshCw, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, HelpCircle, Check, Trash2, GraduationCap, LayoutDashboard, FileText, Settings, Book, Image as ImageIcon, Contact } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, cancelBatch, unCancelBatch, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getSiteConfig, updateSiteConfig } from '@/app/actions';
+import { addCourse, updateBatch, getBatches, createBatch, deleteBatch, getParticipants, addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, transferStudents, updateCourseStatus, deleteCourse, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, cancelBatch, unCancelBatch, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getSiteConfig, updateSiteConfig, getFormAdmins, addFormAdmin, updateFormAdmin, deleteFormAdmin } from '@/app/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -728,6 +728,84 @@ const ManageOrganizationAdminDialog = ({
     )
 }
 
+const ManageFormAdminDialog = ({
+    isOpen,
+    onClose,
+    onSave,
+    initialData,
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (data: {id?: string; name: string; username: string; password?: string;}) => Promise<void>;
+    initialData?: FormAdmin | null;
+}) => {
+    const [name, setName] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if(isOpen) {
+            setName(initialData?.name || '');
+            setUsername(initialData?.username || '');
+            setPassword('');
+            setIsSaving(false);
+        }
+    }, [isOpen, initialData]);
+
+    const handleSave = async () => {
+        if (!name.trim() || !username.trim()) {
+            toast({ variant: 'destructive', title: "Missing fields", description: "Name and username are required."});
+            return;
+        }
+        if (!initialData && !password.trim()) {
+            toast({ variant: 'destructive', title: "Missing fields", description: "Password is required for new admins."});
+            return;
+        }
+        setIsSaving(true);
+        await onSave({
+            id: initialData?.id,
+            name,
+            username,
+            password: password || undefined,
+        });
+        setIsSaving(false);
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>{initialData ? 'Edit Form Admin' : 'Add New Form Admin'}</DialogTitle>
+                  <DialogDescription>{initialData ? `Update details for ${initialData.name}.` : 'Create a new user account for the form portal.'}</DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                  <div>
+                      <Label htmlFor="form-admin-name">Full Name</Label>
+                      <Input id="form-admin-name" value={name} onChange={(e) => setName(e.target.value)} />
+                  </div>
+                  <Separator />
+                  <div>
+                      <Label htmlFor="form-admin-username">Username</Label>
+                      <Input id="form-admin-username" value={username} onChange={(e) => setUsername(e.target.value)} />
+                  </div>
+                   <div>
+                      <Label htmlFor="form-admin-password">Password</Label>
+                      <Input id="form-admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={initialData ? 'Leave blank to keep unchanged' : 'Min 6 characters'} />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : (initialData ? 'Save Changes' : 'Add Admin')}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+        </Dialog>
+    )
+}
+
 const CancelBatchDialog = ({
     isOpen,
     onClose,
@@ -788,6 +866,7 @@ export default function AdminPage() {
   const [superAdmins, setSuperAdmins] = useState<(SuperAdmin & {isPrimary: boolean})[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationAdmins, setOrganizationAdmins] = useState<OrganizationAdmin[]>([]);
+  const [formAdmins, setFormAdmins] = useState<FormAdmin[]>([]);
   
   // Auth states
   const [isClient, setIsClient] = useState(false);
@@ -815,6 +894,9 @@ export default function AdminPage() {
   const [editingOrgAdmin, setEditingOrgAdmin] = useState<OrganizationAdmin | null>(null);
   const [isAddOrgAdminOpen, setIsAddOrgAdminOpen] = useState(false);
   const [deletingOrgAdmin, setDeletingOrgAdmin] = useState<OrganizationAdmin | null>(null);
+  const [editingFormAdmin, setEditingFormAdmin] = useState<FormAdmin | null>(null);
+  const [isAddFormAdminOpen, setIsAddFormAdminOpen] = useState(false);
+  const [deletingFormAdmin, setDeletingFormAdmin] = useState<FormAdmin | null>(null);
 
   // Form & Filter states
   const [searchIitpNo, setSearchIitpNo] = useState('');
@@ -841,10 +923,10 @@ export default function AdminPage() {
     const role = sessionStorage.getItem('userRole');
     const actions: Promise<any>[] = [getBatches(), getParticipants(), getTrainers(), getCourses(), getSiteConfig()];
     if (role === 'superadmin') {
-        actions.push(getSuperAdmins(), getOrganizations(), getOrganizationAdmins());
+        actions.push(getSuperAdmins(), getOrganizations(), getOrganizationAdmins(), getFormAdmins());
     }
     
-    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, siteConfig, fetchedAdmins, fetchedOrgs, fetchedOrgAdmins] = await Promise.all(actions);
+    const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses, siteConfig, fetchedAdmins, fetchedOrgs, fetchedOrgAdmins, fetchedFormAdmins] = await Promise.all(actions);
 
     setBatches(fetchedBatches);
     setParticipants(fetchedParticipants);
@@ -854,6 +936,7 @@ export default function AdminPage() {
     setHeroImageUrl(siteConfig.heroImageUrl);
     if(fetchedOrgs) setOrganizations(fetchedOrgs);
     if(fetchedOrgAdmins) setOrganizationAdmins(fetchedOrgAdmins);
+    if(fetchedFormAdmins) setFormAdmins(fetchedFormAdmins);
 
     if(fetchedAdmins) {
          const adminsWithPrimaryFlag = await Promise.all(fetchedAdmins.map(async (admin: SuperAdmin) => {
@@ -1410,6 +1493,31 @@ export default function AdminPage() {
            toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
       setDeletingOrgAdmin(null);
+  }
+
+  const handleSaveFormAdmin = async (data: {id?: string; name: string; username: string; password?: string;}) => {
+      const action = data.id ? updateFormAdmin : addFormAdmin;
+      const result = await action(data as any);
+      if(result.success) {
+          toast({ title: `Form Admin ${data.id ? 'Updated' : 'Added'}` });
+          fetchAllData();
+          setEditingFormAdmin(null);
+          setIsAddFormAdminOpen(false);
+      } else {
+          toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+  }
+
+  const handleDeleteFormAdmin = async () => {
+      if(!deletingFormAdmin) return;
+      const result = await deleteFormAdmin(deletingFormAdmin.id);
+      if(result.success) {
+          toast({ title: "Form Admin Deleted" });
+          fetchAllData();
+      } else {
+           toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+      setDeletingFormAdmin(null);
   }
 
   const handleBackfillOrgs = async () => {
@@ -1988,7 +2096,7 @@ export default function AdminPage() {
             </TabsContent>
             <TabsContent value="users" className="mt-6">
                 <Tabs defaultValue="directory">
-                    <TabsList>
+                    <TabsList className="grid w-full grid-cols-7">
                         <TabsTrigger value="directory">Directory</TabsTrigger>
                         <TabsTrigger value="add">Add / Import</TabsTrigger>
                         <TabsTrigger value="update">Update User</TabsTrigger>
@@ -2293,29 +2401,77 @@ export default function AdminPage() {
                         </div>
                     </TabsContent>
                     <TabsContent value="admins" className="mt-6">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle>Superadmin Management</CardTitle>
-                                    <CardDescription>Manage users with full administrative privileges.</CardDescription>
-                                </div>
-                                {(currentUser?.isPrimary || currentUser?.canManageAdmins) && (
-                                    <Button onClick={() => setIsAddAdminOpen(true)}>
-                                        <ShieldCheck className="mr-2 h-4 w-4" /> Add Superadmin
-                                    </Button>
-                                )}
-                            </CardHeader>
-                            <CardContent>
-                                {currentUser && (
-                                    <SuperAdminsTable 
-                                        superAdmins={superAdmins}
-                                        onEdit={(admin) => setEditingAdmin(admin)}
-                                        onDelete={(admin) => setDeletingAdmin(admin)}
-                                        currentUser={currentUser}
-                                    />
-                                )}
-                            </CardContent>
-                        </Card>
+                         <Tabs defaultValue="superadmins">
+                            <TabsList>
+                                <TabsTrigger value="superadmins">Super Admins</TabsTrigger>
+                                <TabsTrigger value="formadmins">Form Admins</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="superadmins" className="mt-6">
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div>
+                                            <CardTitle>Superadmin Management</CardTitle>
+                                            <CardDescription>Manage users with full administrative privileges.</CardDescription>
+                                        </div>
+                                        {(currentUser?.isPrimary || currentUser?.canManageAdmins) && (
+                                            <Button onClick={() => setIsAddAdminOpen(true)}>
+                                                <ShieldCheck className="mr-2 h-4 w-4" /> Add Superadmin
+                                            </Button>
+                                        )}
+                                    </CardHeader>
+                                    <CardContent>
+                                        {currentUser && (
+                                            <SuperAdminsTable 
+                                                superAdmins={superAdmins}
+                                                onEdit={(admin) => setEditingAdmin(admin)}
+                                                onDelete={(admin) => setDeletingAdmin(admin)}
+                                                currentUser={currentUser}
+                                            />
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="formadmins" className="mt-6">
+                                 <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div>
+                                            <CardTitle>Form Admin Management</CardTitle>
+                                            <CardDescription>Manage users for the form creation portal.</CardDescription>
+                                        </div>
+                                        <Button onClick={() => setIsAddFormAdminOpen(true)}>
+                                            <Contact className="mr-2 h-4 w-4" /> Add Form Admin
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="border rounded-lg">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Name</TableHead>
+                                                        <TableHead>Username</TableHead>
+                                                        <TableHead>Date Added</TableHead>
+                                                        <TableHead className="text-right">Actions</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {formAdmins.map(admin => (
+                                                        <TableRow key={admin.id}>
+                                                            <TableCell className="font-medium">{admin.name}</TableCell>
+                                                            <TableCell>{admin.username}</TableCell>
+                                                            <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
+                                                            <TableCell className="text-right">
+                                                                <Button variant="ghost" size="icon" onClick={() => setEditingFormAdmin(admin)}><Pencil className="h-4 w-4"/></Button>
+                                                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeletingFormAdmin(admin)}><Trash className="h-4 w-4"/></Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                         </Tabs>
                     </TabsContent>
                 </Tabs>
             </TabsContent>
@@ -2703,6 +2859,19 @@ export default function AdminPage() {
         onConfirm={handleDeleteOrgAdmin}
         title="Delete Organization Admin?"
         description={`This will permanently delete the admin account for "${deletingOrgAdmin?.name}". This action cannot be undone.`}
+      />
+      <ManageFormAdminDialog
+        isOpen={isAddFormAdminOpen || !!editingFormAdmin}
+        onClose={() => {setIsAddFormAdminOpen(false); setEditingFormAdmin(null);}}
+        onSave={handleSaveFormAdmin}
+        initialData={editingFormAdmin}
+      />
+       <ConfirmDialog 
+        isOpen={!!deletingFormAdmin}
+        onClose={() => setDeletingFormAdmin(null)}
+        onConfirm={handleDeleteFormAdmin}
+        title="Delete Form Admin?"
+        description={`This will permanently delete the form admin account for "${deletingFormAdmin?.name}". This action cannot be undone.`}
       />
       <div className="w-full">
          {isClient && (userRole === 'superadmin' ? <SuperAdminTabs /> : <TrainerTabs />)}
