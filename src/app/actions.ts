@@ -2397,18 +2397,18 @@ export async function getSiteConfig(): Promise<{ announcement: string, heroImage
             const data = docSnap.data();
             return {
                 announcement: data.announcement || 'Welcome to the new training portal. All upcoming sessions and important notices will be posted here. Please check back regularly for updates.',
-                heroImageUrl: data.heroImageUrl || 'https://picsum.photos/seed/tech/1600/600',
+                heroImageUrl: data.heroImageUrl || 'https://bsagroup.in/wp-content/uploads/2024/12/about-updated-bsa-website-2048x435.png',
             };
         }
         return {
             announcement: 'Welcome to the new training portal. All upcoming sessions and important notices will be posted here. Please check back regularly for updates.',
-            heroImageUrl: 'https://picsum.photos/seed/tech/1600/600',
+            heroImageUrl: 'https://bsagroup.in/wp-content/uploads/2024/12/about-updated-bsa-website-2048x435.png',
         };
     } catch(error) {
         console.error("Error fetching site config:", error);
         return {
             announcement: 'Could not load announcement.',
-            heroImageUrl: 'https://picsum.photos/seed/tech/1600/600',
+            heroImageUrl: 'https://bsagroup.in/wp-content/uploads/2024/12/about-updated-bsa-website-2048x435.png',
         };
     }
 }
@@ -2427,5 +2427,6 @@ export async function updateSiteConfig(data: { announcement?: string; heroImageU
     
 
     
+
 
 
