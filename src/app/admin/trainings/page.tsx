@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { Batch, Trainer, Course } from '@/lib/types';
 import { getBatches, getTrainers, getCourses, createBatch, updateBatch, deleteBatch, cancelBatch, unCancelBatch } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Ban, RotateCcw, Loader2, Calendar as CalendarIcon, Download, ChevronLeft } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Ban, RotateCcw, Loader2, Calendar as CalendarIcon, Download, ChevronLeft, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -265,6 +265,12 @@ export default function TrainingsPage() {
         });
     }
 
+    const handleCopyLink = (batchId: string) => {
+        const url = `${window.location.origin}/register/${batchId}`;
+        navigator.clipboard.writeText(url);
+        toast({ title: "Link Copied!", description: "Registration link copied to clipboard." });
+    };
+
     if(loading) {
         return (
             <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
@@ -467,7 +473,10 @@ export default function TrainingsPage() {
                                                 </TableCell>
                                                 <TableCell className={cn(batch.isCancelled && "line-through")}>{trainer?.name || 'N/A'}</TableCell>
                                                 <TableCell>{batch.registrations?.length || 0}</TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-right space-x-0">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleCopyLink(batch.id)} title="Copy direct link">
+                                                        <LinkIcon className="h-4 w-4"/>
+                                                    </Button>
                                                     <Button variant="ghost" size="icon" onClick={() => setEditingBatch(batch)} disabled={batch.isCancelled}>
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
@@ -503,3 +512,4 @@ export default function TrainingsPage() {
         </>
     );
 }
+
