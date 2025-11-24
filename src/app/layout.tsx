@@ -15,6 +15,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const version = "0.1.0"; // Hardcode version to avoid import issues
+
   return (
     <html lang="en">
       <head>
@@ -43,6 +45,12 @@ export default function RootLayout({
           <main className="flex-grow">
             {children}
           </main>
+           <footer className="bg-background border-t">
+              <div className="container mx-auto px-4 md:px-8 h-14 flex items-center justify-between text-sm text-muted-foreground">
+                  <p>&copy; {new Date().getFullYear()} BSA Training Academy. All rights reserved.</p>
+                  <p>Version {version}</p>
+              </div>
+          </footer>
         </div>
         <Toaster />
       </body>
