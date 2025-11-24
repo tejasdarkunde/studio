@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Download, Users, BookUser, BookUp, Presentation, School, Building, Loader2, CalendarCheck, BookCopy, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, Settings, Book, Image as ImageIcon } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Download, Users, BookUser, BookUp, Presentation, School, Building, Loader2, CalendarCheck, BookCopy, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, Settings, Book, Image as ImageIcon, UserCog, Circle, CircleDot, CircleSlash } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format, isWithinInterval } from 'date-fns';
 import { AdvancedAttendanceExport } from '@/components/features/advanced-attendance-export';
+import { CancelBatchDialog } from '@/components/features/cancel-batch-dialog';
 
 
 const ManageLessonDialog = ({
