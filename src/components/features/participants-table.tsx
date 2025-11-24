@@ -37,12 +37,17 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
   const [isUpdating, setIsUpdating] = useState(false);
   
   const [filterYear, setFilterYear] = useState('all');
-  const [filterSemester, setFilterSemester] = useState('');
+  const [filterSemester, setFilterSemester] = useState('all');
   const [filterEnrollment, setFilterEnrollment] = useState<'Summer' | 'Winter' | 'all'>('all');
 
   const uniqueYears = useMemo(() => {
     const years = new Set(participants.map(p => p.year).filter((y): y is string => !!y));
     return Array.from(years).sort();
+  }, [participants]);
+  
+  const uniqueSemesters = useMemo(() => {
+    const semesters = new Set(participants.map(p => p.semester).filter((s): s is string => !!s));
+    return Array.from(semesters).sort();
   }, [participants]);
 
 
@@ -73,8 +78,8 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
     if (filterYear !== 'all') {
         dataToExport = dataToExport.filter(p => p.year === filterYear);
     }
-    if (filterSemester.trim()) {
-        dataToExport = dataToExport.filter(p => p.semester?.toLowerCase().includes(filterSemester.toLowerCase()));
+    if (filterSemester !== 'all') {
+        dataToExport = dataToExport.filter(p => p.semester === filterSemester);
     }
     if (filterEnrollment !== 'all') {
         dataToExport = dataToExport.filter(p => p.enrollmentSeason === filterEnrollment);
@@ -148,7 +153,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
 
   const clearFilters = () => {
       setFilterYear('all');
-      setFilterSemester('');
+      setFilterSemester('all');
       setFilterEnrollment('all');
   }
 
@@ -206,7 +211,15 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
              </div>
              <div className="flex-grow space-y-2">
                 <Label htmlFor="filter-semester">Semester</Label>
-                <Input id="filter-semester" value={filterSemester} onChange={e => setFilterSemester(e.target.value)} placeholder="Filter by semester..."/>
+                 <Select onValueChange={setFilterSemester} value={filterSemester}>
+                    <SelectTrigger id="filter-semester"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Semesters</SelectItem>
+                        {uniqueSemesters.map(semester => (
+                            <SelectItem key={semester} value={semester}>{semester}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
              </div>
              <div className="flex-grow space-y-2">
                 <Label htmlFor="filter-enrollment">Enrollment</Label>
@@ -303,5 +316,3 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
     </div>
   );
 }
-
-    
