@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Participant } from "@/lib/types";
@@ -13,14 +14,15 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, Pencil } from "lucide-react";
+import { Download, Pencil, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type ParticipantsTableProps = {
   participants: Participant[];
+  onBulkUpdate: () => void;
 };
 
-export function ParticipantsTable({ participants }: ParticipantsTableProps) {
+export function ParticipantsTable({ participants, onBulkUpdate }: ParticipantsTableProps) {
   const { toast } = useToast();
   
   // A simple CSV export for participants
@@ -66,10 +68,16 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
             <h3 className="text-lg font-medium">Full Participant Directory</h3>
             <p className="text-sm text-muted-foreground">A complete view of every participant.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={participants.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Export All as CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={onBulkUpdate}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Bulk Update Year
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={participants.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Export All as CSV
+            </Button>
+          </div>
         </div>
         <div className="border rounded-lg">
           <ScrollArea className="h-[400px]">

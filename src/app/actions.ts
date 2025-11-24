@@ -484,6 +484,9 @@ export async function getParticipants(): Promise<Participant[]> {
                 completedLessons: data.completedLessons || [],
                 deniedCourses: data.deniedCourses || [],
                 examProgress: examProgress,
+                year: data.year || '',
+                semester: data.semester || '',
+                enrollmentSeason: data.enrollmentSeason,
             };
         });
 
@@ -533,6 +536,9 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
             completedLessons: data.completedLessons || [],
             deniedCourses: data.deniedCourses || [],
             examProgress: examProgress,
+            year: data.year || '',
+            semester: data.semester || '',
+            enrollmentSeason: data.enrollmentSeason,
         };
     } catch (error) {
         console.error("Error fetching participant by IITP No.:", error);
@@ -550,6 +556,9 @@ const participantSchema = z.object({
   completedLessons: z.array(z.string()).optional(),
   deniedCourses: z.array(z.string()).optional(),
   examProgress: z.record(z.any()).optional(),
+  year: z.string().optional(),
+  semester: z.string().optional(),
+  enrollmentSeason: z.enum(['Summer', 'Winter']).optional(),
 });
 
 
@@ -605,6 +614,37 @@ export async function updateParticipant(data: z.infer<typeof participantUpdateSc
     return { success: false, error: "Could not update participant." };
   }
 }
+
+export async function updateAllParticipantsYear(): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
+    try {
+        const participantsCollection = collection(db, "participants");
+        const snapshot = await getDocs(participantsCollection);
+
+        if (snapshot.empty) {
+            return { success: true, updatedCount: 0 };
+        }
+
+        const batch = writeBatch(db);
+        let updatedCount = 0;
+
+        snapshot.docs.forEach(doc => {
+            batch.update(doc.ref, {
+                year: "Winter 2025",
+                semester: "1st Year",
+                enrollmentSeason: "Winter"
+            });
+            updatedCount++;
+        });
+
+        await batch.commit();
+
+        return { success: true, updatedCount };
+    } catch (error) {
+        console.error("Error bulk updating participants:", error);
+        return { success: false, error: "A database error occurred during the bulk update." };
+    }
+}
+
 
 export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>[]): Promise<{ success: boolean; error?: string, skippedCount?: number }> {
     const participantsCollection = collection(db, "participants");
@@ -2427,6 +2467,7 @@ export async function updateSiteConfig(data: { announcement?: string; heroImageU
     
 
     
+
 
 
 
