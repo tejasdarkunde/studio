@@ -2501,10 +2501,40 @@ export async function createForm(data: z.infer<typeof createFormSchema>): Promis
         return { success: false, error: "A database error occurred while creating the form." };
     }
 }
+
+export async function getFormsByCreator(creatorId: string): Promise<FormType[]> {
+    try {
+        const formsCollection = collection(db, "forms");
+        const q = query(formsCollection, where("createdBy", "==", creatorId), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            return [];
+        }
+
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+            return {
+                id: doc.id,
+                title: data.title,
+                description: data.description,
+                questions: data.questions,
+                createdBy: data.createdBy,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            };
+        });
+
+    } catch (error) {
+        console.error("Error fetching forms:", error);
+        return [];
+    }
+}
       
     
 
     
+
 
 
 

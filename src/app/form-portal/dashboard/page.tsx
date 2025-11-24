@@ -1,19 +1,21 @@
 
 "use client";
 
-import { useEffect, useState, useId } from 'react';
+import { useEffect, useState, useId, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { FormAdmin, FormQuestion } from '@/lib/types';
+import type { FormAdmin, FormQuestion, Form as FormType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, PlusCircle, Trash2, Save, Type, MessageSquare, CheckSquare, List, Radio } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Save, Type, MessageSquare, CheckSquare, List, Radio, BarChart, Edit, Link2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createForm } from '@/app/actions';
+import { createForm, getFormsByCreator } from '@/app/actions';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const QuestionBuilder = ({ question, onUpdate, onRemove }: { question: FormQuestion; onUpdate: (updatedQuestion: FormQuestion) => void; onRemove: () => void; }) => {
     
@@ -106,17 +108,188 @@ const QuestionBuilder = ({ question, onUpdate, onRemove }: { question: FormQuest
     );
 };
 
+const FormBuilder = () => {
+    const [user, setUser] = useState<FormAdmin | null>(null);
+    const { toast } = useToast();
+    const [formTitle, setFormTitle] = useState('Untitled Form');
+    const [formDescription, setFormDescription] = useState('');
+    const [questions, setQuestions] = useState<FormQuestion[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
+
+     useEffect(() => {
+        const userJson = sessionStorage.getItem('user');
+        if (userJson) {
+          setUser(JSON.parse(userJson));
+        }
+      }, []);
+
+
+    const addQuestion = () => {
+        const newQuestion: FormQuestion = {
+            id: new Date().getTime().toString(),
+            text: '',
+            type: 'text',
+            isRequired: false,
+            options: [],
+        };
+        setQuestions([...questions, newQuestion]);
+    };
+
+    const updateQuestion = (updatedQuestion: FormQuestion) => {
+        setQuestions(questions.map(q => q.id === updatedQuestion.id ? updatedQuestion : q));
+    };
+    
+    const removeQuestion = (id: string) => {
+        setQuestions(questions.filter(q => q.id !== id));
+    }
+
+    const handleSaveForm = async () => {
+        if (!formTitle.trim()) {
+            toast({ variant: 'destructive', title: "Form title is required." });
+            return;
+        }
+        if (questions.length === 0) {
+            toast({ variant: 'destructive', title: "At least one question is required." });
+            return;
+        }
+        if (!user) return;
+
+        setIsSaving(true);
+        const result = await createForm({
+            title: formTitle,
+            description: formDescription,
+            questions: questions,
+            createdBy: user.id
+        });
+
+        if (result.success) {
+            toast({ title: "Form Saved Successfully!", description: "Your form has been created."});
+            setFormTitle('Untitled Form');
+            setFormDescription('');
+            setQuestions([]);
+            // Here you could trigger a refresh of the forms list in the parent
+        } else {
+            toast({ variant: 'destructive', title: "Error Saving Form", description: result.error });
+        }
+        setIsSaving(false);
+    }
+
+    return (
+        <div className="max-w-4xl mx-auto">
+            <Card className="mb-6">
+                <CardContent className="pt-6">
+                    <Input
+                        value={formTitle}
+                        onChange={e => setFormTitle(e.target.value)}
+                        placeholder="Form Title"
+                        className="text-3xl font-bold border-0 shadow-none focus-visible:ring-0 pl-2 h-auto"
+                    />
+                    <Textarea
+                        value={formDescription}
+                        onChange={e => setFormDescription(e.target.value)}
+                        placeholder="Form Description (optional)"
+                        className="text-base text-muted-foreground border-0 shadow-none focus-visible:ring-0 pl-2 mt-2"
+                    />
+                </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+                {questions.map((q) => (
+                    <QuestionBuilder 
+                        key={q.id}
+                        question={q}
+                        onUpdate={updateQuestion}
+                        onRemove={() => removeQuestion(q.id)}
+                    />
+                ))}
+            </div>
+
+            <div className="flex justify-center my-6">
+                <Button variant="outline" onClick={addQuestion}>
+                    <PlusCircle className="mr-2 h-4 w-4"/> Add Question
+                </Button>
+            </div>
+
+            <div className="flex justify-end gap-2">
+                <Button onClick={handleSaveForm} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
+                    Save Form
+                </Button>
+            </div>
+        </div>
+    )
+}
+
+const MyForms = ({ user, onEditForm }: { user: FormAdmin, onEditForm: (form: FormType) => void }) => {
+    const [forms, setForms] = useState<FormType[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchForms = useCallback(async () => {
+        setLoading(true);
+        const userForms = await getFormsByCreator(user.id);
+        setForms(userForms);
+        setLoading(false);
+    }, [user.id]);
+
+    useEffect(() => {
+        fetchForms();
+    }, [fetchForms]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>My Forms</CardTitle>
+                <CardDescription>All forms you have created.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Title</TableHead>
+                                <TableHead>Responses</TableHead>
+                                <TableHead>Created At</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">
+                                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground"/>
+                                    </TableCell>
+                                </TableRow>
+                            ) : forms.length > 0 ? (
+                                forms.map(form => (
+                                    <TableRow key={form.id}>
+                                        <TableCell className="font-medium">{form.title}</TableCell>
+                                        <TableCell>0</TableCell>
+                                        <TableCell>{new Date(form.createdAt).toLocaleDateString()}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon"><Link2 className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon"><BarChart className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon"><Edit className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">You haven't created any forms yet.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 export default function FormPortalDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<FormAdmin | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  // Form State
-  const [formTitle, setFormTitle] = useState('Untitled Form');
-  const [formDescription, setFormDescription] = useState('');
-  const [questions, setQuestions] = useState<FormQuestion[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const userRole = sessionStorage.getItem('userRole');
@@ -130,55 +303,6 @@ export default function FormPortalDashboard() {
     setLoading(false);
   }, [router]);
 
-  const addQuestion = () => {
-    const newQuestion: FormQuestion = {
-        id: new Date().getTime().toString(), // Simple unique ID
-        text: '',
-        type: 'text',
-        isRequired: false,
-        options: [],
-    };
-    setQuestions([...questions, newQuestion]);
-  };
-
-  const updateQuestion = (updatedQuestion: FormQuestion) => {
-    setQuestions(questions.map(q => q.id === updatedQuestion.id ? updatedQuestion : q));
-  };
-  
-  const removeQuestion = (id: string) => {
-    setQuestions(questions.filter(q => q.id !== id));
-  }
-
-  const handleSaveForm = async () => {
-    if (!formTitle.trim()) {
-        toast({ variant: 'destructive', title: "Form title is required." });
-        return;
-    }
-    if (questions.length === 0) {
-        toast({ variant: 'destructive', title: "At least one question is required." });
-        return;
-    }
-    if (!user) return;
-
-    setIsSaving(true);
-    const result = await createForm({
-        title: formTitle,
-        description: formDescription,
-        questions: questions,
-        createdBy: user.id
-    });
-
-    if (result.success) {
-        toast({ title: "Form Saved Successfully!", description: "Your form has been created."});
-        // Reset form for now. Later we can redirect to an edit page.
-        setFormTitle('Untitled Form');
-        setFormDescription('');
-        setQuestions([]);
-    } else {
-        toast({ variant: 'destructive', title: "Error Saving Form", description: result.error });
-    }
-    setIsSaving(false);
-  }
 
   if (loading || !user) {
     return (
@@ -193,49 +317,18 @@ export default function FormPortalDashboard() {
       <h1 className="text-3xl font-bold mb-2">Form Portal Dashboard</h1>
       <p className="text-muted-foreground mb-8">Welcome, {user.name}.</p>
       
-      <div className="max-w-4xl mx-auto">
-        <Card className="mb-6">
-            <CardContent className="pt-6">
-                <Input
-                    value={formTitle}
-                    onChange={e => setFormTitle(e.target.value)}
-                    placeholder="Form Title"
-                    className="text-3xl font-bold border-0 shadow-none focus-visible:ring-0 pl-2 h-auto"
-                />
-                 <Textarea
-                    value={formDescription}
-                    onChange={e => setFormDescription(e.target.value)}
-                    placeholder="Form Description (optional)"
-                    className="text-base text-muted-foreground border-0 shadow-none focus-visible:ring-0 pl-2 mt-2"
-                />
-            </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-            {questions.map((q, index) => (
-                <QuestionBuilder 
-                    key={q.id}
-                    question={q}
-                    onUpdate={updateQuestion}
-                    onRemove={() => removeQuestion(q.id)}
-                />
-            ))}
-        </div>
-
-        <div className="flex justify-center my-6">
-            <Button variant="outline" onClick={addQuestion}>
-                <PlusCircle className="mr-2 h-4 w-4"/> Add Question
-            </Button>
-        </div>
-
-        <div className="flex justify-end gap-2">
-            <Button variant="secondary" disabled={isSaving}>Preview</Button>
-            <Button onClick={handleSaveForm} disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
-                Save Form
-            </Button>
-        </div>
-      </div>
+      <Tabs defaultValue="create" className="w-full">
+        <TabsList>
+            <TabsTrigger value="create">Create New Form</TabsTrigger>
+            <TabsTrigger value="my-forms">My Forms</TabsTrigger>
+        </TabsList>
+        <TabsContent value="create" className="mt-6">
+            <FormBuilder />
+        </TabsContent>
+        <TabsContent value="my-forms" className="mt-6">
+            <MyForms user={user} onEditForm={() => {}} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
