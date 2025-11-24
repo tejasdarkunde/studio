@@ -36,9 +36,14 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
   const [enrollmentSeason, setEnrollmentSeason] = useState<'Summer' | 'Winter' | undefined>();
   const [isUpdating, setIsUpdating] = useState(false);
   
-  const [filterYear, setFilterYear] = useState('');
+  const [filterYear, setFilterYear] = useState('all');
   const [filterSemester, setFilterSemester] = useState('');
   const [filterEnrollment, setFilterEnrollment] = useState<'Summer' | 'Winter' | 'all'>('all');
+
+  const uniqueYears = useMemo(() => {
+    const years = new Set(participants.map(p => p.year).filter((y): y is string => !!y));
+    return Array.from(years).sort();
+  }, [participants]);
 
 
   const handleSelectRow = (id: string) => {
@@ -65,8 +70,8 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
   const handleExport = () => {
     let dataToExport = participants;
     
-    if (filterYear.trim()) {
-        dataToExport = dataToExport.filter(p => p.year?.toLowerCase().includes(filterYear.toLowerCase()));
+    if (filterYear !== 'all') {
+        dataToExport = dataToExport.filter(p => p.year === filterYear);
     }
     if (filterSemester.trim()) {
         dataToExport = dataToExport.filter(p => p.semester?.toLowerCase().includes(filterSemester.toLowerCase()));
@@ -142,7 +147,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
   }
 
   const clearFilters = () => {
-      setFilterYear('');
+      setFilterYear('all');
       setFilterSemester('');
       setFilterEnrollment('all');
   }
@@ -189,7 +194,15 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
           <CardContent className="flex flex-col md:flex-row gap-4 items-end">
              <div className="flex-grow space-y-2">
                 <Label htmlFor="filter-year">Year</Label>
-                <Input id="filter-year" value={filterYear} onChange={e => setFilterYear(e.target.value)} placeholder="Filter by year..."/>
+                 <Select onValueChange={setFilterYear} value={filterYear}>
+                    <SelectTrigger id="filter-year"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Years</SelectItem>
+                        {uniqueYears.map(year => (
+                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
              </div>
              <div className="flex-grow space-y-2">
                 <Label htmlFor="filter-semester">Semester</Label>
@@ -290,3 +303,5 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
     </div>
   );
 }
+
+    
