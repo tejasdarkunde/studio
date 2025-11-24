@@ -7,7 +7,6 @@ import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperA
 import { RegistrationsTable } from '@/components/features/registrations-table';
 import { EditBatchDialog } from '@/components/features/edit-batch-name-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
-import { ConfirmDialog } from '@/components/features/confirm-dialog';
 import { AttendanceReport } from '@/components/features/attendance-report';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -510,8 +509,8 @@ export default function AdminPage() {
             <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="dashboard" className="mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
+                <div className="grid grid-cols-1 gap-6">
+                     <Card className="col-span-1 md:col-span-2">
                         <CardHeader className="flex flex-row justify-between items-start">
                             <div>
                                 <CardTitle>Reports</CardTitle>
@@ -519,7 +518,7 @@ export default function AdminPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <Card className="p-4 text-center">
                                     <div className="flex flex-col items-center gap-2">
                                     <Users className="h-8 w-8 text-primary" />
@@ -637,7 +636,42 @@ export default function AdminPage() {
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>User Management</CardTitle>
+                                <CardDescription>Manage participants, trainers, and admins.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button asChild className="w-full">
+                                    <Link href="/admin/users">
+                                        <Users className="mr-2 h-4 w-4" /> Manage Users
+                                    </Link>
+                                </Button>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Content Management</CardTitle>
+                                <CardDescription>Manage courses, subjects, lessons, and exams.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <Button asChild className="flex-1">
+                                        <Link href="/admin/content">
+                                            <Book className="mr-2 h-4 w-4" /> Manage Courses
+                                        </Link>
+                                    </Button>
+                                    <Button asChild className="flex-1">
+                                        <Link href="/admin/exams">
+                                            <GraduationCap className="mr-2 h-4 w-4" /> Manage Exams
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                     <Card className="mt-6">
                         <CardHeader>
                             <CardTitle>Data Exports</CardTitle>
                             <CardDescription>Download your core application data as CSV files for use in Looker Studio or other tools.</CardDescription>
@@ -652,41 +686,6 @@ export default function AdminPage() {
                             <Button variant="outline" onClick={handleExportCourses}>
                                 <BookCopy className="mr-2"/> Export Courses
                             </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>User Management</CardTitle>
-                            <CardDescription>Manage participants, trainers, and admins.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button asChild className="w-full">
-                                <Link href="/admin/users">
-                                    <Users className="mr-2 h-4 w-4" /> Manage Users
-                                </Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Content Management</CardTitle>
-                            <CardDescription>Manage courses, subjects, lessons, and exams.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex flex-col sm:flex-row gap-2">
-                                <Button asChild className="flex-1">
-                                    <Link href="/admin/content">
-                                        <Book className="mr-2 h-4 w-4" /> Manage Courses
-                                    </Link>
-                                </Button>
-                                 <Button asChild className="flex-1">
-                                    <Link href="/admin/exams">
-                                        <GraduationCap className="mr-2 h-4 w-4" /> Manage Exams
-                                    </Link>
-                                </Button>
-                            </div>
                         </CardContent>
                     </Card>
                 </div>
