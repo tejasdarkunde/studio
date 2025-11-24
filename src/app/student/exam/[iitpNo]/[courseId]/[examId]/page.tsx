@@ -208,20 +208,6 @@ export default function ExamPage() {
         };
     }, []);
 
-    useEffect(() => {
-        if (!loading && exam) {
-            document.documentElement.requestFullscreen().catch((err) => {
-                console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-            });
-        }
-         // Exit fullscreen when component unmounts
-        return () => {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            }
-        };
-    }, [loading, exam]);
-
     const handleAnswerChange = (questionId: string, answer: any) => {
         const newAnswers = { ...answers, [questionId]: answer };
         setAnswers(newAnswers);
