@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, Loader2, Send, ShieldAlert, Timer, PlayCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Send, ShieldAlert, Timer, PlayCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const QuestionRenderer = ({ question, answer, onAnswerChange }: { question: Question; answer: any; onAnswerChange: (questionId: string, answer: any) => void; }) => {
     const type = question.type || 'mcq';
@@ -79,11 +80,14 @@ export default function ExamPage() {
     const [examStarted, setExamStarted] = useState(false);
     const [answers, setAnswers] = useState<{[questionId: string]: number | number[] | string}>({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [isLocked, setIsLocked] = useState(false);
+    const [isLocked, setIsLocked] = useState(isLocked);
     const [isSaving, startSaving] = useTransition();
     const [isSubmitting, startSubmitting] = useTransition();
     const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
+    
+    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
     const { toast } = useToast();
 
@@ -204,6 +208,32 @@ export default function ExamPage() {
             window.removeEventListener('blur', handleBlur);
         };
     }, [examStarted]);
+    
+    useEffect(() => {
+        if (!examStarted) return;
+        
+        const getCameraPermission = async () => {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({video: true});
+            setHasCameraPermission(true);
+    
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+            }
+          } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
+              variant: 'destructive',
+              title: 'Camera Access Denied',
+              description: 'Please enable camera permissions to continue.',
+            });
+            setIsLocked(true); // Lock exam if camera access is denied
+          }
+        };
+    
+        getCameraPermission();
+      }, [examStarted, toast]);
 
     const handleStartExam = async () => {
         try {
@@ -280,6 +310,7 @@ export default function ExamPage() {
                         <p>This exam consists of <strong>{exam.questions.length} questions</strong>.</p>
                         {exam.duration && <p>You will have <strong>{exam.duration} minutes</strong> to complete it.</p>}
                         <p className="text-sm text-muted-foreground">For the best experience, this exam will open in fullscreen mode. Please do not exit fullscreen or switch tabs, as this will lock your exam.</p>
+                        <p className="font-bold text-destructive">This exam requires camera access for proctoring.</p>
                     </CardContent>
                     <CardFooter>
                         <Button className="w-full" size="lg" onClick={handleStartExam}>
@@ -328,7 +359,7 @@ export default function ExamPage() {
                     <div className="flex flex-col items-center gap-4">
                         <ShieldAlert className="h-16 w-16 text-destructive" />
                         <h2 className="text-3xl font-bold">Exam Locked</h2>
-                        <p className="max-w-md">You have navigated away from the exam window. To prevent cheating, the exam has been locked. Please contact your proctor or administrator to continue.</p>
+                        <p className="max-w-md">{hasCameraPermission === false ? "Camera access was denied." : "You have navigated away from the exam window."} To prevent cheating, the exam has been locked. Please contact your proctor or administrator to continue.</p>
                     </div>
                 </div>
             )}
@@ -391,6 +422,25 @@ export default function ExamPage() {
                 <aside className="lg:col-span-1">
                     <Card className="sticky top-24">
                         <CardHeader>
+                            <CardTitle>Exam Monitor</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="aspect-video bg-secondary rounded-md overflow-hidden">
+                                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted />
+                            </div>
+                            {hasCameraPermission === false && (
+                                <Alert variant="destructive">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertTitle>Camera Error</AlertTitle>
+                                    <AlertDescription>
+                                        Camera access denied. Please enable it in your browser settings.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                        </CardContent>
+                    </Card>
+                     <Card className="sticky top-24 mt-4">
+                        <CardHeader>
                             <CardTitle>Questions</CardTitle>
                             <CardDescription>
                                 Answered: {answeredCount} of {totalQuestions}
@@ -433,3 +483,5 @@ export default function ExamPage() {
         </>
     );
 }
+
+    
