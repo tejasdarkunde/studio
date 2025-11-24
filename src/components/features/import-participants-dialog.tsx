@@ -33,6 +33,9 @@ type CsvParticipantRow = {
   mobile: string;
   organization: string;
   enrolledCourses?: string;
+  year?: string;
+  semester?: string;
+  enrollmentSeason?: 'Summer' | 'Winter';
 };
 
 type ParsedParticipant = Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>;
@@ -87,6 +90,9 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
                     mobile: p.mobile || '',
                     organization: p.organization || '',
                     enrolledCourses: coursesArray,
+                    year: p.year || '',
+                    semester: p.semester || '',
+                    enrollmentSeason: p.enrollmentSeason,
                 };
             });
 
@@ -131,10 +137,10 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) resetState()}}>
-      <DialogContent className="sm:max-w-[640px]">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Import Participants from CSV</DialogTitle>
-          <DialogDescription>Upload a CSV file with participant data. Required columns: name, iitpNo. Optional: mobile, organization, enrolledCourses.</DialogDescription>
+          <DialogDescription>Upload a CSV file with participant data. Required: name, iitpNo. Optional: mobile, organization, enrolledCourses, year, semester, enrollmentSeason.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -159,6 +165,9 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
                                 <TableHead>Mobile</TableHead>
                                 <TableHead>Organization</TableHead>
                                 <TableHead>Enrolled</TableHead>
+                                <TableHead>Year</TableHead>
+                                <TableHead>Semester</TableHead>
+                                <TableHead>Season</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -169,6 +178,9 @@ export function ImportParticipantsDialog({ isOpen, onClose, onSave }: ImportPart
                                     <TableCell>{p.mobile}</TableCell>
                                     <TableCell>{p.organization}</TableCell>
                                     <TableCell>{p.enrolledCourses?.join(', ')}</TableCell>
+                                    <TableCell>{p.year}</TableCell>
+                                    <TableCell>{p.semester}</TableCell>
+                                    <TableCell>{p.enrollmentSeason}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
