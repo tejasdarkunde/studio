@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Download, Users, BookUser, BookUp, Presentation, School, Building, Loader2, CalendarCheck, BookCopy, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, Settings, Book, Image as ImageIcon, UserCog, Circle, CircleDot, CircleSlash, GraduationCap } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Download, Users, BookUser, BookUp, Presentation, School, Building, Loader2, CalendarCheck, BookCopy, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, Settings, Book, Image as ImageIcon, UserCog, Circle, CircleDot, CircleSlash, GraduationCap, FileText } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -297,7 +297,7 @@ export default function AdminPage() {
         </TabsList>
         <TabsContent value="dashboard" className="mt-6">
                 <div className="grid grid-cols-1 gap-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <Card>
                             <CardHeader>
                                 <CardTitle>User Management</CardTitle>
@@ -342,6 +342,19 @@ export default function AdminPage() {
                                         </Link>
                                     </Button>
                                 </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Form Management</CardTitle>
+                                <CardDescription>Manage forms created by form admins.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button asChild className="w-full" variant="secondary">
+                                    <Link href="#">
+                                        <FileText className="mr-2 h-4 w-4" /> Manage Forms
+                                    </Link>
+                                </Button>
                             </CardContent>
                         </Card>
                          <Card>
