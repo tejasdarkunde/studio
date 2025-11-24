@@ -636,7 +636,7 @@ export default function AdminPage() {
                             </div>
                         </CardContent>
                     </Card>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 col-span-2">
                         <Card>
                             <CardHeader>
                                 <CardTitle>User Management</CardTitle>
@@ -671,7 +671,7 @@ export default function AdminPage() {
                             </CardContent>
                         </Card>
                     </div>
-                     <Card className="mt-6">
+                     <Card className="mt-6 col-span-2">
                         <CardHeader>
                             <CardTitle>Data Exports</CardTitle>
                             <CardDescription>Download your core application data as CSV files for use in Looker Studio or other tools.</CardDescription>
