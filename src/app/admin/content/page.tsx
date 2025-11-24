@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, BookCopy, ChevronLeft, Circle, CircleDot, CircleSlash } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, BookCopy, ChevronLeft, Circle, CircleDot, CircleSlash, Book } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { addCourse, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, updateCourseStatus, deleteCourse } from '@/app/actions';
@@ -305,7 +305,7 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                 <CardHeader>
                     <div className='flex justify-between items-start'>
                         <div className="flex items-center gap-2">
-                            <BookCopy className="h-6 w-6 text-primary" />
+                            <Book className="h-6 w-6 text-primary" />
                             {isEditingCourseName ? (
                                 <div className="flex items-center gap-2 w-full">
                                     <Input value={editingCourseNameValue} onChange={(e) => setEditingCourseNameValue(e.target.value)} className="h-9 text-xl font-bold" />
@@ -355,7 +355,7 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                                 <AccordionTrigger className="p-4 hover:no-underline">
                                     <div className="flex items-center justify-between w-full">
                                         <div className="flex items-center gap-4">
-                                            <BookUser className="h-5 w-5 text-primary" />
+                                            <BookCopy className="h-5 w-5 text-primary" />
                                             {editingSubjectId === subject.id ? (
                                                 <div className="flex items-center gap-2 w-full">
                                                     <Input value={editingSubjectValue} onChange={(e) => setEditingSubjectValue(e.target.value)} className="h-8" onClick={(e) => e.stopPropagation()} />
