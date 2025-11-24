@@ -1,14 +1,19 @@
 
+"use client";
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu } from 'lucide-react';
+import { useState } from 'react';
 
-export const metadata: Metadata = {
-  title: 'BSA Training Academy, Pune',
-  description: 'Register for our ongoing and upcoming training sessions.',
-};
+// export const metadata: Metadata = { // Metadata must be defined in a Server Component
+//   title: 'BSA Training Academy, Pune',
+//   description: 'Register for our ongoing and upcoming training sessions.',
+// };
 
 export default function RootLayout({
   children,
@@ -16,10 +21,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const version = "0.1.0"; // Hardcode version to avoid import issues
+  const [isSheetOpen, setSheetOpen] = useState(false);
 
   return (
     <html lang="en">
       <head>
+        <title>BSA Training Academy, Pune</title>
+        <meta name="description" content="Register for our ongoing and upcoming training sessions." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet" />
@@ -29,7 +37,9 @@ export default function RootLayout({
            <header className="bg-background border-b sticky top-0 z-10">
             <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
                  <Link href="/home2" className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</Link>
-                <div className="flex items-center gap-2">
+                
+                {/* Desktop Navigation */}
+                <div className="hidden md:flex items-center gap-2">
                     <Button asChild variant="ghost"><Link href="/home">Home</Link></Button>
                     <div className="flex gap-4">
                         <Link href="/student-login" passHref>
@@ -39,6 +49,30 @@ export default function RootLayout({
                             <Button variant="link">Admin/Trainer Login</Button>
                         </Link>
                     </div>
+                </div>
+
+                {/* Mobile Navigation */}
+                <div className="md:hidden">
+                    <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <Menu className="h-6 w-6" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="right">
+                             <div className="flex flex-col gap-4 mt-8">
+                                <Link href="/home" passHref onClick={() => setSheetOpen(false)}>
+                                    <Button variant="ghost" className="w-full justify-start text-lg">Home</Button>
+                                </Link>
+                                <Link href="/student-login" passHref onClick={() => setSheetOpen(false)}>
+                                    <Button variant="outline" className="w-full text-lg">Student Login</Button>
+                                </Link>
+                                <Link href="/login" passHref onClick={() => setSheetOpen(false)}>
+                                    <Button variant="link" className="w-full justify-start text-lg">Admin/Trainer Login</Button>
+                                </Link>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
             </div>
         </header>
