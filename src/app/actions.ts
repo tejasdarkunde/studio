@@ -615,30 +615,35 @@ export async function updateParticipant(data: z.infer<typeof participantUpdateSc
   }
 }
 
-export async function updateAllParticipantsYear(): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
+const updateSelectedParticipantsSchema = z.object({
+    ids: z.array(z.string().min(1)),
+    year: z.string().optional(),
+    semester: z.string().optional(),
+    enrollmentSeason: z.enum(['Summer', 'Winter']).optional(),
+});
+
+export async function updateSelectedParticipants(data: z.infer<typeof updateSelectedParticipantsSchema>): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
+    const validated = updateSelectedParticipantsSchema.safeParse(data);
+    if (!validated.success) {
+        return { success: false, error: "Invalid data provided." };
+    }
+
+    const { ids, ...updateData } = validated.data;
+    
+    if (Object.keys(updateData).length === 0) {
+        return { success: false, error: "No update values were provided." };
+    }
+
     try {
-        const participantsCollection = collection(db, "participants");
-        const snapshot = await getDocs(participantsCollection);
-
-        if (snapshot.empty) {
-            return { success: true, updatedCount: 0 };
-        }
-
         const batch = writeBatch(db);
-        let updatedCount = 0;
-
-        snapshot.docs.forEach(doc => {
-            batch.update(doc.ref, {
-                year: "Winter 2025",
-                semester: "1st Year",
-                enrollmentSeason: "Winter"
-            });
-            updatedCount++;
+        ids.forEach(id => {
+            const docRef = doc(db, "participants", id);
+            batch.update(docRef, updateData);
         });
 
         await batch.commit();
+        return { success: true, updatedCount: ids.length };
 
-        return { success: true, updatedCount };
     } catch (error) {
         console.error("Error bulk updating participants:", error);
         return { success: false, error: "A database error occurred during the bulk update." };
@@ -2467,6 +2472,7 @@ export async function updateSiteConfig(data: { announcement?: string; heroImageU
     
 
     
+
 
 
 

@@ -18,7 +18,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, transferStudents, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, getFormAdmins, addFormAdmin, updateFormAdmin, deleteFormAdmin, getParticipants, updateAllParticipantsYear } from '@/app/actions';
+import { addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, transferStudents, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, getFormAdmins, addFormAdmin, updateFormAdmin, deleteFormAdmin, getParticipants, updateSelectedParticipants } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -401,7 +401,7 @@ export default function AdminUsersPage() {
   const [editingFormAdmin, setEditingFormAdmin] = useState<FormAdmin | null>(null);
   const [isAddFormAdminOpen, setIsAddFormAdminOpen] = useState(false);
   const [deletingFormAdmin, setDeletingFormAdmin] = useState<FormAdmin | null>(null);
-  const [isConfirmingBulkUpdate, setIsConfirmingBulkUpdate] = useState(false);
+  
 
 
   // Form & Filter states
@@ -831,27 +831,7 @@ export default function AdminUsersPage() {
     return courses.filter(c => fetchedParticipant.enrolledCourses?.includes(c.name));
   };
   
-    const handleConfirmBulkUpdate = async () => {
-        setIsConfirmingBulkUpdate(true);
-        const result = await updateAllParticipantsYear();
-        if (result.success) {
-            toast({
-                title: "Bulk Update Successful",
-                description: `${result.updatedCount} participants were updated.`
-            });
-            fetchAllData();
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Bulk Update Failed',
-                description: result.error || 'An unexpected error occurred.'
-            });
-        }
-        setIsConfirmingBulkUpdate(false);
-        setIsConfirmingBulkUpdate(false); // Also close the dialog
-    };
-
-
+  
   if (!isClient || loadingAuth) {
     return (
         <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
@@ -874,13 +854,7 @@ export default function AdminUsersPage() {
         onClose={() => setImportDialogOpen(false)}
         onSave={handleImportSave}
       />
-       <ConfirmDialog
-            isOpen={isConfirmingBulkUpdate}
-            onClose={() => setIsConfirmingBulkUpdate(false)}
-            onConfirm={handleConfirmBulkUpdate}
-            title="Confirm Bulk Update"
-            description="This will set Year='Winter 2025', Semester='1st Year', and Enrollment='Winter' for ALL participants. This action cannot be undone."
-        />
+      
       {(isAddTrainerOpen || editingTrainer) && (
         <AddTrainerDialog
             isOpen={isAddTrainerOpen || !!editingTrainer}
@@ -973,7 +947,7 @@ export default function AdminUsersPage() {
                     <TabsTrigger value="admins">Admins</TabsTrigger>
                 </TabsList>
                 <TabsContent value="directory" className="mt-6">
-                    <ParticipantsTable participants={participants} onBulkUpdate={() => setIsConfirmingBulkUpdate(true)} />
+                    <ParticipantsTable participants={participants} onUpdateSelected={updateSelectedParticipants} onDataRefreshed={fetchAllData}/>
                 </TabsContent>
 
                 <TabsContent value="add" className="mt-6">
@@ -1365,4 +1339,5 @@ export default function AdminUsersPage() {
     </>
   );
 }
+
 

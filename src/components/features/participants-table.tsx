@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useState, useMemo } from "react";
 import type { Participant } from "@/lib/types";
 import {
   Table,
@@ -14,17 +15,49 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, Pencil, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 type ParticipantsTableProps = {
   participants: Participant[];
-  onBulkUpdate: () => void;
+  onUpdateSelected: (data: { ids: string[], year?: string, semester?: string, enrollmentSeason?: 'Summer' | 'Winter' }) => Promise<{success: boolean, error?: string, updatedCount?: number}>;
+  onDataRefreshed: () => void;
 };
 
-export function ParticipantsTable({ participants, onBulkUpdate }: ParticipantsTableProps) {
+export function ParticipantsTable({ participants, onUpdateSelected, onDataRefreshed }: ParticipantsTableProps) {
   const { toast } = useToast();
-  
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [year, setYear] = useState('');
+  const [semester, setSemester] = useState('');
+  const [enrollmentSeason, setEnrollmentSeason] = useState<'Summer' | 'Winter' | undefined>();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+
+  const handleSelectRow = (id: string) => {
+    setSelectedRows(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        return newSet;
+    });
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+        setSelectedRows(new Set(participants.map(p => p.id)));
+    } else {
+        setSelectedRows(new Set());
+    }
+  }
+
   // A simple CSV export for participants
   const handleExport = () => {
     if (participants.length === 0) {
@@ -59,81 +92,150 @@ export function ParticipantsTable({ participants, onBulkUpdate }: ParticipantsTa
       description: "Participant data is being downloaded.",
     });
   }
+  
+  const handleUpdateSelected = async () => {
+    if(selectedRows.size === 0) {
+        toast({variant: 'destructive', title: "No participants selected."});
+        return;
+    }
+    if(!year && !semester && !enrollmentSeason) {
+        toast({variant: 'destructive', title: "No update values provided."});
+        return;
+    }
+
+    setIsUpdating(true);
+    const result = await onUpdateSelected({
+        ids: Array.from(selectedRows),
+        year: year || undefined,
+        semester: semester || undefined,
+        enrollmentSeason: enrollmentSeason
+    });
+
+    if(result.success) {
+        toast({title: "Update Successful", description: `${result.updatedCount} participants updated.`});
+        onDataRefreshed();
+        setSelectedRows(new Set());
+        setYear('');
+        setSemester('');
+        setEnrollmentSeason(undefined);
+    } else {
+        toast({variant: 'destructive', title: "Update Failed", description: result.error});
+    }
+
+    setIsUpdating(false);
+  }
 
   return (
-    <div className="w-full">
-      <div className="flex flex-col space-y-2">
-        <div className="flex flex-row items-center justify-between">
+    <div className="w-full space-y-4">
+      {selectedRows.size > 0 && (
+        <Card className="bg-secondary">
+          <CardHeader>
+            <CardTitle>{selectedRows.size} Participant(s) Selected</CardTitle>
+            <CardDescription>Choose the new values and click update. Fields left blank will not be changed.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-grow space-y-2">
+              <Label htmlFor="bulk-year">Year</Label>
+              <Input id="bulk-year" value={year} onChange={e => setYear(e.target.value)} placeholder="e.g. Winter 2025" />
+            </div>
+            <div className="flex-grow space-y-2">
+              <Label htmlFor="bulk-semester">Semester</Label>
+              <Input id="bulk-semester" value={semester} onChange={e => setSemester(e.target.value)} placeholder="e.g. 1st Year" />
+            </div>
+            <div className="flex-grow space-y-2">
+              <Label htmlFor="bulk-season">Enrollment Season</Label>
+              <Select onValueChange={(v: 'Summer' | 'Winter') => setEnrollmentSeason(v)} value={enrollmentSeason}>
+                <SelectTrigger id="bulk-season"><SelectValue placeholder="Select season" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Summer">Summer</SelectItem>
+                  <SelectItem value="Winter">Winter</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleUpdateSelected} disabled={isUpdating} className="w-full md:w-auto">
+              {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <RefreshCw className="mr-2 h-4 w-4"/>}
+              Update Selected
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      <div className="flex flex-row items-center justify-between">
           <div>
             <h3 className="text-lg font-medium">Full Participant Directory</h3>
             <p className="text-sm text-muted-foreground">A complete view of every participant.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={onBulkUpdate}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Bulk Update Year
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={participants.length === 0}>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={participants.length === 0}>
               <Download className="mr-2 h-4 w-4" />
               Export All as CSV
-            </Button>
-          </div>
-        </div>
-        <div className="border rounded-lg">
-          <ScrollArea className="h-[400px]">
-              <Table>
-              <TableHeader>
-                  <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>IITP No</TableHead>
-                  <TableHead>Mobile No</TableHead>
-                  <TableHead>Organization</TableHead>
-                  <TableHead>Year</TableHead>
-                  <TableHead>Semester</TableHead>
-                  <TableHead>Enrollment</TableHead>
-                  <TableHead>Enrolled Courses</TableHead>
-                  <TableHead>Date Added</TableHead>
-                  </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {participants && participants.length > 0 ? (
-                  participants.map((p) => (
-                      <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.name}</TableCell>
-                      <TableCell>{p.iitpNo}</TableCell>
-                      <TableCell>{p.mobile}</TableCell>
-                      <TableCell>{p.organization}</TableCell>
-                      <TableCell>{p.year}</TableCell>
-                      <TableCell>{p.semester}</TableCell>
-                      <TableCell>{p.enrollmentSeason}</TableCell>
-                      <TableCell>
-                        {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {p.enrolledCourses.map(course => (
-                               <Badge key={course} variant="secondary">{course}</Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">None</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                          {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
-                      </TableCell>
-                      </TableRow>
-                  ))
-                  ) : (
-                  <TableRow>
-                      <TableCell colSpan={9} className="h-24 text-center">
-                      No participants found. Add one to get started.
-                      </TableCell>
-                  </TableRow>
-                  )}
-              </TableBody>
-              </Table>
-          </ScrollArea>
-         </div>
+          </Button>
       </div>
+      <div className="border rounded-lg">
+        <ScrollArea className="h-[60vh]">
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead className="w-[50px]">
+                    <Checkbox
+                        checked={selectedRows.size === participants.length && participants.length > 0}
+                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    />
+                </TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>IITP No</TableHead>
+                <TableHead>Mobile No</TableHead>
+                <TableHead>Organization</TableHead>
+                <TableHead>Year</TableHead>
+                <TableHead>Semester</TableHead>
+                <TableHead>Enrollment</TableHead>
+                <TableHead>Enrolled Courses</TableHead>
+                <TableHead>Date Added</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {participants && participants.length > 0 ? (
+                participants.map((p) => (
+                    <TableRow key={p.id} data-state={selectedRows.has(p.id) && "selected"}>
+                    <TableCell>
+                         <Checkbox
+                            checked={selectedRows.has(p.id)}
+                            onCheckedChange={() => handleSelectRow(p.id)}
+                        />
+                    </TableCell>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>{p.iitpNo}</TableCell>
+                    <TableCell>{p.mobile}</TableCell>
+                    <TableCell>{p.organization}</TableCell>
+                    <TableCell>{p.year}</TableCell>
+                    <TableCell>{p.semester}</TableCell>
+                    <TableCell>{p.enrollmentSeason}</TableCell>
+                    <TableCell>
+                      {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {p.enrolledCourses.map(course => (
+                              <Badge key={course} variant="secondary">{course}</Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                        {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
+                    </TableCell>
+                    </TableRow>
+                ))
+                ) : (
+                <TableRow>
+                    <TableCell colSpan={10} className="h-24 text-center">
+                    No participants found. Add one to get started.
+                    </TableCell>
+                </TableRow>
+                )}
+            </TableBody>
+            </Table>
+        </ScrollArea>
+        </div>
     </div>
   );
 }
+
