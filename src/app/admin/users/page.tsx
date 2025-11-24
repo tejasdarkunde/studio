@@ -406,7 +406,7 @@ export default function AdminUsersPage() {
   const [searchIitpNo, setSearchIitpNo] = useState('');
   const [isFetchingParticipant, setIsFetchingParticipant] = useState(false);
   const [fetchedParticipant, setFetchedParticipant] = useState<Participant | null>(null);
-  const [editFormData, setEditFormData] = useState<Omit<Participant, 'createdAt' | 'completedLessons'>>({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: []});
+  const [editFormData, setEditFormData] = useState<Partial<Participant>>({ name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: [], year: '', semester: '', enrollmentSeason: undefined });
   const [sourceCourse, setSourceCourse] = useState('');
   const [destinationCourse, setDestinationCourse] = useState('');
   const [isTransferring, setIsTransferring] = useState(false);
@@ -482,6 +482,9 @@ export default function AdminUsersPage() {
         organization: fetchedParticipant.organization || '',
         enrolledCourses: fetchedParticipant.enrolledCourses || [],
         deniedCourses: fetchedParticipant.deniedCourses || [],
+        year: fetchedParticipant.year || '',
+        semester: fetchedParticipant.semester || '',
+        enrollmentSeason: fetchedParticipant.enrollmentSeason || undefined,
       });
     } else {
        setEditFormData({ id: '', name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], deniedCourses: []});
@@ -571,7 +574,7 @@ export default function AdminUsersPage() {
       id: fetchedParticipant?.id || '',
       completedLessons: fetchedParticipant?.completedLessons || [],
       deniedCourses: editFormData.deniedCourses || [],
-    });
+    } as Participant);
     
     if (result.success) {
       toast({
@@ -1045,6 +1048,26 @@ export default function AdminUsersPage() {
                                                 {org.name}
                                                 </SelectItem>
                                             ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                     <div className="space-y-2">
+                                        <Label htmlFor="edit-year">Year</Label>
+                                        <Input id="edit-year" value={editFormData.year} onChange={e => setEditFormData({...editFormData, year: e.target.value})} />
+                                    </div>
+                                     <div className="space-y-2">
+                                        <Label htmlFor="edit-semester">Semester</Label>
+                                        <Input id="edit-semester" value={editFormData.semester} onChange={e => setEditFormData({...editFormData, semester: e.target.value})} />
+                                    </div>
+                                     <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="edit-enrollmentSeason">Enrollment</Label>
+                                        <Select onValueChange={(value: 'Summer' | 'Winter') => setEditFormData({...editFormData, enrollmentSeason: value})} value={editFormData.enrollmentSeason}>
+                                            <SelectTrigger id="edit-enrollmentSeason">
+                                                <SelectValue placeholder="Select season" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Summer">Summer</SelectItem>
+                                                <SelectItem value="Winter">Winter</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

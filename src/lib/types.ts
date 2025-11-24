@@ -81,6 +81,9 @@ export type Participant = {
     examProgress?: {
         [examId: string]: ExamAttempt;
     }
+    year?: string;
+    semester?: string;
+    enrollmentSeason?: 'Summer' | 'Winter';
 }
 
 export type Lesson = {

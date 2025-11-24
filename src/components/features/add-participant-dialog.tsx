@@ -36,6 +36,9 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses, organiz
   const [mobile, setMobile] = useState('');
   const [organization, setOrganization] = useState('');
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [year, setYear] = useState('');
+  const [semester, setSemester] = useState('');
+  const [enrollmentSeason, setEnrollmentSeason] = useState<'Summer' | 'Winter' | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
@@ -46,6 +49,9 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses, organiz
       setMobile('');
       setOrganization('');
       setSelectedCourses([]);
+      setYear('');
+      setSemester('');
+      setEnrollmentSeason(undefined);
       setIsSaving(false);
     }
   }, [isOpen]);
@@ -61,7 +67,7 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses, organiz
     }
     
     setIsSaving(true);
-    await onSave({ name, iitpNo, mobile, organization, enrolledCourses: selectedCourses });
+    await onSave({ name, iitpNo, mobile, organization, enrolledCourses: selectedCourses, year, semester, enrollmentSeason });
     setIsSaving(false);
   };
   
@@ -106,6 +112,26 @@ export function AddParticipantDialog({ isOpen, onClose, onSave, courses, organiz
                     </SelectItem>
                   ))}
                    <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="year" className="text-right">Year</Label>
+            <Input id="year" value={year} onChange={(e) => setYear(e.target.value)} className="col-span-3" placeholder="e.g., 2024" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="semester" className="text-right">Semester</Label>
+            <Input id="semester" value={semester} onChange={(e) => setSemester(e.target.value)} className="col-span-3" placeholder="e.g., 1st" />
+          </div>
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="enrollmentSeason" className="text-right">Enrollment</Label>
+             <Select onValueChange={(value: 'Summer' | 'Winter') => setEnrollmentSeason(value)} value={enrollmentSeason}>
+                <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select season" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="Summer">Summer</SelectItem>
+                    <SelectItem value="Winter">Winter</SelectItem>
                 </SelectContent>
             </Select>
           </div>

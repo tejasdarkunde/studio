@@ -33,10 +33,10 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
       });
       return;
     }
-    const headers = "Name,IITP No,Mobile No,Organization,Enrolled Courses,Date Added\n";
+    const headers = "Name,IITP No,Mobile No,Organization,Year,Semester,Enrollment,Enrolled Courses,Date Added\n";
     const csvRows = participants.map(p => {
       const enrolledCourses = p.enrolledCourses?.join('; ') || '';
-      const row = [p.name, p.iitpNo, p.mobile, p.organization, enrolledCourses, new Date(p.createdAt).toLocaleString()];
+      const row = [p.name, p.iitpNo, p.mobile, p.organization, p.year, p.semester, p.enrollmentSeason, enrolledCourses, new Date(p.createdAt).toLocaleString()];
       return row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
     }).join('\n');
 
@@ -80,6 +80,9 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
                   <TableHead>IITP No</TableHead>
                   <TableHead>Mobile No</TableHead>
                   <TableHead>Organization</TableHead>
+                  <TableHead>Year</TableHead>
+                  <TableHead>Semester</TableHead>
+                  <TableHead>Enrollment</TableHead>
                   <TableHead>Enrolled Courses</TableHead>
                   <TableHead>Date Added</TableHead>
                   </TableRow>
@@ -92,6 +95,9 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
                       <TableCell>{p.iitpNo}</TableCell>
                       <TableCell>{p.mobile}</TableCell>
                       <TableCell>{p.organization}</TableCell>
+                      <TableCell>{p.year}</TableCell>
+                      <TableCell>{p.semester}</TableCell>
+                      <TableCell>{p.enrollmentSeason}</TableCell>
                       <TableCell>
                         {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
@@ -110,7 +116,7 @@ export function ParticipantsTable({ participants }: ParticipantsTableProps) {
                   ))
                   ) : (
                   <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={9} className="h-24 text-center">
                       No participants found. Add one to get started.
                       </TableCell>
                   </TableRow>
