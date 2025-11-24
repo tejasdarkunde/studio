@@ -108,7 +108,7 @@ const QuestionBuilder = ({ question, onUpdate, onRemove }: { question: FormQuest
     );
 };
 
-const FormBuilder = () => {
+const FormBuilder = ({ onFormSaved }: { onFormSaved: () => void }) => {
     const [user, setUser] = useState<FormAdmin | null>(null);
     const { toast } = useToast();
     const [formTitle, setFormTitle] = useState('Untitled Form');
@@ -167,7 +167,7 @@ const FormBuilder = () => {
             setFormTitle('Untitled Form');
             setFormDescription('');
             setQuestions([]);
-            // Here you could trigger a refresh of the forms list in the parent
+            onFormSaved(); // Trigger the refresh
         } else {
             toast({ variant: 'destructive', title: "Error Saving Form", description: result.error });
         }
@@ -220,21 +220,7 @@ const FormBuilder = () => {
     )
 }
 
-const MyForms = ({ user, onEditForm }: { user: FormAdmin, onEditForm: (form: FormType) => void }) => {
-    const [forms, setForms] = useState<FormType[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    const fetchForms = useCallback(async () => {
-        setLoading(true);
-        const userForms = await getFormsByCreator(user.id);
-        setForms(userForms);
-        setLoading(false);
-    }, [user.id]);
-
-    useEffect(() => {
-        fetchForms();
-    }, [fetchForms]);
-
+const MyForms = ({ forms, loading, onEditForm }: { forms: FormType[], loading: boolean, onEditForm: (form: FormType) => void }) => {
     return (
         <Card>
             <CardHeader>
@@ -289,22 +275,39 @@ const MyForms = ({ user, onEditForm }: { user: FormAdmin, onEditForm: (form: For
 export default function FormPortalDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<FormAdmin | null>(null);
+  const [forms, setForms] = useState<FormType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("create");
+
+  const fetchForms = useCallback(async (userId: string) => {
+      setLoading(true);
+      const userForms = await getFormsByCreator(userId);
+      setForms(userForms);
+      setLoading(false);
+  }, []);
 
   useEffect(() => {
     const userRole = sessionStorage.getItem('userRole');
     const userJson = sessionStorage.getItem('user');
 
     if (userRole === 'formadmin' && userJson) {
-      setUser(JSON.parse(userJson));
+      const currentUser = JSON.parse(userJson);
+      setUser(currentUser);
+      fetchForms(currentUser.id);
     } else {
       router.push('/form-portal/login');
     }
-    setLoading(false);
-  }, [router]);
+  }, [router, fetchForms]);
+  
+  const handleFormSaved = () => {
+    if (user) {
+        fetchForms(user.id);
+        setActiveTab("my-forms");
+    }
+  }
 
 
-  if (loading || !user) {
+  if (!user) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -317,16 +320,16 @@ export default function FormPortalDashboard() {
       <h1 className="text-3xl font-bold mb-2">Form Portal Dashboard</h1>
       <p className="text-muted-foreground mb-8">Welcome, {user.name}.</p>
       
-      <Tabs defaultValue="create" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
             <TabsTrigger value="create">Create New Form</TabsTrigger>
             <TabsTrigger value="my-forms">My Forms</TabsTrigger>
         </TabsList>
         <TabsContent value="create" className="mt-6">
-            <FormBuilder />
+            <FormBuilder onFormSaved={handleFormSaved}/>
         </TabsContent>
         <TabsContent value="my-forms" className="mt-6">
-            <MyForms user={user} onEditForm={() => {}} />
+            <MyForms forms={forms} loading={loading} onEditForm={() => {}} />
         </TabsContent>
       </Tabs>
     </div>
