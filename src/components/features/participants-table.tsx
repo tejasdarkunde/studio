@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -15,7 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2 } from "lucide-react";
+import { Download, RefreshCw, Loader2, Filter, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
@@ -36,6 +35,10 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
   const [semester, setSemester] = useState('');
   const [enrollmentSeason, setEnrollmentSeason] = useState<'Summer' | 'Winter' | undefined>();
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  const [filterYear, setFilterYear] = useState('');
+  const [filterSemester, setFilterSemester] = useState('');
+  const [filterEnrollment, setFilterEnrollment] = useState<'Summer' | 'Winter' | 'all'>('all');
 
 
   const handleSelectRow = (id: string) => {
@@ -60,16 +63,29 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
 
   // A simple CSV export for participants
   const handleExport = () => {
-    if (participants.length === 0) {
+    let dataToExport = participants;
+    
+    if (filterYear.trim()) {
+        dataToExport = dataToExport.filter(p => p.year?.toLowerCase().includes(filterYear.toLowerCase()));
+    }
+    if (filterSemester.trim()) {
+        dataToExport = dataToExport.filter(p => p.semester?.toLowerCase().includes(filterSemester.toLowerCase()));
+    }
+    if (filterEnrollment !== 'all') {
+        dataToExport = dataToExport.filter(p => p.enrollmentSeason === filterEnrollment);
+    }
+
+
+    if (dataToExport.length === 0) {
       toast({
         variant: 'destructive',
         title: "No Data",
-        description: "There are no participants to export.",
+        description: "There are no participants matching your filter criteria.",
       });
       return;
     }
     const headers = "Name,IITP No,Mobile No,Organization,Year,Semester,Enrollment,Enrolled Courses,Date Added\n";
-    const csvRows = participants.map(p => {
+    const csvRows = dataToExport.map(p => {
       const enrolledCourses = p.enrolledCourses?.join('; ') || '';
       const row = [p.name, p.iitpNo, p.mobile, p.organization, p.year, p.semester, p.enrollmentSeason, enrolledCourses, new Date(p.createdAt).toLocaleString()];
       return row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
@@ -81,7 +97,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
 
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `all_participants_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `filtered_participants_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -89,7 +105,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
 
      toast({
       title: "Export Started",
-      description: "Participant data is being downloaded.",
+      description: "Filtered participant data is being downloaded.",
     });
   }
   
@@ -123,6 +139,12 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
     }
 
     setIsUpdating(false);
+  }
+
+  const clearFilters = () => {
+      setFilterYear('');
+      setFilterSemester('');
+      setFilterEnrollment('all');
   }
 
   return (
@@ -159,15 +181,45 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
           </CardContent>
         </Card>
       )}
+      <Card>
+          <CardHeader>
+            <CardTitle>Export Participants</CardTitle>
+            <CardDescription>Filter participants by year, semester, or enrollment season before exporting.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col md:flex-row gap-4 items-end">
+             <div className="flex-grow space-y-2">
+                <Label htmlFor="filter-year">Year</Label>
+                <Input id="filter-year" value={filterYear} onChange={e => setFilterYear(e.target.value)} placeholder="Filter by year..."/>
+             </div>
+             <div className="flex-grow space-y-2">
+                <Label htmlFor="filter-semester">Semester</Label>
+                <Input id="filter-semester" value={filterSemester} onChange={e => setFilterSemester(e.target.value)} placeholder="Filter by semester..."/>
+             </div>
+             <div className="flex-grow space-y-2">
+                <Label htmlFor="filter-enrollment">Enrollment</Label>
+                <Select onValueChange={(v: 'Summer' | 'Winter' | 'all') => setFilterEnrollment(v)} value={filterEnrollment}>
+                    <SelectTrigger id="filter-enrollment"><SelectValue/></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Seasons</SelectItem>
+                        <SelectItem value="Summer">Summer</SelectItem>
+                        <SelectItem value="Winter">Winter</SelectItem>
+                    </SelectContent>
+                </Select>
+             </div>
+             <div className="flex gap-2">
+                <Button variant="outline" onClick={clearFilters}><X className="mr-2 h-4 w-4"/>Clear</Button>
+                <Button variant="secondary" onClick={handleExport} disabled={participants.length === 0}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export CSV
+                </Button>
+             </div>
+          </CardContent>
+      </Card>
       <div className="flex flex-row items-center justify-between">
           <div>
             <h3 className="text-lg font-medium">Full Participant Directory</h3>
             <p className="text-sm text-muted-foreground">A complete view of every participant.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={participants.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              Export All as CSV
-          </Button>
       </div>
       <div className="border rounded-lg">
         <ScrollArea className="h-[60vh]">
@@ -238,4 +290,3 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
     </div>
   );
 }
-
