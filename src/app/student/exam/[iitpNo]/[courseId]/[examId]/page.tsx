@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, Loader2, Send, ShieldAlert, Timer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Send, ShieldAlert, Timer, PlayCircle } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
@@ -76,6 +76,7 @@ export default function ExamPage() {
     const [exam, setExam] = useState<Exam | null>(null);
     const [participant, setParticipant] = useState<Participant | null>(null);
     const [loading, setLoading] = useState(true);
+    const [examStarted, setExamStarted] = useState(false);
     const [answers, setAnswers] = useState<{[questionId: string]: number | number[] | string}>({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [isLocked, setIsLocked] = useState(false);
@@ -105,6 +106,9 @@ export default function ExamPage() {
             });
 
             if(result.success) {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                }
                 toast({ title: "Exam Submitted Successfully!" });
                 router.push(`/student/results/${iitpNo}/${examId}`);
             } else {
@@ -145,14 +149,6 @@ export default function ExamPage() {
                 setAnswers(savedAttempt.answers);
             }
 
-            // Start timer if not already started
-            if (foundExam.duration && !savedAttempt?.startedAt) {
-                await saveExamProgress({ participantId: participantData.id, examId, answers: savedAttempt?.answers || {}, startedAt: new Date().toISOString() });
-                // Re-fetch to get the server timestamp
-                const updatedParticipantData = await getParticipantByIitpNo(iitpNo);
-                setParticipant(updatedParticipantData);
-            }
-
             setLoading(false);
         };
 
@@ -160,7 +156,7 @@ export default function ExamPage() {
     }, [courseId, examId, iitpNo, router]);
     
      useEffect(() => {
-        if (!exam?.duration || !participant?.examProgress?.[examId]?.startedAt) {
+        if (!examStarted || !exam?.duration || !participant?.examProgress?.[examId]?.startedAt) {
             return;
         }
 
@@ -186,9 +182,10 @@ export default function ExamPage() {
 
         return () => clearInterval(interval);
 
-    }, [exam, participant, examId, toast, handleSubmit]);
+    }, [exam, participant, examId, toast, handleSubmit, examStarted]);
 
     useEffect(() => {
+        if (!examStarted) return;
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
                 setIsLocked(true);
@@ -206,22 +203,28 @@ export default function ExamPage() {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('blur', handleBlur);
         };
-    }, []);
+    }, [examStarted]);
 
-    useEffect(() => {
-        if (!loading && exam) {
-            document.documentElement.requestFullscreen().catch((err) => {
-                console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-            });
-        }
-
-        // Exit fullscreen when component unmounts
-        return () => {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
+    const handleStartExam = async () => {
+        try {
+            await document.documentElement.requestFullscreen();
+            // Fullscreen request was successful
+            if (participant && exam) {
+                 const savedAttempt = participant.examProgress?.[exam.id];
+                 if (!savedAttempt?.startedAt) {
+                    await saveExamProgress({ participantId: participant.id, examId, answers: savedAttempt?.answers || {}, startedAt: new Date().toISOString() });
+                     // Re-fetch to get the server timestamp
+                    const updatedParticipantData = await getParticipantByIitpNo(iitpNo);
+                    setParticipant(updatedParticipantData);
+                 }
             }
-        };
-    }, [loading, exam]);
+            setExamStarted(true);
+        } catch (err) {
+            console.error(`Error attempting to enable full-screen mode: ${err}. Starting exam without fullscreen.`);
+            setExamStarted(true);
+        }
+    };
+
 
     const handleAnswerChange = (questionId: string, answer: any) => {
         const newAnswers = { ...answers, [questionId]: answer };
@@ -262,10 +265,33 @@ export default function ExamPage() {
     }
 
     if (!exam || !participant) {
-        // This case should be handled by the loading state and redirection, but as a fallback.
         return notFound();
     }
     
+    if (!examStarted) {
+        return (
+            <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
+                <Card className="w-full max-w-lg text-center">
+                    <CardHeader>
+                        <CardTitle className="text-3xl">{exam.title}</CardTitle>
+                        <CardDescription>You are about to begin the exam.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p>This exam consists of <strong>{exam.questions.length} questions</strong>.</p>
+                        {exam.duration && <p>You will have <strong>{exam.duration} minutes</strong> to complete it.</p>}
+                        <p className="text-sm text-muted-foreground">For the best experience, this exam will open in fullscreen mode. Please do not exit fullscreen or switch tabs, as this will lock your exam.</p>
+                    </CardContent>
+                    <CardFooter>
+                        <Button className="w-full" size="lg" onClick={handleStartExam}>
+                            <PlayCircle className="mr-2 h-5 w-5"/>
+                            Start Exam in Fullscreen
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </main>
+        )
+    }
+
     const answeredCount = Object.keys(answers).filter(k => {
         const answer = answers[k];
         if (Array.isArray(answer)) return answer.length > 0;
