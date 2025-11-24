@@ -334,7 +334,7 @@ export default function TrainingsPage() {
                 )}
                 </CardHeader>
                 <CardContent>
-                <Tabs defaultValue="batch-view">
+                <Tabs defaultValue="schedule-view">
                     <TabsList>
                         <TabsTrigger value="batch-view">Batch View</TabsTrigger>
                         <TabsTrigger value="schedule-view">Schedule View</TabsTrigger>
