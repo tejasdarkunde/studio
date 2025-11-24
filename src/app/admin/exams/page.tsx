@@ -3,12 +3,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Course, Exam, Question, ExamResult } from '@/lib/types';
+import type { Course, Exam, Question, ExamResult, Batch } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Pencil, PlusCircle, Trash, Loader2, FileQuestion, Trash2, Link as LinkIcon, BarChart, Download, View, Search, Clock, Users, ChevronLeft, Book } from 'lucide-react';
-import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults, deleteExamAttempt } from '@/app/actions';
+import { getCourses, addExam, updateExam, deleteExam, addQuestion, updateQuestion, deleteQuestion, getExamResults, deleteExamAttempt, getBatches } from '@/app/actions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { useRouter } from 'next/navigation';
 
 const ManageExamDialog = ({
     isOpen,
@@ -270,8 +271,14 @@ const ViewResultsDialog = ({
 
 
 export default function ExamsPage() {
+    const router = useRouter();
     const [courses, setCourses] = useState<Course[]>([]);
+    const [batches, setBatches] = useState<Batch[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [userRole, setUserRole] = useState<'superadmin' | 'trainer' | null>(null);
+    const [trainerId, setTrainerId] = useState<string | null>(null);
+
     const [deletingExam, setDeletingExam] = useState<{exam: Exam, courseId: string} | null>(null);
     const [examDialog, setExamDialog] = useState<{isOpen: boolean; exam?: Exam & { courseId: string } }>({isOpen: false});
     const [viewingResultsFor, setViewingResultsFor] = useState<Exam | null>(null);
@@ -280,10 +287,14 @@ export default function ExamsPage() {
 
     const { toast } = useToast();
 
-    const fetchCourses = useCallback(async () => {
+    const fetchAllData = useCallback(async () => {
         setLoading(true);
-        const fetchedCourses = await getCourses();
+        const [fetchedCourses, fetchedBatches] = await Promise.all([
+            getCourses(),
+            getBatches()
+        ]);
         setCourses(fetchedCourses);
+        setBatches(fetchedBatches);
 
         const allExams = fetchedCourses.flatMap(c => (c.exams || []));
         const counts: Record<string, number> = {};
@@ -297,18 +308,38 @@ export default function ExamsPage() {
     }, []);
 
     useEffect(() => {
-        fetchCourses();
-    }, [fetchCourses]);
+        const role = sessionStorage.getItem('userRole') as 'superadmin' | 'trainer' | null;
+        const id = sessionStorage.getItem('trainerId');
+
+        if (role) {
+            setUserRole(role);
+            if (role === 'trainer' && id) {
+                setTrainerId(id);
+            }
+            fetchAllData();
+        } else {
+            router.push('/login');
+        }
+    }, [fetchAllData, router]);
     
+    const trainerCourses = useMemo(() => {
+        if (userRole === 'superadmin') return courses;
+        if (userRole === 'trainer' && trainerId) {
+            const trainerCourseNames = new Set(batches.filter(b => b.trainerId === trainerId).map(b => b.course));
+            return courses.filter(c => trainerCourseNames.has(c.name));
+        }
+        return [];
+    }, [userRole, trainerId, courses, batches]);
+
     const allExams = useMemo(() => {
-        return courses.flatMap(course => 
+        return trainerCourses.flatMap(course => 
             (course.exams || []).map(exam => ({
                 ...exam,
                 courseId: course.id,
                 courseName: course.name,
             }))
         ).sort((a, b) => a.title.localeCompare(b.title));
-    }, [courses]);
+    }, [trainerCourses]);
 
     const filteredExams = useMemo(() => {
         if (courseFilter === 'all') {
@@ -329,7 +360,7 @@ export default function ExamsPage() {
         const result = await action(payload as any);
         if (result.success) {
             toast({ title: `Exam ${isEditing ? 'Updated' : 'Added'}` });
-            fetchCourses();
+            fetchAllData();
             setExamDialog({ isOpen: false });
         } else {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
@@ -341,7 +372,7 @@ export default function ExamsPage() {
         const result = await deleteExam({courseId: deletingExam.courseId, examId: deletingExam.exam.id});
         if (result.success) {
             toast({ title: "Exam Deleted" });
-            fetchCourses();
+            fetchAllData();
         } else {
             toast({ variant: 'destructive', title: 'Error', description: result.error });
         }
@@ -369,13 +400,13 @@ export default function ExamsPage() {
                 onClose={() => setExamDialog({isOpen: false})}
                 onSave={handleSaveExam}
                 initialData={examDialog.exam}
-                courses={courses}
+                courses={trainerCourses}
             />
             <ViewResultsDialog 
                 isOpen={!!viewingResultsFor}
                 onClose={() => setViewingResultsFor(null)}
                 exam={viewingResultsFor}
-                onUpdateNeeded={fetchCourses}
+                onUpdateNeeded={fetchAllData}
             />
              <ConfirmDialog 
                 isOpen={!!deletingExam}
@@ -411,7 +442,7 @@ export default function ExamsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Courses</SelectItem>
-                                    {courses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                                    {trainerCourses.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                        </div>
@@ -462,9 +493,9 @@ export default function ExamsPage() {
                                                 <Button variant="ghost" size="icon" onClick={() => setViewingResultsFor(exam)} title="View results">
                                                     <BarChart className="h-4 w-4" />
                                                 </Button>
-                                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeletingExam({ exam, courseId: exam.courseId })} title="Delete exam">
+                                                 {userRole === 'superadmin' && (<Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeletingExam({ exam, courseId: exam.courseId })} title="Delete exam">
                                                     <Trash className="h-4 w-4" />
-                                                </Button>
+                                                </Button>)}
                                             </TableCell>
                                         </TableRow>
                                     )) : (
