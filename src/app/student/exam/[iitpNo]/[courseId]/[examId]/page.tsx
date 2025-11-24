@@ -80,7 +80,7 @@ export default function ExamPage() {
     const [examStarted, setExamStarted] = useState(false);
     const [answers, setAnswers] = useState<{[questionId: string]: number | number[] | string}>({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [isLocked, setIsLocked] = useState(isLocked);
+    const [isLocked, setIsLocked] = useState(false);
     const [isSaving, startSaving] = useTransition();
     const [isSubmitting, startSubmitting] = useTransition();
     const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
@@ -483,5 +483,3 @@ export default function ExamPage() {
         </>
     );
 }
-
-    
