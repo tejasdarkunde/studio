@@ -103,143 +103,134 @@ export default function OrganizationDashboardPage() {
     }
     
     return (
-        <div className="min-h-screen flex flex-col">
-             <header className="bg-background border-b sticky top-0 z-10">
-                <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
-                     <p className="text-xl font-bold text-primary tracking-tight">BSA Training Academy, Pune</p>
-                    <div className='flex items-center gap-2'>
-                        <span className="text-sm text-muted-foreground hidden sm:inline">Welcome, {currentUser?.name}</span>
-                        <Button variant="outline" onClick={() => {
-                                sessionStorage.clear();
-                                router.push('/login');
-                        }}>Logout</Button>
-                    </div>
-                </div>
-            </header>
-            <main className="container mx-auto p-4 md:p-8 flex-grow">
-                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold tracking-tight">
-                        {organizationName} Dashboard
-                    </h1>
-                    <p className="mt-2 text-lg text-muted-foreground">
-                       View your organization's training and attendance data.
-                    </p>
-                </div>
-                <Tabs defaultValue="overview">
-                    <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <TabsTrigger value="participants">Participants</TabsTrigger>
-                        <TabsTrigger value="trainings">Trainings</TabsTrigger>
-                        <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="overview" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Organization Stats</CardTitle>
-                                <CardDescription>A quick look at your organization's training data.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <Card className="p-4 text-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                    <Users className="h-8 w-8 text-primary" />
-                                    <p className="text-2xl font-bold">{stats.totalParticipants}</p>
-                                    <p className="text-sm text-muted-foreground">Total Participants</p>
-                                    </div>
-                                </Card>
-                                <Card className="p-4 text-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                    <Presentation className="h-8 w-8 text-primary" />
-                                    <p className="text-2xl font-bold">{stats.totalSessionsAttended}</p>
-                                    <p className="text-sm text-muted-foreground">Total Sessions Attended</p>
-                                    </div>
-                                </Card>
-                                {Object.entries(stats.courseEnrollments).map(([courseName, count]) => (
-                                    <Card key={courseName} className="p-4 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                        <BookUser className="h-8 w-8 text-primary" />
-                                        <p className="text-2xl font-bold">{count}</p>
-                                        <p className="text-sm text-muted-foreground">{courseName} Enrollments</p>
-                                        </div>
-                                    </Card>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    <TabsContent value="participants" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Participants from {organizationName}</CardTitle>
-                                <CardDescription>A list of all employees from your organization in the system.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ParticipantsTable participants={participants} />
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                    
-                    <TabsContent value="trainings" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Training History</CardTitle>
-                                <CardDescription>Training sessions attended by employees from {organizationName}.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                            {batches && batches.length > 0 ? (
-                                <Accordion type="multiple" className="w-full">
-                                    {batches.map(batch => (
-                                        <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
-                                            <AccordionTrigger>
-                                                <div className="flex justify-between items-center w-full pr-4">
-                                                <div className="flex items-center gap-4">
-                                                    <span>
-                                                        {batch.name} 
-                                                    </span>
-                                                    <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
-                                                        {batch.course}
-                                                    </Badge>
-                                                </div>
-                                                <span className="text-sm text-muted-foreground">
-                                                    {batch.registrations.length} participant(s) from your organization
-                                                </span>
-                                                </div>
-                                            </AccordionTrigger>
-                                            <AccordionContent>
-                                                <RegistrationsTable 
-                                                    registrations={batch.registrations}
-                                                    batchName={batch.name}
-                                                />
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    ))}
-                                </Accordion>
-                            ) : (
-                                <div className="text-center py-12 text-muted-foreground">
-                                <p>No training attendance found for your organization.</p>
+        <>
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold tracking-tight">
+                    {organizationName} Dashboard
+                </h1>
+                <p className="mt-2 text-lg text-muted-foreground">
+                    View your organization's training and attendance data.
+                </p>
+            </div>
+            <Tabs defaultValue="overview">
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="participants">Participants</TabsTrigger>
+                    <TabsTrigger value="trainings">Trainings</TabsTrigger>
+                    <TabsTrigger value="attendance">Attendance</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="overview" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Organization Stats</CardTitle>
+                            <CardDescription>A quick look at your organization's training data.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <Card className="p-4 text-center">
+                                <div className="flex flex-col items-center gap-2">
+                                <Users className="h-8 w-8 text-primary" />
+                                <p className="text-2xl font-bold">{stats.totalParticipants}</p>
+                                <p className="text-sm text-muted-foreground">Total Participants</p>
                                 </div>
-                            )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                    
-                    <TabsContent value="attendance" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Attendance Report</CardTitle>
-                                <CardDescription>Grid view of attendance for your organization's participants.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <AttendanceReport 
-                                    participants={participants}
-                                    batches={batches}
-                                />
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+                            </Card>
+                            <Card className="p-4 text-center">
+                                <div className="flex flex-col items-center gap-2">
+                                <Presentation className="h-8 w-8 text-primary" />
+                                <p className="text-2xl font-bold">{stats.totalSessionsAttended}</p>
+                                <p className="text-sm text-muted-foreground">Total Sessions Attended</p>
+                                </div>
+                            </Card>
+                            {Object.entries(stats.courseEnrollments).map(([courseName, count]) => (
+                                <Card key={courseName} className="p-4 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                    <BookUser className="h-8 w-8 text-primary" />
+                                    <p className="text-2xl font-bold">{count}</p>
+                                    <p className="text-sm text-muted-foreground">{courseName} Enrollments</p>
+                                    </div>
+                                </Card>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-                </Tabs>
-            </main>
-        </div>
+                <TabsContent value="participants" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Participants from {organizationName}</CardTitle>
+                            <CardDescription>A list of all employees from your organization in the system.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ParticipantsTable participants={participants} onDataRefreshed={function (): void {
+                                throw new Error('Function not implemented.');
+                            } } onUpdateSelected={function (data: { ids: string[]; year?: string | undefined; semester?: string | undefined; enrollmentSeason?: "Summer" | "Winter" | undefined; }): Promise<{ success: boolean; error?: string | undefined; updatedCount?: number | undefined; }> {
+                                throw new Error('Function not implemented.');
+                            } } />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                
+                <TabsContent value="trainings" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Training History</CardTitle>
+                            <CardDescription>Training sessions attended by employees from {organizationName}.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                        {batches && batches.length > 0 ? (
+                            <Accordion type="multiple" className="w-full">
+                                {batches.map(batch => (
+                                    <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
+                                        <AccordionTrigger>
+                                            <div className="flex justify-between items-center w-full pr-4">
+                                            <div className="flex items-center gap-4">
+                                                <span>
+                                                    {batch.name} 
+                                                </span>
+                                                <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
+                                                    {batch.course}
+                                                </Badge>
+                                            </div>
+                                            <span className="text-sm text-muted-foreground">
+                                                {batch.registrations.length} participant(s) from your organization
+                                            </span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <RegistrationsTable 
+                                                registrations={batch.registrations}
+                                                batchName={batch.name}
+                                            />
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                        ) : (
+                            <div className="text-center py-12 text-muted-foreground">
+                            <p>No training attendance found for your organization.</p>
+                            </div>
+                        )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                
+                <TabsContent value="attendance" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Attendance Report</CardTitle>
+                            <CardDescription>Grid view of attendance for your organization's participants.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AttendanceReport 
+                                participants={participants}
+                                batches={batches}
+                                courses={courses}
+                            />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+            </Tabs>
+        </>
     )
 }
