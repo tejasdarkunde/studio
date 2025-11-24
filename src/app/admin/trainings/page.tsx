@@ -79,10 +79,12 @@ export default function TrainingsPage() {
         return [...filteredBatches].sort((a, b) => {
             const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
             const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
-            if (dateA !== dateB) return dateB - dateA;
+            if (dateA !== dateB) return dateB - dateA; // Most recent date first
+            
+            // If dates are the same, sort by start time
             const timeA = a.startTime || '00:00';
             const timeB = b.startTime || '00:00';
-            return timeB.localeCompare(timeA);
+            return timeA.localeCompare(timeB); // Earlier time first
         });
     }, [filteredBatches]);
     
@@ -501,4 +503,3 @@ export default function TrainingsPage() {
         </>
     );
 }
-
