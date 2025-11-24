@@ -18,7 +18,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, transferStudents, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, getFormAdmins, addFormAdmin, updateFormAdmin, deleteFormAdmin, getParticipants, updateSelectedParticipants, updateAllParticipantsYear } from '@/app/actions';
+import { addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, transferStudents, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, getFormAdmins, addFormAdmin, updateFormAdmin, deleteFormAdmin, getParticipants, updateSelectedParticipants } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -401,9 +401,7 @@ export default function AdminUsersPage() {
   const [editingFormAdmin, setEditingFormAdmin] = useState<FormAdmin | null>(null);
   const [isAddFormAdminOpen, setIsAddFormAdminOpen] = useState(false);
   const [deletingFormAdmin, setDeletingFormAdmin] = useState<FormAdmin | null>(null);
-  const [isConfirmBulkOpen, setIsConfirmBulkOpen] = useState(false);
   
-
 
   // Form & Filter states
   const [searchIitpNo, setSearchIitpNo] = useState('');
@@ -596,25 +594,6 @@ export default function AdminUsersPage() {
     }
     setIsUpdatingParticipant(false);
   };
-
-    const handleUpdateAllParticipantsYear = async () => {
-        const result = await updateAllParticipantsYear();
-        if (result.success) {
-            toast({
-                title: "Bulk Update Successful",
-                description: `${result.updatedCount} participants have been updated.`,
-            });
-            fetchAllData(); // Refresh the data
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Bulk Update Failed',
-                description: result.error,
-            });
-        }
-        setIsConfirmBulkOpen(false);
-    }
-
 
   const handleDownloadTemplate = () => {
     const headers = "name,iitpNo,mobile,organization,enrolledCourses,year,semester,enrollmentSeason\n";
@@ -894,13 +873,6 @@ export default function AdminUsersPage() {
         onSave={handleSaveAdmin}
         initialData={editingAdmin}
         currentUser={currentUser}
-      />
-       <ConfirmDialog
-        isOpen={isConfirmBulkOpen}
-        onClose={() => setIsConfirmBulkOpen(false)}
-        onConfirm={handleUpdateAllParticipantsYear}
-        title="Confirm Bulk Update"
-        description="This will set the year to 'Winter 2025', semester to '1st Year', and enrollment to 'Winter' for ALL participants. This action cannot be undone."
       />
       <Dialog open={isAddOrgOpen} onOpenChange={setIsAddOrgOpen}>
           <DialogContent>
@@ -1365,6 +1337,3 @@ export default function AdminUsersPage() {
     </>
   );
 }
-
-
-
