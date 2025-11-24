@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt, ExamResult, FormAdmin } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt, ExamResult, FormAdmin, Form as FormType } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -2468,10 +2468,44 @@ export async function updateSiteConfig(data: { announcement?: string; heroImageU
         return { success: false, error: 'Could not update site configuration in the database.' };
     }
 }
+
+const createFormSchema = z.object({
+  title: z.string().min(1, "Form title is required."),
+  description: z.string().optional(),
+  questions: z.array(z.object({
+      id: z.string(),
+      text: z.string().min(1, "Question text cannot be empty."),
+      type: z.enum(['text', 'textarea', 'radio', 'checkbox', 'select']),
+      options: z.array(z.string()).optional(),
+      isRequired: z.boolean(),
+  })).min(1, "At least one question is required."),
+  createdBy: z.string().min(1),
+});
+
+export async function createForm(data: z.infer<typeof createFormSchema>): Promise<{ success: boolean; error?: string, formId?: string }> {
+    const validated = createFormSchema.safeParse(data);
+    if (!validated.success) {
+        console.error("Form validation failed:", validated.error.flatten().fieldErrors);
+        return { success: false, error: "Invalid form data provided." };
+    }
+
+    try {
+        const formsCollection = collection(db, "forms");
+        const docRef = await addDoc(formsCollection, {
+            ...validated.data,
+            createdAt: serverTimestamp(),
+        });
+        return { success: true, formId: docRef.id };
+    } catch (error) {
+        console.error("Error creating form:", error);
+        return { success: false, error: "A database error occurred while creating the form." };
+    }
+}
       
     
 
     
+
 
 
 

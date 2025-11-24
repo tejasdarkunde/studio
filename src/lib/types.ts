@@ -159,3 +159,29 @@ export type ExamResult = {
     totalQuestions: number;
     submittedAt: string;
 }
+
+export type FormQuestion = {
+    id: string;
+    text: string;
+    type: 'text' | 'textarea' | 'radio' | 'checkbox' | 'select';
+    options?: string[];
+    isRequired: boolean;
+};
+
+export type Form = {
+    id: string;
+    title: string;
+    description?: string;
+    questions: FormQuestion[];
+    createdBy: string; // FormAdmin ID
+    createdAt: string; // ISO 8601 string format
+};
+
+export type FormResponse = {
+    id: string;
+    formId: string;
+    submittedAt: string; // ISO 8601 string format
+    answers: {
+        [questionId: string]: string | string[];
+    };
+};
