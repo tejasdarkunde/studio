@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Download, Users, BookUser, BookUp, Presentation, School, Building, Loader2, CalendarCheck, BookCopy, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, Settings, Book, Image as ImageIcon, UserCog, Circle, CircleDot, CircleSlash } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Download, Users, BookUser, BookUp, Presentation, School, Building, Loader2, CalendarCheck, BookCopy, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, Calendar as CalendarIcon, FileQuestion, Settings, Book, Image as ImageIcon, UserCog, Circle, CircleDot, CircleSlash, GraduationCap } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -556,14 +556,24 @@ export default function AdminPage() {
   const reportStats = useMemo(() => {
     let totalEnrollments = 0;
     const courseStats: { [courseName: string]: { enrollments: number; sessions: number; } } = {};
-    const organizationSet = new Set<string>();
+    const organizationStats: { [orgName: string]: number } = {};
+    const yearStats: { [year: string]: number } = {};
 
     courses.forEach(course => {
       courseStats[course.name] = { enrollments: 0, sessions: 0 };
     });
     
     participants.forEach(participant => {
-      organizationSet.add(participant.organization);
+      // Organization stats
+      const org = participant.organization || 'Unspecified';
+      organizationStats[org] = (organizationStats[org] || 0) + 1;
+
+      // Year stats
+      if (participant.year) {
+        yearStats[participant.year] = (yearStats[participant.year] || 0) + 1;
+      }
+
+      // Course enrollment stats
       participant.enrolledCourses?.forEach(enrolledCourse => {
         if (courseStats[enrolledCourse]) {
           courseStats[enrolledCourse].enrollments += 1;
@@ -582,9 +592,11 @@ export default function AdminPage() {
       totalParticipants: participants.length,
       totalEnrollments,
       totalSessions: batches.length,
-      totalOrganizations: organizationSet.size,
+      totalOrganizations: Object.keys(organizationStats).length,
       totalTrainers: trainers.length,
-      courseStats
+      courseStats,
+      organizationStats,
+      yearStats
     };
   }, [participants, batches, trainers, courses]);
   
@@ -974,34 +986,90 @@ export default function AdminPage() {
                             </Card>
                         </div>
                         <Separator />
-                        <div>
-                             <h3 className="text-lg font-medium mb-4">Course Statistics</h3>
-                             <div className="border rounded-lg">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Course Name</TableHead>
-                                            <TableHead>Enrolled Students</TableHead>
-                                            <TableHead>Sessions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                    {Object.entries(reportStats.courseStats).length > 0 ? (
-                                        Object.entries(reportStats.courseStats).map(([name, stats]) => (
-                                            <TableRow key={name}>
-                                                <TableCell className="font-medium">{name}</TableCell>
-                                                <TableCell>{stats.enrollments}</TableCell>
-                                                <TableCell>{stats.sessions}</TableCell>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-1">
+                                <h3 className="text-lg font-medium mb-4">Admissions by Organization</h3>
+                                <div className="border rounded-lg max-h-72 overflow-y-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Organization</TableHead>
+                                                <TableHead className="text-right">Participants</TableHead>
                                             </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="h-24 text-center">No course data to display.</TableCell>
-                                        </TableRow>
-                                    )}
-                                    </TableBody>
-                                </Table>
-                             </div>
+                                        </TableHeader>
+                                        <TableBody>
+                                        {Object.entries(reportStats.organizationStats).length > 0 ? (
+                                            Object.entries(reportStats.organizationStats).sort(([,a],[,b]) => b-a).map(([name, count]) => (
+                                                <TableRow key={name}>
+                                                    <TableCell className="font-medium">{name}</TableCell>
+                                                    <TableCell className="text-right">{count}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="h-24 text-center">No organization data.</TableCell>
+                                            </TableRow>
+                                        )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                            <div className="lg:col-span-1">
+                                <h3 className="text-lg font-medium mb-4">Admissions by Year</h3>
+                                <div className="border rounded-lg max-h-72 overflow-y-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Year</TableHead>
+                                                <TableHead className="text-right">Participants</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                        {Object.entries(reportStats.yearStats).length > 0 ? (
+                                            Object.entries(reportStats.yearStats).sort((a,b) => b[0].localeCompare(a[0])).map(([name, count]) => (
+                                                <TableRow key={name}>
+                                                    <TableCell className="font-medium">{name}</TableCell>
+                                                    <TableCell className="text-right">{count}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="h-24 text-center">No year data.</TableCell>
+                                            </TableRow>
+                                        )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                            <div className="lg:col-span-1">
+                                <h3 className="text-lg font-medium mb-4">Course Statistics</h3>
+                                <div className="border rounded-lg max-h-72 overflow-y-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Course</TableHead>
+                                                <TableHead>Enrollments</TableHead>
+                                                <TableHead>Sessions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                        {Object.entries(reportStats.courseStats).length > 0 ? (
+                                            Object.entries(reportStats.courseStats).map(([name, stats]) => (
+                                                <TableRow key={name}>
+                                                    <TableCell className="font-medium">{name}</TableCell>
+                                                    <TableCell>{stats.enrollments}</TableCell>
+                                                    <TableCell>{stats.sessions}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="h-24 text-center">No course data.</TableCell>
+                                            </TableRow>
+                                        )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -1313,7 +1381,7 @@ export default function AdminPage() {
     <Tabs defaultValue="trainings" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="trainings">My Trainings</TabsTrigger>
-            <TabsTrigger value="exams" asChild><Link href="/admin/exams"><Book className="mr-2 h-4 w-4"/>Exams</Link></TabsTrigger>
+            <TabsTrigger value="exams" asChild><Link href="/admin/exams"><GraduationCap className="mr-2 h-4 w-4"/>Exams</Link></TabsTrigger>
             <TabsTrigger value="attendance">My Attendance</TabsTrigger>
         </TabsList>
          <TabsContent value="trainings" className="mt-6">
@@ -1599,3 +1667,4 @@ export default function AdminPage() {
     </>
   );
 }
+
