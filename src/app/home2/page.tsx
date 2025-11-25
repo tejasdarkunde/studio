@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Calendar, Clock } from 'lucide-react';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 const TrainingCard = ({ batch }: { batch: Batch }) => {
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Date not set';
