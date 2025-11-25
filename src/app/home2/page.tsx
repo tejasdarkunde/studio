@@ -65,8 +65,21 @@ const TrainingCard = ({ batch }: { batch: Batch }) => {
 
 export default async function Home2Page() {
   const allBatches = await getBatches();
-  const recentBatches = allBatches.slice(0, 3);
   const { heroImageUrl } = await getSiteConfig();
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const upcomingBatches = allBatches
+    .filter(b => {
+      if (!b.startDate) return false;
+      const eventDate = new Date(b.startDate);
+      eventDate.setHours(0,0,0,0);
+      return eventDate >= today && !b.isCancelled;
+    })
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  
+  const recentBatches = upcomingBatches.slice(0, 3);
 
   return (
     <main>
@@ -96,7 +109,7 @@ export default async function Home2Page() {
 
       <section className="container mx-auto p-4 md:p-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold">Latest Training Sessions</h2>
+          <h2 className="text-3xl font-bold">Upcoming Training Sessions</h2>
           <Button asChild variant="outline">
             <Link href="/home">
               View All Trainings <ArrowRight className="ml-2"/>
@@ -110,7 +123,7 @@ export default async function Home2Page() {
         </div>
         {recentBatches.length === 0 && (
           <div className="text-center py-12 text-muted-foreground border rounded-lg">
-            <p>No recent training sessions found.</p>
+            <p>No upcoming training sessions found. Check back soon!</p>
           </div>
         )}
       </section>
