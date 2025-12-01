@@ -77,14 +77,9 @@ export default function TrainingsPage() {
 
     const sortedScheduleBatches = useMemo(() => {
         return [...filteredBatches].sort((a, b) => {
-            const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
-            const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
-            if (dateA !== dateB) return dateB - dateA; // Most recent date first
-            
-            // If dates are the same, sort by start time
-            const timeA = a.startTime || '00:00';
-            const timeB = b.startTime || '00:00';
-            return timeA.localeCompare(timeB); // Earlier time first
+            const dateA = new Date(a.createdAt).getTime();
+            const dateB = new Date(b.createdAt).getTime();
+            return dateB - dateA;
         });
     }, [filteredBatches]);
     
@@ -513,3 +508,5 @@ export default function TrainingsPage() {
     );
 }
 
+
+    
