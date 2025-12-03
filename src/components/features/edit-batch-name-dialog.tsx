@@ -181,16 +181,19 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
                                 <CommandItem
                                     key={org.id}
                                     onSelect={(currentValue) => {
-                                        handleOrgToggle(org.name)
+                                        // This is intentionally left blank to prevent the popover from closing.
+                                        // The selection is handled by the checkbox's onClick event.
                                     }}
                                     className="cursor-pointer"
                                 >
-                                    <Checkbox
-                                        className="mr-2"
-                                        checked={selectedOrgs.includes(org.name)}
-                                        id={`org-${org.id}`}
-                                    />
-                                    <Label htmlFor={`org-${org.id}`} className="cursor-pointer">{org.name}</Label>
+                                     <div className="flex items-center gap-2" onClick={(e) => { e.stopPropagation(); handleOrgToggle(org.name); }}>
+                                        <Checkbox
+                                            className="mr-2"
+                                            checked={selectedOrgs.includes(org.name)}
+                                            id={`org-${org.id}`}
+                                        />
+                                        <Label htmlFor={`org-${org.id}`} className="cursor-pointer">{org.name}</Label>
+                                    </div>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
