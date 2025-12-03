@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar as CalendarIcon, Loader2 } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, Check } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -29,16 +29,20 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import type { Trainer, Batch, Course } from '@/lib/types';
+import type { Trainer, Batch, Course, Organization } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
+import { Checkbox } from '../ui/checkbox';
+
 
 type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => Promise<void>;
-  initialData?: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: string; startTime: string; endTime: string; trainerId?: string; };
+  onSave: (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[] }) => Promise<void>;
+  initialData?: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: string; startTime: string; endTime: string; trainerId?: string; organizations?: string[] };
   trainers: Trainer[];
   courses: Course[];
+  organizations: Organization[];
   userRole: 'superadmin' | 'trainer' | null;
   currentTrainerId?: string | null;
 };
@@ -63,13 +67,14 @@ const generateTimeOptions = () => {
 const timeOptions = generateTimeOptions();
 
 
-export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers, courses, userRole, currentTrainerId }: EditBatchDialogProps) {
+export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers, courses, organizations, userRole, currentTrainerId }: EditBatchDialogProps) {
   const [name, setName] = useState('');
   const [course, setCourse] = useState<string | ''>('');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [trainerId, setTrainerId] = useState('');
+  const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
@@ -80,6 +85,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
         setStartDate(initialData?.startDate ? new Date(initialData.startDate) : undefined);
         setStartTime(initialData?.startTime || '');
         setEndTime(initialData?.endTime || '');
+        setSelectedOrgs(initialData?.organizations || []);
         setIsSaving(false);
         
         if (userRole === 'trainer' && !initialData) {
@@ -101,9 +107,18 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
         return;
     }
     setIsSaving(true);
-    await onSave({ name: name.trim(), course, startDate, startTime, endTime, trainerId });
+    await onSave({ name: name.trim(), course, startDate, startTime, endTime, trainerId, organizations: selectedOrgs });
     setIsSaving(false);
   };
+  
+  const handleOrgToggle = (orgName: string) => {
+    setSelectedOrgs(prev => 
+        prev.includes(orgName)
+            ? prev.filter(o => o !== orgName)
+            : [...prev, orgName]
+    )
+  }
+
 
   const dialogTitle = initialData ? 'Edit Batch' : 'Create New Batch';
   const dialogDescription = initialData ? "Change the details for your batch." : "Fill in the details for the new training batch.";
@@ -146,6 +161,39 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
                      <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
             </Select>
+          </div>
+           <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right pt-2">
+              Organizations
+            </Label>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="w-[280px] justify-between col-span-3">
+                        {selectedOrgs.length > 0 ? `${selectedOrgs.length} selected` : "Select organizations..."}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0">
+                    <Command>
+                        <CommandInput placeholder="Search organizations..." />
+                        <CommandEmpty>No organizations found.</CommandEmpty>
+                        <CommandGroup>
+                            {organizations.map((org) => (
+                                <CommandItem
+                                    key={org.id}
+                                    onSelect={() => handleOrgToggle(org.name)}
+                                >
+                                    <Checkbox
+                                        className="mr-2"
+                                        checked={selectedOrgs.includes(org.name)}
+                                        onCheckedChange={() => handleOrgToggle(org.name)}
+                                    />
+                                    {org.name}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </Command>
+                </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">

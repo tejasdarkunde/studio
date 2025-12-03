@@ -248,6 +248,7 @@ export async function getBatches(): Promise<Batch[]> {
                 registrations,
                 isCancelled: batchData.isCancelled || false,
                 cancellationReason: batchData.cancellationReason || '',
+                organizations: batchData.organizations || [],
             });
         }
         
@@ -285,6 +286,7 @@ export async function getBatchById(id: string): Promise<Batch | null> {
             registrations: [],
             isCancelled: batchData.isCancelled || false,
             cancellationReason: batchData.cancellationReason || '',
+            organizations: batchData.organizations || [],
         };
     } catch (error) {
         console.error('Error fetching batch by ID:', error);
@@ -293,7 +295,7 @@ export async function getBatchById(id: string): Promise<Batch | null> {
 }
 
 
-export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'course' | 'startDate' | 'startTime' | 'endTime' | 'trainerId'>>): Promise<{success: boolean, error?: string}> {
+export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'name' | 'course' | 'startDate' | 'startTime' | 'endTime' | 'trainerId' | 'organizations'>>): Promise<{success: boolean, error?: string}> {
     if (!data.name || !data.name.trim()) {
         return { success: false, error: "Batch name cannot be empty." };
     }
@@ -311,7 +313,8 @@ export async function updateBatch(batchId: string, data: Partial<Pick<Batch, 'na
             course: data.course,
             startTime: data.startTime || '00:00',
             endTime: data.endTime || '00:00',
-            trainerId: data.trainerId
+            trainerId: data.trainerId,
+            organizations: data.organizations || [],
         };
 
         if(data.startDate) {
@@ -372,6 +375,7 @@ const createBatchSchema = z.object({
   startTime: z.string(),
   endTime: z.string(),
   trainerId: z.string().min(1, "A trainer must be selected."),
+  organizations: z.array(z.string()).optional(),
 });
 
 export async function createBatch(data: z.infer<typeof createBatchSchema>): Promise<{success: boolean, error?: string}> {
@@ -382,7 +386,7 @@ export async function createBatch(data: z.infer<typeof createBatchSchema>): Prom
     }
 
     try {
-        const { name, course, startDate, startTime, endTime, trainerId } = validatedFields.data;
+        const { name, course, startDate, startTime, endTime, trainerId, organizations } = validatedFields.data;
         const batchesCollection = collection(db, "batches");
         await addDoc(batchesCollection, {
             name,
@@ -391,6 +395,7 @@ export async function createBatch(data: z.infer<typeof createBatchSchema>): Prom
             startTime,
             endTime,
             trainerId,
+            organizations: organizations || [],
             createdAt: serverTimestamp(),
         });
         return { success: true };
@@ -2534,6 +2539,7 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
     
 
     
+
 
 
 

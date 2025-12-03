@@ -3,8 +3,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Batch, Trainer, Course } from '@/lib/types';
-import { getBatches, getTrainers, getCourses, createBatch, updateBatch, deleteBatch, cancelBatch, unCancelBatch } from '@/app/actions';
+import type { Batch, Trainer, Course, Organization } from '@/lib/types';
+import { getBatches, getTrainers, getCourses, createBatch, updateBatch, deleteBatch, cancelBatch, unCancelBatch, getOrganizations } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Pencil, PlusCircle, Trash, Ban, RotateCcw, Loader2, Calendar as CalendarIcon, Download, ChevronLeft, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ export default function TrainingsPage() {
     const [batches, setBatches] = useState<Batch[]>([]);
     const [trainers, setTrainers] = useState<Trainer[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
+    const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [userRole, setUserRole] = useState<'superadmin' | 'trainer' | null>(null);
@@ -43,14 +44,16 @@ export default function TrainingsPage() {
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const [fetchedBatches, fetchedTrainers, fetchedCourses] = await Promise.all([
+        const [fetchedBatches, fetchedTrainers, fetchedCourses, fetchedOrganizations] = await Promise.all([
             getBatches(),
             getTrainers(),
             getCourses(),
+            getOrganizations(),
         ]);
         setBatches(fetchedBatches);
         setTrainers(fetchedTrainers);
         setCourses(fetchedCourses);
+        setOrganizations(fetchedOrganizations);
         setLoading(false);
     }, []);
 
@@ -83,7 +86,7 @@ export default function TrainingsPage() {
         });
     }, [filteredBatches]);
     
-      const handleSaveBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
+      const handleSaveBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[] }) => {
         if (!editingBatch) return;
 
         const result = await updateBatch(editingBatch.id, {
@@ -93,6 +96,7 @@ export default function TrainingsPage() {
             startTime: details.startTime,
             endTime: details.endTime,
             trainerId: details.trainerId,
+            organizations: details.organizations,
         });
 
         if (result.success) {
@@ -111,7 +115,7 @@ export default function TrainingsPage() {
         setEditingBatch(null);
     };
 
-    const handleCreateBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; }) => {
+    const handleCreateBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[] }) => {
         if (!details.startDate) {
             toast({
                 variant: "destructive",
@@ -136,6 +140,7 @@ export default function TrainingsPage() {
             startTime: details.startTime,
             endTime: details.endTime,
             trainerId: details.trainerId,
+            organizations: details.organizations,
         });
 
         if (result.success) {
@@ -300,9 +305,11 @@ export default function TrainingsPage() {
                     startTime: editingBatch.startTime,
                     endTime: editingBatch.endTime,
                     trainerId: editingBatch.trainerId,
+                    organizations: editingBatch.organizations,
                 } : undefined}
                 trainers={trainers}
                 courses={courses}
+                organizations={organizations}
                 userRole={userRole}
                 currentTrainerId={trainerId}
             />
@@ -507,6 +514,3 @@ export default function TrainingsPage() {
         </>
     );
 }
-
-
-    

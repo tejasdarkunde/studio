@@ -52,6 +52,7 @@ export type Batch = {
   createdAt: string; // ISO 8601 string format
   isCancelled?: boolean;
   cancellationReason?: string;
+  organizations?: string[];
 };
 
 // This type is no longer used, but kept for potential future global settings.
