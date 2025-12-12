@@ -85,7 +85,24 @@ export type Participant = {
     year?: string;
     semester?: string;
     enrollmentSeason?: 'Summer' | 'Winter';
-}
+
+    // New fields
+    fatherOrHusbandName?: string;
+    birthDate?: string; // Storing as string, can be parsed to Date
+    aadharCardNo?: string;
+    panCardNo?: string;
+    bankName?: string;
+    bankAccountNo?: string;
+fscCode?: string;
+    email?: string;
+    sex?: 'Male' | 'Female' | 'Other';
+    qualification?: string;
+    passOutYear?: string;
+    dateOfEntryIntoService?: string; // Storing as string
+    address?: string;
+    designation?: string;
+    stipend?: number;
+};
 
 export type Lesson = {
   id: string;

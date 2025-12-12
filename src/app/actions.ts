@@ -480,19 +480,10 @@ export async function getParticipants(): Promise<Participant[]> {
 
             return {
                 id: doc.id,
-                name: data.name,
-                iitpNo: data.iitpNo,
-                mobile: data.mobile,
-                organization: data.organization,
+                ...data,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-                enrolledCourses: data.enrolledCourses || [], 
-                completedLessons: data.completedLessons || [],
-                deniedCourses: data.deniedCourses || [],
                 examProgress: examProgress,
-                year: data.year || '',
-                semester: data.semester || '',
-                enrollmentSeason: data.enrollmentSeason,
-            };
+            } as Participant;
         });
 
         return participants;
@@ -529,22 +520,13 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
             }
         }
 
-
         return {
             id: participantDoc.id,
-            name: data.name,
-            iitpNo: data.iitpNo,
-            mobile: data.mobile,
-            organization: data.organization,
+            ...data,
             createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-            enrolledCourses: data.enrolledCourses || [],
-            completedLessons: data.completedLessons || [],
-            deniedCourses: data.deniedCourses || [],
             examProgress: examProgress,
-            year: data.year || '',
-            semester: data.semester || '',
-            enrollmentSeason: data.enrollmentSeason,
-        };
+        } as Participant;
+
     } catch (error) {
         console.error("Error fetching participant by IITP No.:", error);
         return null;
@@ -564,6 +546,21 @@ const participantSchema = z.object({
   year: z.string().optional(),
   semester: z.string().optional(),
   enrollmentSeason: z.enum(['Summer', 'Winter']).optional(),
+  fatherOrHusbandName: z.string().optional(),
+  birthDate: z.string().optional(),
+  aadharCardNo: z.string().optional(),
+  panCardNo: z.string().optional(),
+  bankName: z.string().optional(),
+  bankAccountNo: z.string().optional(),
+  fscCode: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  sex: z.enum(['Male', 'Female', 'Other']).optional(),
+  qualification: z.string().optional(),
+  passOutYear: z.string().optional(),
+  dateOfEntryIntoService: z.string().optional(),
+  address: z.string().optional(),
+  designation: z.string().optional(),
+  stipend: z.number().optional(),
 });
 
 
@@ -2539,6 +2536,7 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
     
 
     
+
 
 
 
