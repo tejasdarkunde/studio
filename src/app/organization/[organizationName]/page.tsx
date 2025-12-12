@@ -8,13 +8,6 @@ import { getBatches, getParticipants, getCourses } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Users, Presentation, BookUser, UserCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ParticipantsTable } from '@/components/features/participants-table';
-import { RegistrationsTable } from '@/components/features/registrations-table';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
-import { AttendanceReport } from '@/components/features/attendance-report';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 
@@ -119,148 +112,64 @@ export default function OrganizationDashboardPage() {
         <>
             <div className="mb-8">
                 <h1 className="text-3xl font-bold tracking-tight">
-                    {organizationName} Dashboard
+                    Overview
                 </h1>
                 <p className="mt-2 text-lg text-muted-foreground">
                     View your organization's training and attendance data.
                 </p>
             </div>
-            <Tabs defaultValue="overview">
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="participants">Participants</TabsTrigger>
-                    <TabsTrigger value="trainings">Trainings</TabsTrigger>
-                    <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="overview" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Organization Stats</CardTitle>
-                            <CardDescription>A quick look at your organization's training data.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <Card className="p-4 text-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                    <Users className="h-8 w-8 text-primary" />
-                                    <p className="text-2xl font-bold">{stats.totalParticipants}</p>
-                                    <p className="text-sm text-muted-foreground">Total Participants</p>
-                                    </div>
-                                </Card>
-                                <Card className="p-4 text-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Presentation className="h-8 w-8 text-primary" />
-                                        <p className="text-2xl font-bold">{stats.totalTrainingSessions}</p>
-                                        <p className="text-sm text-muted-foreground">Training Sessions</p>
-                                    </div>
-                                </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Organization Stats</CardTitle>
+                    <CardDescription>A quick look at your organization's training data.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Card className="p-4 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                            <Users className="h-8 w-8 text-primary" />
+                            <p className="text-2xl font-bold">{stats.totalParticipants}</p>
+                            <p className="text-sm text-muted-foreground">Total Participants</p>
                             </div>
-                            <Separator />
-                            <h3 className="text-lg font-medium">Course Statistics</h3>
-                             <div className="border rounded-lg">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Course</TableHead>
-                                            <TableHead>Enrollments</TableHead>
-                                            <TableHead>Sessions Attended</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                    {Object.entries(stats.courseEnrollments).length > 0 ? (
-                                        Object.entries(stats.courseEnrollments).filter(([,stats]) => stats.enrollments > 0 || stats.sessions > 0).map(([name, stats]) => (
-                                            <TableRow key={name}>
-                                                <TableCell className="font-medium">{name}</TableCell>
-                                                <TableCell>{stats.enrollments}</TableCell>
-                                                <TableCell>{stats.sessions}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="h-24 text-center">No course data.</TableCell>
-                                        </TableRow>
-                                    )}
-                                    </TableBody>
-                                </Table>
+                        </Card>
+                        <Card className="p-4 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                                <Presentation className="h-8 w-8 text-primary" />
+                                <p className="text-2xl font-bold">{stats.totalTrainingSessions}</p>
+                                <p className="text-sm text-muted-foreground">Training Sessions</p>
                             </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="participants" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Participants from {organizationName}</CardTitle>
-                            <CardDescription>A list of all employees from your organization in the system.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ParticipantsTable participants={participants} onDataRefreshed={() => {}} onUpdateSelected={async () => ({success: false, error: "Not implemented"})} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                
-                <TabsContent value="trainings" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Training History</CardTitle>
-                            <CardDescription>Training sessions attended by employees from {organizationName}.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                        {batches && batches.length > 0 ? (
-                            <Accordion type="multiple" className="w-full">
-                                {batches.map(batch => (
-                                    <AccordionItem key={batch.id} value={`batch-${batch.id}`}>
-                                        <AccordionTrigger>
-                                            <div className="flex justify-between items-center w-full pr-4">
-                                            <div className="flex items-center gap-4">
-                                                <span>
-                                                    {batch.name} 
-                                                </span>
-                                                <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className="whitespace-normal text-center max-w-[200px]">
-                                                    {batch.course}
-                                                </Badge>
-                                            </div>
-                                            <span className="text-sm text-muted-foreground">
-                                                {batch.registrations.length} participant(s) from your organization
-                                            </span>
-                                            </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <RegistrationsTable 
-                                                registrations={batch.registrations}
-                                                batchName={batch.name}
-                                            />
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                ))}
-                            </Accordion>
-                        ) : (
-                            <div className="text-center py-12 text-muted-foreground">
-                            <p>No training attendance found for your organization.</p>
-                            </div>
-                        )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                
-                <TabsContent value="attendance" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Attendance Report</CardTitle>
-                            <CardDescription>Grid view of attendance for your organization's participants.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AttendanceReport 
-                                participants={participants}
-                                batches={batches}
-                                courses={courses}
-                            />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-            </Tabs>
+                        </Card>
+                    </div>
+                    <Separator />
+                    <h3 className="text-lg font-medium">Course Statistics</h3>
+                        <div className="border rounded-lg">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Course</TableHead>
+                                    <TableHead>Enrollments</TableHead>
+                                    <TableHead>Sessions Attended</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            {Object.entries(stats.courseEnrollments).length > 0 ? (
+                                Object.entries(stats.courseEnrollments).filter(([,stats]) => stats.enrollments > 0 || stats.sessions > 0).map(([name, stats]) => (
+                                    <TableRow key={name}>
+                                        <TableCell className="font-medium">{name}</TableCell>
+                                        <TableCell>{stats.enrollments}</TableCell>
+                                        <TableCell>{stats.sessions}</TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center">No course data.</TableCell>
+                                </TableRow>
+                            )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
         </>
     )
 }
