@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ChevronLeft } from 'lucide-react';
 import { getCourses, getOrganizations, addParticipant } from '@/app/actions';
 import Link from 'next/link';
+import { Textarea } from '@/components/ui/textarea';
 
 
 export default function AddParticipantPage() {
@@ -25,13 +26,29 @@ export default function AddParticipantPage() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [name, setName] = useState('');
-    const [iitpNo, setIitpNo] = useState('');
-    const [mobile, setMobile] = useState('');
-    const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
-    const [year, setYear] = useState('');
-    const [semester, setSemester] = useState('');
-    const [enrollmentSeason, setEnrollmentSeason] = useState<'Summer' | 'Winter' | undefined>();
+    const [formData, setFormData] = useState<Partial<Omit<Participant, 'id' | 'createdAt'>>>({
+        name: '',
+        iitpNo: '',
+        mobile: '',
+        organization: organizationName,
+        enrolledCourses: [],
+        year: '',
+        semester: '',
+        fatherOrHusbandName: '',
+        birthDate: '',
+        aadharCardNo: '',
+        panCardNo: '',
+        bankName: '',
+        bankAccountNo: '',
+        fscCode: '',
+        email: '',
+        qualification: '',
+        passOutYear: '',
+        dateOfEntryIntoService: '',
+        address: '',
+        designation: '',
+    });
+    
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
 
@@ -62,7 +79,7 @@ export default function AddParticipantPage() {
 
 
     const handleSave = async () => {
-        if (!name.trim() || !iitpNo.trim()) {
+        if (!formData.name?.trim() || !formData.iitpNo?.trim()) {
             toast({
                 variant: "destructive",
                 title: "Missing Information",
@@ -72,19 +89,12 @@ export default function AddParticipantPage() {
         }
         
         setIsSaving(true);
-        const result = await addParticipant({
-            name, iitpNo, mobile, 
-            organization: organizationName, 
-            enrolledCourses: selectedCourses, 
-            year, 
-            semester, 
-            enrollmentSeason
-        });
+        const result = await addParticipant(formData as any);
 
         if (result.success) {
             toast({
                 title: "Participant Added",
-                description: `${name} has been added successfully.`
+                description: `${formData.name} has been added successfully.`
             });
             router.push(`/organization/${organizationName}/participants`);
         } else {
@@ -98,11 +108,22 @@ export default function AddParticipantPage() {
     };
   
     const handleCourseToggle = (courseName: string) => {
-        setSelectedCourses(prev => 
-            prev.includes(courseName) 
-                ? prev.filter(c => c !== courseName) 
-                : [...prev, courseName]
-        );
+        setFormData(prev => {
+            const currentCourses = prev.enrolledCourses || [];
+            const newCourses = currentCourses.includes(courseName)
+                ? currentCourses.filter(c => c !== courseName)
+                : [...currentCourses, courseName];
+            return { ...prev, enrolledCourses: newCourses };
+        });
+    }
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value }));
+    }
+
+    const handleSelectChange = (id: keyof Participant, value: string) => {
+        setFormData(prev => ({ ...prev, [id]: value }));
     }
 
     if (loading) {
@@ -123,57 +144,132 @@ export default function AddParticipantPage() {
                     </Link>
                 </Button>
             </div>
-            <Card className="max-w-2xl mx-auto">
+            <Card className="max-w-4xl mx-auto">
                 <CardHeader>
                     <CardTitle>Add New Participant</CardTitle>
                     <CardDescription>Enter the details for the new participant for {organizationName}.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">Name *</Label>
-                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name *</Label>
+                            <Input id="name" value={formData.name} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="iitpNo">IITP No *</Label>
+                            <Input id="iitpNo" value={formData.iitpNo} onChange={handleInputChange} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="fatherOrHusbandName">Father/Husband Name</Label>
+                            <Input id="fatherOrHusbandName" value={formData.fatherOrHusbandName} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" type="email" value={formData.email} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="mobile">Mobile No</Label>
+                            <Input id="mobile" value={formData.mobile} onChange={handleInputChange} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="birthDate">Date of Birth</Label>
+                            <Input id="birthDate" type="date" value={formData.birthDate} onChange={handleInputChange} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="sex">Sex</Label>
+                             <Select onValueChange={(value) => handleSelectChange('sex', value)} value={formData.sex}>
+                                <SelectTrigger><SelectValue placeholder="Select sex" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Male">Male</SelectItem>
+                                    <SelectItem value="Female">Female</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="organization">Organization</Label>
+                            <Input id="organization" value={organizationName} disabled />
+                        </div>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="iitpNo" className="text-right">IITP No *</Label>
-                        <Input id="iitpNo" value={iitpNo} onChange={(e) => setIitpNo(e.target.value)} className="col-span-3" />
+                    <div className="space-y-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Textarea id="address" value={formData.address} onChange={handleInputChange} />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="mobile" className="text-right">Mobile No</Label>
-                        <Input id="mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} className="col-span-3" />
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="space-y-2">
+                            <Label htmlFor="aadharCardNo">Aadhar Card No</Label>
+                            <Input id="aadharCardNo" value={formData.aadharCardNo} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="panCardNo">PAN Card No</Label>
+                            <Input id="panCardNo" value={formData.panCardNo} onChange={handleInputChange} />
+                        </div>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="organization" className="text-right">Organization</Label>
-                        <Input id="organization" value={organizationName} disabled className="col-span-3" />
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <div className="space-y-2">
+                            <Label htmlFor="bankName">Bank Name</Label>
+                            <Input id="bankName" value={formData.bankName} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="bankAccountNo">Bank Account No</Label>
+                            <Input id="bankAccountNo" value={formData.bankAccountNo} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="fscCode">FSC Code</Label>
+                            <Input id="fscCode" value={formData.fscCode} onChange={handleInputChange} />
+                        </div>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="year" className="text-right">Year</Label>
-                        <Input id="year" value={year} onChange={(e) => setYear(e.target.value)} className="col-span-3" placeholder="e.g., 2024" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="qualification">Qualification</Label>
+                            <Input id="qualification" value={formData.qualification} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="passOutYear">Pass-out Year</Label>
+                            <Input id="passOutYear" value={formData.passOutYear} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="designation">Designation</Label>
+                            <Input id="designation" value={formData.designation} onChange={handleInputChange} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="dateOfEntryIntoService">Date of Entry into Service</Label>
+                            <Input id="dateOfEntryIntoService" type="date" value={formData.dateOfEntryIntoService} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="stipend">Stipend</Label>
+                            <Input id="stipend" type="number" value={formData.stipend || ''} onChange={(e) => setFormData(prev => ({...prev, stipend: e.target.value ? Number(e.target.value) : undefined}))} />
+                        </div>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="semester" className="text-right">Semester</Label>
-                        <Input id="semester" value={semester} onChange={(e) => setSemester(e.target.value)} className="col-span-3" placeholder="e.g., 1st" />
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="year">Year</Label>
+                            <Input id="year" value={formData.year} onChange={handleInputChange} placeholder="e.g., 2024" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="semester">Semester</Label>
+                            <Input id="semester" value={formData.semester} onChange={handleInputChange} placeholder="e.g., 1st" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="enrollmentSeason">Enrollment</Label>
+                            <Select onValueChange={(value: 'Summer' | 'Winter') => handleSelectChange('enrollmentSeason', value)} value={formData.enrollmentSeason}>
+                                <SelectTrigger><SelectValue placeholder="Select season" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Summer">Summer</SelectItem>
+                                    <SelectItem value="Winter">Winter</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="enrollmentSeason" className="text-right">Enrollment</Label>
-                        <Select onValueChange={(value: 'Summer' | 'Winter') => setEnrollmentSeason(value)} value={enrollmentSeason}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select season" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Summer">Summer</SelectItem>
-                                <SelectItem value="Winter">Winter</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-start gap-4">
-                        <Label className="text-right pt-2">Enrolled Courses</Label>
-                        <ScrollArea className="h-32 w-full col-span-3 rounded-md border p-2">
+                    <div className="space-y-2">
+                        <Label>Enrolled Courses</Label>
+                        <ScrollArea className="h-32 w-full rounded-md border p-2">
                             <div className="space-y-2">
                                 {courses.map(course => (
                                     <div key={course.id} className="flex items-center gap-2">
                                         <Checkbox 
                                             id={`course-${course.id}`}
-                                            checked={selectedCourses.includes(course.name)}
+                                            checked={formData.enrolledCourses?.includes(course.name)}
                                             onCheckedChange={() => handleCourseToggle(course.name)}
                                         />
                                         <Label htmlFor={`course-${course.id}`} className="font-normal">{course.name}</Label>
@@ -196,3 +292,5 @@ export default function AddParticipantPage() {
         </>
     )
 }
+
+    
