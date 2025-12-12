@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -40,7 +41,7 @@ export default function AddParticipantPage() {
         panCardNo: '',
         bankName: '',
         bankAccountNo: '',
-        fscCode: '',
+        ifscCode: '',
         email: '',
         qualification: '',
         passOutYear: '',
@@ -215,8 +216,8 @@ export default function AddParticipantPage() {
                             <Input id="bankAccountNo" value={formData.bankAccountNo} onChange={handleInputChange} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="fscCode">FSC Code</Label>
-                            <Input id="fscCode" value={formData.fscCode} onChange={handleInputChange} />
+                            <Label htmlFor="ifscCode">IFSC Code</Label>
+                            <Input id="ifscCode" value={formData.ifscCode} onChange={handleInputChange} />
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

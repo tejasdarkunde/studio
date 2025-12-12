@@ -93,7 +93,7 @@ export type Participant = {
     panCardNo?: string;
     bankName?: string;
     bankAccountNo?: string;
-fscCode?: string;
+    ifscCode?: string;
     email?: string;
     sex?: 'Male' | 'Female' | 'Other';
     qualification?: string;

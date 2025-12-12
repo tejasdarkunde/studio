@@ -552,7 +552,7 @@ const participantSchema = z.object({
   panCardNo: z.string().optional(),
   bankName: z.string().optional(),
   bankAccountNo: z.string().optional(),
-  fscCode: z.string().optional(),
+  ifscCode: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   sex: z.enum(['Male', 'Female', 'Other']).optional(),
   qualification: z.string().optional(),
@@ -2536,6 +2536,7 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
     
 
     
+
 
 
 
