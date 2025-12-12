@@ -15,6 +15,8 @@ import { RegistrationsTable } from '@/components/features/registrations-table';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { AttendanceReport } from '@/components/features/attendance-report';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator';
 
 
 export default function OrganizationDashboardPage() {
@@ -46,12 +48,10 @@ export default function OrganizationDashboardPage() {
         const orgParticipants = allParticipants.filter(p => p.organization === organizationName);
         setParticipants(orgParticipants);
         
-        // Filter batches to only include those where at least one participant from the organization is registered
-        const orgBatches = allBatches.filter(batch => 
-            batch.registrations.some(reg => orgParticipants.some(p => p.iitpNo === reg.iitpNo))
-        ).map(batch => ({
+        const orgBatches = allBatches.filter(batch => {
+            return batch.organizations?.includes(organizationName) || batch.registrations.some(reg => orgParticipants.some(p => p.iitpNo === reg.iitpNo));
+        }).map(batch => ({
             ...batch,
-            // Also filter the registrations within each batch to only show those from the organization
             registrations: batch.registrations.filter(reg => orgParticipants.some(p => p.iitpNo === reg.iitpNo))
         }));
 
@@ -81,17 +81,30 @@ export default function OrganizationDashboardPage() {
 
     const stats = useMemo(() => {
         const totalParticipants = participants.length;
-        const totalSessionsAttended = batches.reduce((acc, batch) => acc + batch.registrations.length, 0);
+        const totalTrainingSessions = new Set(batches.map(b => b.id)).size;
 
-        const courseEnrollments: { [courseName: string]: number } = {};
+        const courseEnrollments: { [courseName: string]: { enrollments: number; sessions: number; } } = {};
+
+        courses.forEach(course => {
+            courseEnrollments[course.name] = { enrollments: 0, sessions: 0 };
+        });
+
         participants.forEach(p => {
-            p.enrolledCourses?.forEach(courseName => {
-                courseEnrollments[courseName] = (courseEnrollments[courseName] || 0) + 1;
+            p.enrolledCourses?.forEach(enrolledCourseName => {
+                if (courseEnrollments[enrolledCourseName]) {
+                    courseEnrollments[enrolledCourseName].enrollments += 1;
+                }
             })
         });
 
-        return { totalParticipants, totalSessionsAttended, courseEnrollments };
-    }, [participants, batches]);
+        batches.forEach(batch => {
+            if (courseEnrollments[batch.course]) {
+                courseEnrollments[batch.course].sessions += 1;
+            }
+        });
+
+        return { totalParticipants, totalTrainingSessions, courseEnrollments };
+    }, [participants, batches, courses]);
 
 
     if (!isClient || loading || !isAuthenticated) {
@@ -126,30 +139,51 @@ export default function OrganizationDashboardPage() {
                             <CardTitle>Organization Stats</CardTitle>
                             <CardDescription>A quick look at your organization's training data.</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <Card className="p-4 text-center">
-                                <div className="flex flex-col items-center gap-2">
-                                <Users className="h-8 w-8 text-primary" />
-                                <p className="text-2xl font-bold">{stats.totalParticipants}</p>
-                                <p className="text-sm text-muted-foreground">Total Participants</p>
-                                </div>
-                            </Card>
-                            <Card className="p-4 text-center">
-                                <div className="flex flex-col items-center gap-2">
-                                <Presentation className="h-8 w-8 text-primary" />
-                                <p className="text-2xl font-bold">{stats.totalSessionsAttended}</p>
-                                <p className="text-sm text-muted-foreground">Total Sessions Attended</p>
-                                </div>
-                            </Card>
-                            {Object.entries(stats.courseEnrollments).map(([courseName, count]) => (
-                                <Card key={courseName} className="p-4 text-center">
+                        <CardContent className="space-y-6">
+                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <Card className="p-4 text-center">
                                     <div className="flex flex-col items-center gap-2">
-                                    <BookUser className="h-8 w-8 text-primary" />
-                                    <p className="text-2xl font-bold">{count}</p>
-                                    <p className="text-sm text-muted-foreground">{courseName} Enrollments</p>
+                                    <Users className="h-8 w-8 text-primary" />
+                                    <p className="text-2xl font-bold">{stats.totalParticipants}</p>
+                                    <p className="text-sm text-muted-foreground">Total Participants</p>
                                     </div>
                                 </Card>
-                            ))}
+                                <Card className="p-4 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Presentation className="h-8 w-8 text-primary" />
+                                        <p className="text-2xl font-bold">{stats.totalTrainingSessions}</p>
+                                        <p className="text-sm text-muted-foreground">Training Sessions</p>
+                                    </div>
+                                </Card>
+                            </div>
+                            <Separator />
+                            <h3 className="text-lg font-medium">Course Statistics</h3>
+                             <div className="border rounded-lg">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Course</TableHead>
+                                            <TableHead>Enrollments</TableHead>
+                                            <TableHead>Sessions Attended</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                    {Object.entries(stats.courseEnrollments).length > 0 ? (
+                                        Object.entries(stats.courseEnrollments).filter(([,stats]) => stats.enrollments > 0 || stats.sessions > 0).map(([name, stats]) => (
+                                            <TableRow key={name}>
+                                                <TableCell className="font-medium">{name}</TableCell>
+                                                <TableCell>{stats.enrollments}</TableCell>
+                                                <TableCell>{stats.sessions}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="h-24 text-center">No course data.</TableCell>
+                                        </TableRow>
+                                    )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -161,11 +195,7 @@ export default function OrganizationDashboardPage() {
                             <CardDescription>A list of all employees from your organization in the system.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <ParticipantsTable participants={participants} onDataRefreshed={function (): void {
-                                throw new Error('Function not implemented.');
-                            } } onUpdateSelected={function (data: { ids: string[]; year?: string | undefined; semester?: string | undefined; enrollmentSeason?: "Summer" | "Winter" | undefined; }): Promise<{ success: boolean; error?: string | undefined; updatedCount?: number | undefined; }> {
-                                throw new Error('Function not implemented.');
-                            } } />
+                            <ParticipantsTable participants={participants} onDataRefreshed={() => {}} onUpdateSelected={async () => ({success: false, error: "Not implemented"})} />
                         </CardContent>
                     </Card>
                 </TabsContent>
