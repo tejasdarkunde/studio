@@ -12,10 +12,10 @@ import type { Participant, Course, Organization } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronLeft } from 'lucide-react';
-import { getCourses, getOrganizations, addParticipant } from '@/app/actions';
+import { Loader2, ChevronLeft, Search } from 'lucide-react';
+import { getCourses, getOrganizations, addParticipant, getParticipantByIitpNo, updateParticipant } from '@/app/actions';
 import Link from 'next/link';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from "@/components/ui/textarea";
 
 
 export default function ApplyPage() {
@@ -24,6 +24,7 @@ export default function ApplyPage() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [loading, setLoading] = useState(true);
+    const [existingParticipantId, setExistingParticipantId] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<Partial<Omit<Participant, 'id' | 'createdAt'>>>({
         name: '',
@@ -49,6 +50,7 @@ export default function ApplyPage() {
     });
     
     const [isSaving, setIsSaving] = useState(false);
+    const [isFetching, setIsFetching] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -66,7 +68,7 @@ export default function ApplyPage() {
 
 
     const handleSave = async () => {
-        if (!formData.name?.trim() || !formData.iitpNo?.trim() || !formData.organization?.trim()) {
+        if (!formData.name?.trim() || !formData.iitpNo?.trim()) {
             toast({
                 variant: "destructive",
                 title: "Missing Information",
@@ -76,11 +78,16 @@ export default function ApplyPage() {
         }
         
         setIsSaving(true);
-        const result = await addParticipant(formData as any);
+        const action = existingParticipantId ? updateParticipant : addParticipant;
+        const payload = existingParticipantId 
+            ? { ...formData, id: existingParticipantId } 
+            : formData;
+            
+        const result = await action(payload as any);
 
         if (result.success) {
             toast({
-                title: "Application Submitted!",
+                title: `Application ${existingParticipantId ? 'Updated' : 'Submitted'}!`,
                 description: `Thank you, ${formData.name}. Your application has been received.`
             });
             // Reset form or redirect
@@ -90,6 +97,7 @@ export default function ApplyPage() {
                 panCardNo: '', bankName: '', bankAccountNo: '', ifscCode: '', email: '',
                 qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '', designation: '',
             });
+            setExistingParticipantId(null);
         } else {
             toast({
                 variant: "destructive",
@@ -119,6 +127,49 @@ export default function ApplyPage() {
         setFormData(prev => ({ ...prev, [id]: value }));
     }
 
+    const handleIitpNoBlur = async () => {
+        if (!formData.iitpNo?.trim()) return;
+
+        setIsFetching(true);
+        const participant = await getParticipantByIitpNo(formData.iitpNo);
+        setIsFetching(false);
+
+        if (participant) {
+            toast({
+                title: "Participant Found",
+                description: "Your details have been pre-filled. Please review and update if necessary.",
+            });
+            setFormData({
+                name: participant.name || '',
+                iitpNo: participant.iitpNo || '',
+                mobile: participant.mobile || '',
+                organization: participant.organization || '',
+                enrolledCourses: participant.enrolledCourses || [],
+                year: participant.year || '',
+                semester: participant.semester || '',
+                enrollmentSeason: participant.enrollmentSeason,
+                fatherOrHusbandName: participant.fatherOrHusbandName || '',
+                birthDate: participant.birthDate ? new Date(participant.birthDate).toISOString().split('T')[0] : '',
+                aadharCardNo: participant.aadharCardNo || '',
+                panCardNo: participant.panCardNo || '',
+                bankName: participant.bankName || '',
+                bankAccountNo: participant.bankAccountNo || '',
+                ifscCode: participant.ifscCode || '',
+                email: participant.email || '',
+                sex: participant.sex,
+                qualification: participant.qualification || '',
+                passOutYear: participant.passOutYear || '',
+                dateOfEntryIntoService: participant.dateOfEntryIntoService ? new Date(participant.dateOfEntryIntoService).toISOString().split('T')[0] : '',
+                address: participant.address || '',
+                designation: participant.designation || '',
+                stipend: participant.stipend,
+            });
+            setExistingParticipantId(participant.id);
+        } else {
+            setExistingParticipantId(null);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -140,17 +191,20 @@ export default function ApplyPage() {
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
                     <CardTitle>Online Application Form</CardTitle>
-                    <CardDescription>Enter your details to apply for our training programs.</CardDescription>
+                    <CardDescription>Enter your details to apply for our training programs. If you have applied before, enter your IITP No. and we'll fetch your details.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                     <div className="space-y-2">
+                        <Label htmlFor="iitpNo">IITP No *</Label>
+                        <div className="flex gap-2 items-center">
+                            <Input id="iitpNo" value={formData.iitpNo} onChange={handleInputChange} onBlur={handleIitpNoBlur} />
+                            {isFetching && <Loader2 className="h-5 w-5 animate-spin" />}
+                        </div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Name *</Label>
                             <Input id="name" value={formData.name} onChange={handleInputChange} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="iitpNo">IITP No *</Label>
-                            <Input id="iitpNo" value={formData.iitpNo} onChange={handleInputChange} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="fatherOrHusbandName">Father/Husband Name</Label>
@@ -284,10 +338,12 @@ export default function ApplyPage() {
                 <CardFooter className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => router.push('/')} disabled={isSaving}>Cancel</Button>
                     <Button type="button" onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Submitting...</> : 'Submit Application'}
+                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Submitting...</> : (existingParticipantId ? 'Update Application' : 'Submit Application')}
                     </Button>
                 </CardFooter>
             </Card>
         </main>
     )
 }
+
+    
