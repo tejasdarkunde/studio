@@ -1,0 +1,57 @@
+
+"use client";
+
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import type { Supervisor } from '@/lib/types';
+
+export default function SupervisorLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const [user, setUser] = useState<Supervisor | null>(null);
+
+  useEffect(() => {
+    const userRole = sessionStorage.getItem('userRole');
+    const userJson = sessionStorage.getItem('user');
+
+    if (userRole === 'supervisor' && userJson) {
+      const currentUser = JSON.parse(userJson);
+      setUser(currentUser);
+    } else {
+      router.push('/supervisor/login');
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    sessionStorage.clear();
+    router.push('/supervisor/login');
+  };
+
+  if (!user) {
+      return null; // Or a loading spinner
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="bg-background border-b sticky top-0 z-10">
+        <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
+          <p className="text-xl font-bold text-primary tracking-tight">Supervisor Portal</p>
+           <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground hidden sm:inline">Welcome, {user.name}</span>
+                <Button variant="outline" onClick={handleLogout}>
+                    Logout
+                </Button>
+            </div>
+        </div>
+      </header>
+      <main className="container mx-auto flex-grow">
+        {children}
+      </main>
+    </div>
+  );
+}

@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt, ExamResult, FormAdmin, Form as FormType } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt, ExamResult, FormAdmin, Form as FormType, Supervisor } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -13,7 +13,7 @@ const loginSchema = z.object({
   password: z.string().min(1, { message: "Password is required." }),
 });
 
-export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer' | 'organization-admin' | 'formadmin'; user?: SuperAdmin | OrganizationAdmin | FormAdmin; trainerId?: string; organizationName?: string; error?: string }> {
+export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer' | 'organization-admin' | 'formadmin' | 'supervisor'; user?: SuperAdmin | OrganizationAdmin | FormAdmin | Supervisor; trainerId?: string; organizationName?: string; error?: string }> {
     const validatedFields = loginSchema.safeParse(data);
     if (!validatedFields.success) {
         return { success: false, error: "Invalid login data." };
@@ -87,6 +87,21 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
                 const { password, ...user } = formAdminData;
                 const createdAt = user.createdAt as unknown as Timestamp;
                 return { success: true, role: 'formadmin', user: {id: formAdminDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as FormAdmin };
+            }
+        }
+
+        // 5. Check for Supervisor
+        const supervisorsCollection = collection(db, "supervisors");
+        const supervisorQuery = query(supervisorsCollection, where("username", "==", username));
+        const supervisorSnapshot = await getDocs(supervisorQuery);
+        
+        if (!supervisorSnapshot.empty) {
+            const supervisorDoc = supervisorSnapshot.docs[0];
+            const supervisorData = supervisorDoc.data() as Supervisor;
+            if (supervisorData.password === password) {
+                const { password, ...user } = supervisorData;
+                const createdAt = user.createdAt as unknown as Timestamp;
+                return { success: true, role: 'supervisor', user: {id: supervisorDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as Supervisor };
             }
         }
         

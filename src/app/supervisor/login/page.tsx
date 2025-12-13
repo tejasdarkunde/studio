@@ -20,7 +20,7 @@ const formSchema = z.object({
   password: z.string().min(1, { message: "Password is required." }),
 });
 
-export default function LoginPage() {
+export default function SupervisorLoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -35,34 +35,21 @@ export default function LoginPage() {
     try {
       const result = await login(values);
 
-      if (result.success) {
+      if (result.success && result.role === 'supervisor') {
         toast({
             title: "Login Successful!",
-            description: "Welcome. Redirecting you to the dashboard...",
+            description: "Welcome to the Supervisor Portal.",
         });
         
-        // Store auth info in session storage
-        sessionStorage.setItem('userRole', result.role!);
+        sessionStorage.setItem('userRole', result.role);
         if (result.user) {
             sessionStorage.setItem('user', JSON.stringify(result.user));
         }
 
-        if (result.role === 'trainer') {
-            sessionStorage.setItem('trainerId', result.trainerId!);
-            router.push('/admin');
-        } else if (result.role === 'superadmin') {
-            router.push('/admin');
-        } else if (result.role === 'organization-admin') {
-            router.push(`/organization/${result.organizationName}`);
-        } else if (result.role === 'supervisor') {
-            router.push('/supervisor/dashboard');
-        } else {
-             router.push('/login'); // Fallback
-        }
-
+        router.push('/supervisor/dashboard');
 
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || "Invalid credentials for this portal.");
       }
     } catch (error) {
       toast({
@@ -80,17 +67,17 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center text-center mb-8">
             <h1 className="text-4xl font-bold text-primary tracking-tight">
-              BSA Training Academy, Pune
+              Supervisor Portal
             </h1>
             <p className="mt-3 text-lg text-muted-foreground">
-              Admin & Trainer Login
+              Please log in to continue.
             </p>
         </div>
         
         <Card>
             <CardHeader>
-                <CardTitle>Welcome Back</CardTitle>
-                <CardDescription>Enter your credentials to access the portal.</CardDescription>
+                <CardTitle>Supervisor Login</CardTitle>
+                <CardDescription>Enter your credentials to access the Supervisor Portal.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
@@ -144,7 +131,7 @@ export default function LoginPage() {
         
         <div className="text-center mt-8">
             <Link href="/" passHref>
-                <button className="text-primary hover:underline">Back to Home</button>
+                <button className="text-primary hover:underline">Back to Main Site</button>
             </Link>
         </div>
       </div>
