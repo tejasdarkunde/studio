@@ -6,7 +6,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { useState } from 'react';
 
@@ -53,6 +53,12 @@ export default function RootLayout({
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="right">
+                    <SheetHeader>
+                      <SheetTitle>Navigation</SheetTitle>
+                      <SheetDescription>
+                        Navigate to other parts of the application.
+                      </SheetDescription>
+                    </SheetHeader>
                     <div className="flex flex-col gap-4 py-6">
                       <Button asChild>
                         <Link href="/login" onClick={() => setSheetOpen(false)}>Login</Link>
