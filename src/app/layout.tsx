@@ -34,6 +34,35 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <div className="min-h-screen flex flex-col">
+           <header className="bg-background border-b sticky top-0 z-10">
+            <nav className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
+              <Link href="/home2" className="text-xl font-bold text-primary">
+                BSA Training Academy
+              </Link>
+              <div className="hidden md:flex items-center gap-4">
+                <Button asChild>
+                  <Link href="/login">Login</Link>
+                </Button>
+              </div>
+              <div className="md:hidden">
+                <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Menu className="h-6 w-6" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right">
+                    <div className="flex flex-col gap-4 py-6">
+                      <Button asChild>
+                        <Link href="/login" onClick={() => setSheetOpen(false)}>Login</Link>
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </nav>
+          </header>
           <main className="flex-grow">
             {children}
           </main>
