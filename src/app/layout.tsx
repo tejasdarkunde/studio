@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 // export const metadata: Metadata = { // Metadata must be defined in a Server Component
 //   title: 'BSA Training Academy, Pune',
@@ -22,6 +23,11 @@ export default function RootLayout({
 }>) {
   const version = "0.1.0"; // Hardcode version to avoid import issues
   const [isSheetOpen, setSheetOpen] = useState(false);
+  const pathname = usePathname();
+
+  const loginPages = ['/login', '/admin-login', '/student-login', '/supervisor/login', '/form-portal/login'];
+  const isLoginPage = loginPages.includes(pathname);
+
 
   return (
     <html lang="en">
@@ -40,7 +46,7 @@ export default function RootLayout({
                 BSA Training Academy
               </Link>
               <div className="hidden md:flex items-center gap-4">
-                <Button asChild>
+                <Button asChild disabled={isLoginPage}>
                   <Link href="/login">Login</Link>
                 </Button>
               </div>
@@ -60,7 +66,7 @@ export default function RootLayout({
                       </SheetDescription>
                     </SheetHeader>
                     <div className="flex flex-col gap-4 py-6">
-                      <Button asChild>
+                      <Button asChild disabled={isLoginPage}>
                         <Link href="/login" onClick={() => setSheetOpen(false)}>Login</Link>
                       </Button>
                     </div>
