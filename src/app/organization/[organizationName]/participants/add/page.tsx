@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -60,11 +59,11 @@ export default function AddParticipantPage() {
         if (role === 'organization-admin' && userJson) {
             const user = JSON.parse(userJson) as OrganizationAdmin;
             if (user.organizationName !== organizationName) {
-                 router.push('/login');
+                 router.push('/admin-login');
                  return;
             }
         } else {
-            router.push('/login');
+            router.push('/admin-login');
             return;
         }
 
@@ -293,5 +292,3 @@ export default function AddParticipantPage() {
         </>
     )
 }
-
-    

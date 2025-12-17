@@ -50,10 +50,10 @@ export default function OrganizationTrainingsPage() {
                 setIsAuthenticated(true);
                 fetchTrainingsData();
             } else {
-                 router.push('/login');
+                 router.push('/admin-login');
             }
         } else {
-            router.push('/login');
+            router.push('/admin-login');
         }
     }, [organizationName, fetchTrainingsData, router]);
 

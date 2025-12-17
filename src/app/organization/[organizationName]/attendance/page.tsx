@@ -50,10 +50,10 @@ export default function OrganizationAttendancePage() {
                 setIsAuthenticated(true);
                 fetchAttendanceData();
             } else {
-                 router.push('/login');
+                 router.push('/admin-login');
             }
         } else {
-            router.push('/login');
+            router.push('/admin-login');
         }
     }, [organizationName, fetchAttendanceData, router]);
 

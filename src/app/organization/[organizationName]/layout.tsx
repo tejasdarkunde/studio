@@ -23,10 +23,11 @@ export default function OrganizationLayout({
 
   useEffect(() => {
     const userJson = sessionStorage.getItem('user');
-    if (userJson) {
+    const role = sessionStorage.getItem('userRole');
+    if (userJson && role === 'organization-admin') {
       setCurrentUser(JSON.parse(userJson));
     } else {
-        router.push('/login');
+        router.push('/admin-login');
     }
   }, [router]);
 

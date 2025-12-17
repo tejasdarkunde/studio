@@ -25,7 +25,7 @@ export default function AdminLayout({
         setCurrentUser(JSON.parse(userJson));
       }
     } else {
-        router.push('/login');
+        router.push('/admin-login');
     }
   }, [router]);
 

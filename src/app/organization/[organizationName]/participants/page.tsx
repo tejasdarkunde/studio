@@ -41,10 +41,10 @@ export default function OrganizationParticipantsPage() {
                 setIsAuthenticated(true);
                 fetchParticipantsData();
             } else {
-                 router.push('/login');
+                 router.push('/admin-login');
             }
         } else {
-            router.push('/login');
+            router.push('/admin-login');
         }
     }, [organizationName, fetchParticipantsData, router]);
 

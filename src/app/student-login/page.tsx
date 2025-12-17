@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { StudentLoginForm } from '@/components/features/student-login-form';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft } from 'lucide-react';
 
 export default function StudentLoginPage() {
   const { toast } = useToast();
@@ -24,10 +26,10 @@ export default function StudentLoginPage() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center text-center mb-8">
             <h1 className="text-4xl font-bold text-primary tracking-tight">
-              BSA Training Academy, Pune
+              Student Portal
             </h1>
             <p className="mt-3 text-lg text-muted-foreground">
-              Student Login: Access your learning materials.
+              Access your learning materials.
             </p>
         </div>
         
@@ -42,9 +44,11 @@ export default function StudentLoginPage() {
         </Card>
         
         <div className="text-center mt-8">
-            <Link href="/" passHref>
-                <button className="text-primary hover:underline">Back to Home</button>
-            </Link>
+             <Button asChild variant="link">
+                <Link href="/login">
+                   <ChevronLeft className="mr-2 h-4 w-4" /> Back to All Logins
+                </Link>
+            </Button>
         </div>
       </div>
     </main>
