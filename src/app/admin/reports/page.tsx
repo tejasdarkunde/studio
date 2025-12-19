@@ -190,39 +190,33 @@ export default function ReportsPage() {
                             <Card className="p-4 text-center"><div className="flex flex-col items-center gap-2"><UserCog className="h-8 w-8 text-primary" /><p className="text-2xl font-bold">{reportStats.totalTrainers}</p><p className="text-sm text-muted-foreground">Registered Trainers</p></div></Card>
                         </div>
                         <Separator />
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div>
-                                <h3 className="text-lg font-medium mb-4">Year-Season-Semester Wise Admission Stats</h3>
-                                <div className="border rounded-lg max-h-72 overflow-y-auto">
-                                    <Table>
-                                        <TableHeader>
+                        <div>
+                            <h3 className="text-lg font-medium mb-4">Course-wise Participants</h3>
+                            <div className="border rounded-lg max-h-96 overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Course</TableHead>
+                                            <TableHead>Enrollments</TableHead>
+                                            <TableHead>Sessions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {Object.entries(reportStats.courseStats).length > 0 ? (
+                                            Object.entries(reportStats.courseStats).map(([name, stats]) => (
+                                                <TableRow key={name}>
+                                                    <TableCell className="font-medium">{name}</TableCell>
+                                                    <TableCell>{stats.enrollments}</TableCell>
+                                                    <TableCell>{stats.sessions}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
                                             <TableRow>
-                                                <TableHead>Year</TableHead>
-                                                <TableHead>Season</TableHead>
-                                                <TableHead>Semester</TableHead>
-                                                <TableHead className="text-right">Participants</TableHead>
+                                                <TableCell colSpan={3} className="h-24 text-center">No course data.</TableCell>
                                             </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {reportStats.admissionStats.length > 0 ? (
-                                                reportStats.admissionStats.map((stat, index) => (
-                                                    <TableRow key={index}>
-                                                        <TableCell className="font-medium">{stat.year}</TableCell>
-                                                        <TableCell>{stat.season}</TableCell>
-                                                        <TableCell>{stat.semester}</TableCell>
-                                                        <TableCell className="text-right">{stat.count}</TableCell>
-                                                    </TableRow>
-                                                ))
-                                            ) : (
-                                                <TableRow><TableCell colSpan={4} className="h-24 text-center">No admission data found.</TableCell></TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-medium mb-4">Course-wise Enrollments</h3>
-                                <div className="border rounded-lg max-h-72 overflow-y-auto"><Table><TableHeader><TableRow><TableHead>Course</TableHead><TableHead>Enrollments</TableHead><TableHead>Sessions</TableHead></TableRow></TableHeader><TableBody>{Object.entries(reportStats.courseStats).length > 0 ? (Object.entries(reportStats.courseStats).map(([name, stats]) => (<TableRow key={name}><TableCell className="font-medium">{name}</TableCell><TableCell>{stats.enrollments}</TableCell><TableCell>{stats.sessions}</TableCell></TableRow>))) : (<TableRow><TableCell colSpan={3} className="h-24 text-center">No course data.</TableCell></TableRow>)}</TableBody></Table></div>
+                                        )}
+                                    </TableBody>
+                                </Table>
                             </div>
                         </div>
                     </CardContent>
