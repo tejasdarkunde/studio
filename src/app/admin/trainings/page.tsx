@@ -456,6 +456,8 @@ export default function TrainingsPage() {
                                         <TableHead>Date & Time</TableHead>
                                         <TableHead>Batch Name</TableHead>
                                         <TableHead>Course</TableHead>
+                                        <TableHead>Semester</TableHead>
+                                        <TableHead>Organizations</TableHead>
                                         <TableHead>Trainer</TableHead>
                                         <TableHead>Registrations</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
@@ -477,6 +479,8 @@ export default function TrainingsPage() {
                                                 <TableCell>
                                                     <Badge variant={batch.course === 'Diploma' ? 'default' : batch.course === 'Advance Diploma' ? 'secondary' : 'outline'} className={cn(batch.isCancelled && "opacity-50")}>{batch.course}</Badge>
                                                 </TableCell>
+                                                <TableCell>{batch.semester || 'N/A'}</TableCell>
+                                                <TableCell>{batch.organizations?.join(', ') || 'N/A'}</TableCell>
                                                 <TableCell className={cn(batch.isCancelled && "line-through")}>{trainer?.name || 'N/A'}</TableCell>
                                                 <TableCell>{batch.registrations?.length || 0}</TableCell>
                                                 <TableCell className="text-right space-x-0">
