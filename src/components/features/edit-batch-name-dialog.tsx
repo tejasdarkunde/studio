@@ -169,13 +169,17 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
             <Label htmlFor="semester" className="text-right">
                 Semester
             </Label>
-            <Input 
-                id="semester"
-                value={semester}
-                onChange={(e) => setSemester(e.target.value)}
-                className="col-span-3"
-                placeholder="e.g. 1st Year"
-            />
+            <Select onValueChange={setSemester} value={semester}>
+              <SelectTrigger id="semester" className="col-span-3">
+                <SelectValue placeholder="Select a semester"/>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1st Year">1st Year</SelectItem>
+                <SelectItem value="2nd Year">2nd Year</SelectItem>
+                <SelectItem value="3rd Year">3rd Year</SelectItem>
+                <SelectItem value="4th Year">4th Year</SelectItem>
+              </SelectContent>
+            </Select>
            </div>
            <div className="grid grid-cols-4 items-start gap-4">
             <Label className="text-right pt-2">
