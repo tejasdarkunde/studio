@@ -61,6 +61,7 @@ export type Batch = {
   isCancelled?: boolean;
   cancellationReason?: string;
   organizations?: string[];
+  semester?: string;
 };
 
 // This type is no longer used, but kept for potential future global settings.

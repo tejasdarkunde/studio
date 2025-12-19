@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -86,7 +87,7 @@ export default function TrainingsPage() {
         });
     }, [filteredBatches]);
     
-      const handleSaveBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[] }) => {
+      const handleSaveBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[]; semester?: string; }) => {
         if (!editingBatch) return;
 
         const result = await updateBatch(editingBatch.id, {
@@ -97,6 +98,7 @@ export default function TrainingsPage() {
             endTime: details.endTime,
             trainerId: details.trainerId,
             organizations: details.organizations,
+            semester: details.semester,
         });
 
         if (result.success) {
@@ -115,7 +117,7 @@ export default function TrainingsPage() {
         setEditingBatch(null);
     };
 
-    const handleCreateBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[] }) => {
+    const handleCreateBatch = async (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[]; semester?: string; }) => {
         if (!details.startDate) {
             toast({
                 variant: "destructive",
@@ -141,6 +143,7 @@ export default function TrainingsPage() {
             endTime: details.endTime,
             trainerId: details.trainerId,
             organizations: details.organizations,
+            semester: details.semester,
         });
 
         if (result.success) {
@@ -306,6 +309,7 @@ export default function TrainingsPage() {
                     endTime: editingBatch.endTime,
                     trainerId: editingBatch.trainerId,
                     organizations: editingBatch.organizations,
+                    semester: editingBatch.semester,
                 } : undefined}
                 trainers={trainers}
                 courses={courses}

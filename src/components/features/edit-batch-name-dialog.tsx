@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -38,8 +39,8 @@ import { Checkbox } from '../ui/checkbox';
 type EditBatchDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[] }) => Promise<void>;
-  initialData?: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: string; startTime: string; endTime: string; trainerId?: string; organizations?: string[] };
+  onSave: (details: { name: string; course: any; startDate?: Date; startTime: string; endTime: string; trainerId: string; organizations?: string[], semester?: string }) => Promise<void>;
+  initialData?: { name: string; course: 'Diploma' | 'Advance Diploma' | 'Other'; startDate?: string; startTime: string; endTime: string; trainerId?: string; organizations?: string[]; semester?: string; };
   trainers: Trainer[];
   courses: Course[];
   organizations: Organization[];
@@ -75,6 +76,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
   const [endTime, setEndTime] = useState('');
   const [trainerId, setTrainerId] = useState('');
   const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
+  const [semester, setSemester] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
@@ -86,6 +88,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
         setStartTime(initialData?.startTime || '');
         setEndTime(initialData?.endTime || '');
         setSelectedOrgs(initialData?.organizations || []);
+        setSemester(initialData?.semester || '');
         setIsSaving(false);
         
         if (userRole === 'trainer' && !initialData) {
@@ -107,7 +110,7 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
         return;
     }
     setIsSaving(true);
-    await onSave({ name: name.trim(), course, startDate, startTime, endTime, trainerId, organizations: selectedOrgs });
+    await onSave({ name: name.trim(), course, startDate, startTime, endTime, trainerId, organizations: selectedOrgs, semester });
     setIsSaving(false);
   };
   
@@ -162,6 +165,18 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
                 </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="semester" className="text-right">
+                Semester
+            </Label>
+            <Input 
+                id="semester"
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+                className="col-span-3"
+                placeholder="e.g. 1st Year"
+            />
+           </div>
            <div className="grid grid-cols-4 items-start gap-4">
             <Label className="text-right pt-2">
               Organizations
