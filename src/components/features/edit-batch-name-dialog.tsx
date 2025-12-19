@@ -180,19 +180,21 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
                             {organizations.map((org) => (
                                 <CommandItem
                                     key={org.id}
-                                    onSelect={() => handleOrgToggle(org.name)}
+                                    onSelect={(currentValue) => {
+                                        handleOrgToggle(org.name);
+                                    }}
                                 >
-                                    <Label
-                                        htmlFor={`org-${org.id}`}
-                                        className="flex items-center gap-2 cursor-pointer w-full"
+                                    <div
+                                        className="mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary"
                                     >
-                                        <Checkbox
-                                            id={`org-${org.id}`}
-                                            checked={selectedOrgs.includes(org.name)}
-                                            className="mr-2"
+                                        <Check
+                                        className={cn(
+                                            "h-4 w-4",
+                                            selectedOrgs.includes(org.name) ? "opacity-100" : "opacity-0"
+                                        )}
                                         />
-                                        {org.name}
-                                    </Label>
+                                    </div>
+                                    {org.name}
                                 </CommandItem>
                             ))}
                         </CommandGroup>
