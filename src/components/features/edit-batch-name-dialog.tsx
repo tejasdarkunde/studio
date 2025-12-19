@@ -181,17 +181,18 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
                                 <CommandItem
                                     key={org.id}
                                     onSelect={() => handleOrgToggle(org.name)}
-                                    className="cursor-pointer"
                                 >
-                                     <div className="flex items-center gap-2">
+                                    <Label
+                                        htmlFor={`org-${org.id}`}
+                                        className="flex items-center gap-2 cursor-pointer w-full"
+                                    >
                                         <Checkbox
-                                            className="mr-2"
-                                            checked={selectedOrgs.includes(org.name)}
                                             id={`org-${org.id}`}
-                                            onCheckedChange={() => handleOrgToggle(org.name)}
+                                            checked={selectedOrgs.includes(org.name)}
+                                            className="mr-2"
                                         />
-                                        <Label htmlFor={`org-${org.id}`} className="cursor-pointer">{org.name}</Label>
-                                    </div>
+                                        {org.name}
+                                    </Label>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
