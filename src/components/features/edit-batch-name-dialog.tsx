@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import type { Trainer, Batch, Course, Organization } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
+import { ScrollArea } from '../ui/scroll-area';
 import { Checkbox } from '../ui/checkbox';
 
 
@@ -166,41 +166,20 @@ export function EditBatchDialog({ isOpen, onClose, onSave, initialData, trainers
             <Label className="text-right pt-2">
               Organizations
             </Label>
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" className="w-[280px] justify-between col-span-3">
-                        {selectedOrgs.length > 0 ? `${selectedOrgs.length} selected` : "Select organizations..."}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-0">
-                    <Command>
-                        <CommandInput placeholder="Search organizations..." />
-                        <CommandEmpty>No organizations found.</CommandEmpty>
-                        <CommandGroup>
-                            {organizations.map((org) => (
-                                <CommandItem
-                                    key={org.id}
-                                    onSelect={(currentValue) => {
-                                        handleOrgToggle(org.name);
-                                    }}
-                                >
-                                    <div
-                                        className="mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary"
-                                    >
-                                        <Check
-                                        className={cn(
-                                            "h-4 w-4",
-                                            selectedOrgs.includes(org.name) ? "opacity-100" : "opacity-0"
-                                        )}
-                                        />
-                                    </div>
-                                    {org.name}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </Command>
-                </PopoverContent>
-            </Popover>
+            <ScrollArea className="h-32 w-full col-span-3 rounded-md border p-2">
+                <div className="space-y-2">
+                    {organizations.map(org => (
+                        <div key={org.id} className="flex items-center gap-2">
+                            <Checkbox 
+                                id={`org-${org.id}`}
+                                checked={selectedOrgs.includes(org.name)}
+                                onCheckedChange={() => handleOrgToggle(org.name)}
+                            />
+                            <Label htmlFor={`org-${org.id}`} className="font-normal">{org.name}</Label>
+                        </div>
+                    ))}
+                </div>
+            </ScrollArea>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">
