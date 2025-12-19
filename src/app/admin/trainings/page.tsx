@@ -81,8 +81,8 @@ export default function TrainingsPage() {
 
     const sortedScheduleBatches = useMemo(() => {
         return [...filteredBatches].sort((a, b) => {
-            const dateA = new Date(a.createdAt).getTime();
-            const dateB = new Date(b.createdAt).getTime();
+            const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+            const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
             return dateB - dateA;
         });
     }, [filteredBatches]);
