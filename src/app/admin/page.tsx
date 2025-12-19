@@ -410,7 +410,7 @@ export default function AdminPage() {
                                 </Card>
                             </div>
                             <Separator />
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div className="lg:col-span-1">
                                     <h3 className="text-lg font-medium mb-4">Admissions by Organization</h3>
                                     <div className="border rounded-lg max-h-72 overflow-y-auto">
@@ -439,34 +439,7 @@ export default function AdminPage() {
                                     </div>
                                 </div>
                                 <div className="lg:col-span-1">
-                                    <h3 className="text-lg font-medium mb-4">Admissions by Year</h3>
-                                    <div className="border rounded-lg max-h-72 overflow-y-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Year</TableHead>
-                                                    <TableHead className="text-right">Participants</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                            {Object.entries(reportStats.yearStats).length > 0 ? (
-                                                Object.entries(reportStats.yearStats).sort((a,b) => b[0].localeCompare(a[0])).map(([name, count]) => (
-                                                    <TableRow key={name}>
-                                                        <TableCell className="font-medium">{name}</TableCell>
-                                                        <TableCell className="text-right">{count}</TableCell>
-                                                    </TableRow>
-                                                ))
-                                            ) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={2} className="h-24 text-center">No year data.</TableCell>
-                                                </TableRow>
-                                            )}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </div>
-                                <div className="lg:col-span-1">
-                                    <h3 className="text-lg font-medium mb-4">Course Statistics</h3>
+                                    <h3 className="text-lg font-medium mb-4">Course-wise Enrollments</h3>
                                     <div className="border rounded-lg max-h-72 overflow-y-auto">
                                         <Table>
                                             <TableHeader>
