@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -30,14 +29,6 @@ import { Progress } from '@/components/ui/progress';
 import { AddTrainerDialog } from '@/components/features/add-trainer-dialog';
 import { DeleteBatchDialog } from '@/components/features/delete-batch-dialog';
 import { ConfirmDialog } from '@/components/features/confirm-dialog';
-
-
-const organizations = [
-  "TE Connectivity, Shirwal",
-  "BSA Plant, Chakan",
-  "Belden India",
-  "Other",
-];
 
 
 const SuperAdminsTable = ({
@@ -1337,3 +1328,5 @@ export default function AdminUsersPage() {
     </>
   );
 }
+
+    
