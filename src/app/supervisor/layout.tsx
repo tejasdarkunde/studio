@@ -3,9 +3,10 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Supervisor } from '@/lib/types';
+import { ChevronLeft } from 'lucide-react';
 
 export default function SupervisorLayout({
   children,
@@ -13,6 +14,7 @@ export default function SupervisorLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<Supervisor | null>(null);
 
   useEffect(() => {
@@ -23,18 +25,20 @@ export default function SupervisorLayout({
       const currentUser = JSON.parse(userJson);
       setUser(currentUser);
     } else {
-      router.push('/supervisor/login');
+      router.push('/supervisor-login');
     }
   }, [router]);
 
   const handleLogout = () => {
     sessionStorage.clear();
-    router.push('/supervisor/login');
+    router.push('/supervisor-login');
   };
 
   if (!user) {
       return null; // Or a loading spinner
   }
+  
+  const isDashboard = pathname === '/supervisor/dashboard';
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -50,6 +54,15 @@ export default function SupervisorLayout({
         </div>
       </header>
       <main className="container mx-auto flex-grow">
+        {!isDashboard && (
+            <div className="my-6">
+                <Button asChild variant="outline">
+                    <Link href="/supervisor/dashboard">
+                        <ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+                    </Link>
+                </Button>
+            </div>
+        )}
         {children}
       </main>
     </div>
