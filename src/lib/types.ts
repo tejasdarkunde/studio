@@ -44,6 +44,7 @@ export type Supervisor = {
     name: string;
     username: string;
     password?: string;
+    organization?: string;
     createdAt: string; // ISO 8601 string format
 };
 

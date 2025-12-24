@@ -1968,6 +1968,7 @@ const supervisorSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   username: z.string().min(3, "Username must be at least 3 characters."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
+  organization: z.string().optional(),
 });
 
 export async function getSupervisors(): Promise<Supervisor[]> {
@@ -2013,8 +2014,8 @@ export async function addSupervisor(data: z.infer<typeof supervisorSchema>): Pro
         }
         
         await addDoc(supervisorsCollection, {
-            username,
             ...rest,
+            username,
             createdAt: serverTimestamp(),
         });
         return { success: true };
@@ -2551,4 +2552,3 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
-

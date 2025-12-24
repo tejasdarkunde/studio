@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -190,15 +191,18 @@ const ManageSupervisorDialog = ({
     onClose,
     onSave,
     initialData,
+    organizations,
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: {id?: string; name: string; username: string; password?: string;}) => Promise<void>;
+    onSave: (data: {id?: string; name: string; username: string; password?: string; organization?: string;}) => Promise<void>;
     initialData?: Supervisor | null;
+    organizations: Organization[];
 }) => {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [organization, setOrganization] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
 
@@ -206,6 +210,7 @@ const ManageSupervisorDialog = ({
         if(isOpen) {
             setName(initialData?.name || '');
             setUsername(initialData?.username || '');
+            setOrganization(initialData?.organization || '');
             setPassword('');
             setIsSaving(false);
         }
@@ -226,6 +231,7 @@ const ManageSupervisorDialog = ({
             name,
             username,
             password: password || undefined,
+            organization,
         });
         setIsSaving(false);
     }
@@ -241,6 +247,17 @@ const ManageSupervisorDialog = ({
                   <div>
                       <Label htmlFor="supervisor-name">Full Name</Label>
                       <Input id="supervisor-name" value={name} onChange={(e) => setName(e.target.value)} />
+                  </div>
+                  <div>
+                      <Label htmlFor="supervisor-organization">Organization</Label>
+                      <Select onValueChange={setOrganization} value={organization}>
+                        <SelectTrigger id="supervisor-organization">
+                            <SelectValue placeholder="Select an organization"/>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {organizations.map(org => <SelectItem key={org.id} value={org.name}>{org.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                   </div>
                   <Separator />
                   <div>
@@ -721,7 +738,7 @@ export default function AdminUsersPage() {
       }
   }
 
-  const handleSaveSupervisor = async (data: {id?: string; name: string; username: string; password?: string;}) => {
+  const handleSaveSupervisor = async (data: {id?: string; name: string; username: string; password?: string; organization?: string}) => {
       const action = data.id ? updateSupervisor : addSupervisor;
       const result = await action(data as any);
       if(result.success) {
@@ -872,6 +889,7 @@ export default function AdminUsersPage() {
         onClose={() => {setIsAddSupervisorOpen(false); setEditingSupervisor(null);}}
         onSave={handleSaveSupervisor}
         initialData={editingSupervisor}
+        organizations={organizations}
       />
       <ConfirmDialog 
         isOpen={!!deletingSupervisor}
@@ -1248,6 +1266,7 @@ export default function AdminUsersPage() {
                                                 <TableRow>
                                                     <TableHead>Name</TableHead>
                                                     <TableHead>Username</TableHead>
+                                                    <TableHead>Organization</TableHead>
                                                     <TableHead className="text-right">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -1256,6 +1275,7 @@ export default function AdminUsersPage() {
                                                     <TableRow key={admin.id}>
                                                         <TableCell className="font-medium">{admin.name}</TableCell>
                                                         <TableCell>{admin.username}</TableCell>
+                                                        <TableCell>{admin.organization || 'N/A'}</TableCell>
                                                         <TableCell className="text-right">
                                                             <Button variant="ghost" size="icon" onClick={() => setEditingSupervisor(admin)}><Pencil className="h-4 w-4"/></Button>
                                                             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeletingSupervisor(admin)}><Trash className="h-4 w-4"/></Button>
