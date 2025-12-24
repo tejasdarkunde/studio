@@ -46,7 +46,7 @@ export default function SupervisorDashboardPage() {
     }, [router]);
 
     const stats = useMemo(() => {
-        const totalTrainees = participants.length;
+        const totalParticipants = participants.length;
 
         const enrolledCourseNames = new Set(participants.flatMap(p => p.enrolledCourses || []));
         const activeCourses = enrolledCourseNames.size;
@@ -63,7 +63,7 @@ export default function SupervisorDashboardPage() {
         const totalBatches = registeredBatchIds.size;
 
         return {
-            totalTrainees,
+            totalParticipants,
             activeCourses,
             totalBatches
         };
@@ -93,7 +93,7 @@ export default function SupervisorDashboardPage() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{stats.totalTrainees}</div>
+                    <div className="text-2xl font-bold">{stats.totalParticipants}</div>
                     <p className="text-xs text-muted-foreground">in your organization</p>
                 </CardContent>
             </Card>
