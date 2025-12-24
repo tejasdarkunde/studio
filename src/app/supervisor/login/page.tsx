@@ -9,7 +9,7 @@ import { z } from "zod";
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { User, Lock, Loader2, LogIn } from "lucide-react";
+import { User, Lock, Loader2, LogIn, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -130,9 +130,11 @@ export default function SupervisorLoginPage() {
         </Card>
         
         <div className="text-center mt-8">
-            <Link href="/" passHref>
-                <button className="text-primary hover:underline">Back to Main Site</button>
-            </Link>
+            <Button asChild variant="link">
+                <Link href="/login">
+                   <ChevronLeft className="mr-2 h-4 w-4" /> Back to All Logins
+                </Link>
+            </Button>
         </div>
       </div>
     </main>
