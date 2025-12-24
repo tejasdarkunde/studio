@@ -17,7 +17,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, transferStudents, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, getFormAdmins, addFormAdmin, updateFormAdmin, deleteFormAdmin, getParticipants, updateSelectedParticipants } from '@/app/actions';
+import { addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, transferStudents, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, getFormAdmins, addFormAdmin, deleteFormAdmin, getParticipants, updateSelectedParticipants } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -936,7 +936,12 @@ export default function AdminUsersPage() {
                     <TabsTrigger value="admins">Admins</TabsTrigger>
                 </TabsList>
                 <TabsContent value="directory" className="mt-6">
-                    <ParticipantsTable participants={participants} onUpdateSelected={updateSelectedParticipants} onDataRefreshed={fetchAllData}/>
+                    <ParticipantsTable
+                        participants={participants}
+                        organizations={organizations}
+                        onUpdateSelected={updateSelectedParticipants}
+                        onDataRefreshed={fetchAllData}
+                    />
                 </TabsContent>
 
                 <TabsContent value="add" className="mt-6">
@@ -1328,5 +1333,7 @@ export default function AdminUsersPage() {
     </>
   );
 }
+
+    
 
     

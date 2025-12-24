@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Participant } from "@/lib/types";
+import type { Participant, Organization } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -24,11 +24,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 
 type ParticipantsTableProps = {
   participants: Participant[];
+  organizations: Organization[];
   onUpdateSelected: (data: { ids: string[], year?: string, semester?: string, enrollmentSeason?: 'Summer' | 'Winter' }) => Promise<{success: boolean, error?: string, updatedCount?: number}>;
   onDataRefreshed: () => void;
 };
 
-export function ParticipantsTable({ participants, onUpdateSelected, onDataRefreshed }: ParticipantsTableProps) {
+export function ParticipantsTable({ participants, organizations, onUpdateSelected, onDataRefreshed }: ParticipantsTableProps) {
   const { toast } = useToast();
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [year, setYear] = useState('');
@@ -39,6 +40,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
   const [filterYear, setFilterYear] = useState('all');
   const [filterSemester, setFilterSemester] = useState('all');
   const [filterEnrollment, setFilterEnrollment] = useState<'Summer' | 'Winter' | 'all'>('all');
+  const [filterOrganization, setFilterOrganization] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const uniqueYears = useMemo(() => {
@@ -56,12 +58,13 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
           const yearMatch = filterYear === 'all' || p.year === filterYear;
           const semesterMatch = filterSemester === 'all' || p.semester === filterSemester;
           const enrollmentMatch = filterEnrollment === 'all' || p.enrollmentSeason === filterEnrollment;
+          const organizationMatch = filterOrganization === 'all' || p.organization === filterOrganization;
           const searchMatch = searchTerm.trim() === '' || 
                               p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                               p.iitpNo.toLowerCase().includes(searchTerm.toLowerCase());
-          return yearMatch && semesterMatch && enrollmentMatch && searchMatch;
+          return yearMatch && semesterMatch && enrollmentMatch && searchMatch && organizationMatch;
       });
-  }, [participants, filterYear, filterSemester, filterEnrollment, searchTerm]);
+  }, [participants, filterYear, filterSemester, filterEnrollment, searchTerm, filterOrganization]);
 
 
   const handleSelectRow = (id: string) => {
@@ -155,6 +158,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
       setFilterYear('all');
       setFilterSemester('all');
       setFilterEnrollment('all');
+      setFilterOrganization('all');
       setSearchTerm('');
   }
 
@@ -207,8 +211,8 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
                     className="pl-10"
                 />
             </div>
-            <div className="flex flex-col md:flex-row gap-4 items-end">
-                <div className="flex-grow space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                <div className="space-y-2">
                     <Label htmlFor="filter-year">Year</Label>
                     <Select onValueChange={setFilterYear} value={filterYear}>
                         <SelectTrigger id="filter-year"><SelectValue /></SelectTrigger>
@@ -220,7 +224,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="flex-grow space-y-2">
+                <div className="space-y-2">
                     <Label htmlFor="filter-semester">Semester</Label>
                     <Select onValueChange={setFilterSemester} value={filterSemester}>
                         <SelectTrigger id="filter-semester"><SelectValue /></SelectTrigger>
@@ -232,7 +236,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="flex-grow space-y-2">
+                <div className="space-y-2">
                     <Label htmlFor="filter-enrollment">Enrollment</Label>
                     <Select onValueChange={(v: 'Summer' | 'Winter' | 'all') => setFilterEnrollment(v)} value={filterEnrollment}>
                         <SelectTrigger id="filter-enrollment"><SelectValue/></SelectTrigger>
@@ -243,13 +247,23 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={clearFilters}><X className="mr-2 h-4 w-4"/>Clear Filters</Button>
-                    <Button variant="secondary" onClick={handleExport} disabled={participants.length === 0}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export CSV
-                    </Button>
+                 <div className="space-y-2">
+                    <Label htmlFor="filter-organization">Organization</Label>
+                    <Select onValueChange={setFilterOrganization} value={filterOrganization}>
+                        <SelectTrigger id="filter-organization"><SelectValue placeholder="All Organizations"/></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Organizations</SelectItem>
+                            {organizations.map(org => <SelectItem key={org.id} value={org.name}>{org.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                 </div>
+            </div>
+            <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={clearFilters}><X className="mr-2 h-4 w-4"/>Clear Filters</Button>
+                <Button variant="secondary" onClick={handleExport} disabled={participants.length === 0}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export CSV
+                </Button>
             </div>
           </CardContent>
       </Card>
@@ -333,3 +347,5 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
 }
 
   
+
+    
