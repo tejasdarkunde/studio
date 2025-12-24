@@ -14,7 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2, Filter, X } from "lucide-react";
+import { Download, RefreshCw, Loader2, Filter, X, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
@@ -39,16 +39,29 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
   const [filterYear, setFilterYear] = useState('all');
   const [filterSemester, setFilterSemester] = useState('all');
   const [filterEnrollment, setFilterEnrollment] = useState<'Summer' | 'Winter' | 'all'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const uniqueYears = useMemo(() => {
     const years = new Set(participants.map(p => p.year).filter((y): y is string => !!y));
-    return Array.from(years).sort();
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
   }, [participants]);
   
   const uniqueSemesters = useMemo(() => {
     const semesters = new Set(participants.map(p => p.semester).filter((s): s is string => !!s));
     return Array.from(semesters).sort();
   }, [participants]);
+
+  const filteredParticipants = useMemo(() => {
+      return participants.filter(p => {
+          const yearMatch = filterYear === 'all' || p.year === filterYear;
+          const semesterMatch = filterSemester === 'all' || p.semester === filterSemester;
+          const enrollmentMatch = filterEnrollment === 'all' || p.enrollmentSeason === filterEnrollment;
+          const searchMatch = searchTerm.trim() === '' || 
+                              p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              p.iitpNo.toLowerCase().includes(searchTerm.toLowerCase());
+          return yearMatch && semesterMatch && enrollmentMatch && searchMatch;
+      });
+  }, [participants, filterYear, filterSemester, filterEnrollment, searchTerm]);
 
 
   const handleSelectRow = (id: string) => {
@@ -65,7 +78,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-        setSelectedRows(new Set(participants.map(p => p.id)));
+        setSelectedRows(new Set(filteredParticipants.map(p => p.id)));
     } else {
         setSelectedRows(new Set());
     }
@@ -73,20 +86,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
 
   // A simple CSV export for participants
   const handleExport = () => {
-    let dataToExport = participants;
-    
-    if (filterYear !== 'all') {
-        dataToExport = dataToExport.filter(p => p.year === filterYear);
-    }
-    if (filterSemester !== 'all') {
-        dataToExport = dataToExport.filter(p => p.semester === filterSemester);
-    }
-    if (filterEnrollment !== 'all') {
-        dataToExport = dataToExport.filter(p => p.enrollmentSeason === filterEnrollment);
-    }
-
-
-    if (dataToExport.length === 0) {
+    if (filteredParticipants.length === 0) {
       toast({
         variant: 'destructive',
         title: "No Data",
@@ -95,7 +95,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
       return;
     }
     const headers = "Name,IITP No,Mobile No,Organization,Year,Semester,Enrollment,Enrolled Courses,Date Added\n";
-    const csvRows = dataToExport.map(p => {
+    const csvRows = filteredParticipants.map(p => {
       const enrolledCourses = p.enrolledCourses?.join('; ') || '';
       const row = [p.name, p.iitpNo, p.mobile, p.organization, p.year, p.semester, p.enrollmentSeason, enrolledCourses, new Date(p.createdAt).toLocaleString()];
       return row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
@@ -155,6 +155,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
       setFilterYear('all');
       setFilterSemester('all');
       setFilterEnrollment('all');
+      setSearchTerm('');
   }
 
   return (
@@ -193,60 +194,73 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
       )}
       <Card>
           <CardHeader>
-            <CardTitle>Export Participants</CardTitle>
-            <CardDescription>Filter participants by year, semester, or enrollment season before exporting.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5"/> Filter & Export Participants</CardTitle>
+            <CardDescription>Filter the directory and export the results to CSV.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col md:flex-row gap-4 items-end">
-             <div className="flex-grow space-y-2">
-                <Label htmlFor="filter-year">Year</Label>
-                 <Select onValueChange={setFilterYear} value={filterYear}>
-                    <SelectTrigger id="filter-year"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Years</SelectItem>
-                        {uniqueYears.map(year => (
-                            <SelectItem key={year} value={year}>{year}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-             </div>
-             <div className="flex-grow space-y-2">
-                <Label htmlFor="filter-semester">Semester</Label>
-                 <Select onValueChange={setFilterSemester} value={filterSemester}>
-                    <SelectTrigger id="filter-semester"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Semesters</SelectItem>
-                        {uniqueSemesters.map(semester => (
-                            <SelectItem key={semester} value={semester}>{semester}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-             </div>
-             <div className="flex-grow space-y-2">
-                <Label htmlFor="filter-enrollment">Enrollment</Label>
-                <Select onValueChange={(v: 'Summer' | 'Winter' | 'all') => setFilterEnrollment(v)} value={filterEnrollment}>
-                    <SelectTrigger id="filter-enrollment"><SelectValue/></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Seasons</SelectItem>
-                        <SelectItem value="Summer">Summer</SelectItem>
-                        <SelectItem value="Winter">Winter</SelectItem>
-                    </SelectContent>
-                </Select>
-             </div>
-             <div className="flex gap-2">
-                <Button variant="outline" onClick={clearFilters}><X className="mr-2 h-4 w-4"/>Clear</Button>
-                <Button variant="secondary" onClick={handleExport} disabled={participants.length === 0}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export CSV
-                </Button>
-             </div>
+          <CardContent className="space-y-4">
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search by name or IITP No..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                />
+            </div>
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-grow space-y-2">
+                    <Label htmlFor="filter-year">Year</Label>
+                    <Select onValueChange={setFilterYear} value={filterYear}>
+                        <SelectTrigger id="filter-year"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Years</SelectItem>
+                            {uniqueYears.map(year => (
+                                <SelectItem key={year} value={year}>{year}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex-grow space-y-2">
+                    <Label htmlFor="filter-semester">Semester</Label>
+                    <Select onValueChange={setFilterSemester} value={filterSemester}>
+                        <SelectTrigger id="filter-semester"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Semesters</SelectItem>
+                            {uniqueSemesters.map(semester => (
+                                <SelectItem key={semester} value={semester}>{semester}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex-grow space-y-2">
+                    <Label htmlFor="filter-enrollment">Enrollment</Label>
+                    <Select onValueChange={(v: 'Summer' | 'Winter' | 'all') => setFilterEnrollment(v)} value={filterEnrollment}>
+                        <SelectTrigger id="filter-enrollment"><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Seasons</SelectItem>
+                            <SelectItem value="Summer">Summer</SelectItem>
+                            <SelectItem value="Winter">Winter</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={clearFilters}><X className="mr-2 h-4 w-4"/>Clear Filters</Button>
+                    <Button variant="secondary" onClick={handleExport} disabled={participants.length === 0}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export CSV
+                    </Button>
+                </div>
+            </div>
           </CardContent>
       </Card>
-      <div className="flex flex-row items-center justify-between">
+      
+      <div className="flex flex-row items-center justify-between mt-6">
           <div>
             <h3 className="text-lg font-medium">Full Participant Directory</h3>
-            <p className="text-sm text-muted-foreground">A complete view of every participant.</p>
+            <p className="text-sm text-muted-foreground">{filteredParticipants.length} of {participants.length} participants shown.</p>
           </div>
       </div>
+
       <div className="border rounded-lg">
         <ScrollArea className="h-[60vh]">
             <Table>
@@ -254,8 +268,9 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
                 <TableRow>
                 <TableHead className="w-[50px]">
                     <Checkbox
-                        checked={selectedRows.size === participants.length && participants.length > 0}
+                        checked={selectedRows.size === filteredParticipants.length && filteredParticipants.length > 0}
                         onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                        disabled={filteredParticipants.length === 0}
                     />
                 </TableHead>
                 <TableHead>Name</TableHead>
@@ -270,8 +285,8 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {participants && participants.length > 0 ? (
-                participants.map((p) => (
+                {filteredParticipants.length > 0 ? (
+                filteredParticipants.map((p) => (
                     <TableRow key={p.id} data-state={selectedRows.has(p.id) && "selected"}>
                     <TableCell>
                          <Checkbox
@@ -305,7 +320,7 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
                 ) : (
                 <TableRow>
                     <TableCell colSpan={10} className="h-24 text-center">
-                    No participants found. Add one to get started.
+                    No participants found matching your filters.
                     </TableCell>
                 </TableRow>
                 )}
@@ -316,3 +331,5 @@ export function ParticipantsTable({ participants, onUpdateSelected, onDataRefres
     </div>
   );
 }
+
+  
