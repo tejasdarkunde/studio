@@ -258,41 +258,37 @@ export default function SupervisorUsersPage() {
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async (orgName: string) => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
-        const [fetchedCourses, fetchedOrganizations, fetchedParticipants] = await Promise.all([
-            getCourses(),
-            getOrganizations(),
-            getParticipantsByOrganization(orgName),
-        ]);
-        setCourses(fetchedCourses);
-        setOrganizations(fetchedOrganizations);
-        setParticipants(fetchedParticipants);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
         const userRole = sessionStorage.getItem('userRole');
         const userJson = sessionStorage.getItem('user');
 
         if (userRole === 'supervisor' && userJson) {
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
-            if (currentUser.organization) {
-                fetchData(currentUser.organization);
-            } else {
-                 setLoading(false); // No org, no data to fetch
-            }
+            
+            const [fetchedCourses, fetchedOrganizations, fetchedParticipants] = await Promise.all([
+                getCourses(),
+                getOrganizations(),
+                currentUser.organization ? getParticipantsByOrganization(currentUser.organization) : Promise.resolve([]),
+            ]);
+            
+            setCourses(fetchedCourses);
+            setOrganizations(fetchedOrganizations);
+            setParticipants(fetchedParticipants);
         } else {
             router.push('/supervisor-login');
         }
-    }, [router, fetchData]);
+        setLoading(false);
+    }, [router]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
 
-    const handleParticipantAdded = () => {
-        if(supervisor?.organization) {
-            fetchData(supervisor.organization);
-        }
+    const handleParticipantAddedOrUpdated = () => {
+        fetchData();
     }
     
 
@@ -325,7 +321,7 @@ export default function SupervisorUsersPage() {
                     <AddUpdateTab 
                         courses={courses}
                         organizations={organizations}
-                        onParticipantAdded={handleParticipantAdded}
+                        onParticipantAdded={handleParticipantAddedOrUpdated}
                         supervisor={supervisor}
                     />
                 </TabsContent>
