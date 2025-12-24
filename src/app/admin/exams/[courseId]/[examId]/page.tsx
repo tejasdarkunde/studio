@@ -267,9 +267,8 @@ const ManageExamDetailsDialog = ({
 };
 
 export default function ManageExamPage() {
-    const params = useParams();
     const router = useRouter();
-    const { courseId, examId } = params as { courseId: string; examId: string };
+    const { courseId, examId } = useParams() as { courseId: string; examId: string };
 
     const [course, setCourse] = useState<Course | null>(null);
     const [exam, setExam] = useState<Exam | null>(null);

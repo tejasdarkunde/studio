@@ -20,8 +20,7 @@ import { Progress } from '@/components/ui/progress';
 
 
 const CourseContentPageClient = () => {
-    const params = useParams();
-    const { iitpNo, courseId } = params as { iitpNo: string; courseId: string; };
+    const { iitpNo, courseId } = useParams() as { iitpNo: string; courseId: string; };
 
     const [course, setCourse] = useState<Course | null>(null);
     const [participant, setParticipant] = useState<Participant | null>(null);

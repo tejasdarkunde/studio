@@ -93,8 +93,7 @@ const QuestionReview = ({ question, selectedAnswer, rationale }: { question: Que
 }
 
 export default function ExamResultPage() {
-    const params = useParams();
-    const { iitpNo, examId } = params as { iitpNo: string; examId: string };
+    const { iitpNo, examId } = useParams() as { iitpNo: string; examId: string };
 
     const [exam, setExam] = useState<Exam | null>(null);
     const [course, setCourse] = useState<Course | null>(null);

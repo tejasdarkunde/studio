@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -12,9 +11,8 @@ import { ExamLoginForm } from '@/components/features/exam-login-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function ExamDirectAccessPage() {
-    const params = useParams();
     const router = useRouter();
-    const { examId } = params as { examId: string };
+    const { examId } = useParams() as { examId: string };
     
     const [exam, setExam] = useState<Exam | null>(null);
     const [course, setCourse] = useState<Course | null>(null);
