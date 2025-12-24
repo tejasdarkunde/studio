@@ -18,7 +18,7 @@ export default function SupervisorTraineesPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const fetchTrainees = useCallback(async () => {
+    useEffect(() => {
         const userRole = sessionStorage.getItem('userRole');
         const userJson = sessionStorage.getItem('user');
 
@@ -26,25 +26,25 @@ export default function SupervisorTraineesPage() {
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
             if (currentUser.organization) {
-                try {
-                    const data = await getParticipantsByOrganization(currentUser.organization);
-                    setParticipants(data);
-                } catch (error) {
-                    console.error("Failed to fetch participants:", error);
-                    setParticipants([]);
-                }
+                getParticipantsByOrganization(currentUser.organization)
+                    .then(data => {
+                        setParticipants(data);
+                    })
+                    .catch(error => {
+                        console.error("Failed to fetch participants:", error);
+                        setParticipants([]);
+                    })
+                    .finally(() => {
+                        setLoading(false);
+                    });
             } else {
                 setParticipants([]);
+                setLoading(false);
             }
         } else {
             router.push('/supervisor-login');
         }
-        setLoading(false);
     }, [router]);
-
-    useEffect(() => {
-        fetchTrainees();
-    }, [fetchTrainees]);
 
     const filteredParticipants = useMemo(() => {
         if (!searchTerm) return participants;
