@@ -52,12 +52,13 @@ export default function SupervisorDashboardPage() {
         const activeCourses = enrolledCourseNames.size;
 
         const registeredBatchIds = new Set<string>();
+        const participantIitpNos = new Set(participants.map(p => p.iitpNo));
+
         batches.forEach(batch => {
-            batch.registrations.forEach(reg => {
-                if (participants.some(p => p.iitpNo === reg.iitpNo)) {
-                    registeredBatchIds.add(batch.id);
-                }
-            });
+            const hasOrgParticipant = batch.registrations.some(reg => participantIitpNos.has(reg.iitpNo));
+            if (hasOrgParticipant) {
+                 registeredBatchIds.add(batch.id);
+            }
         });
         const totalBatches = registeredBatchIds.size;
 
@@ -66,7 +67,7 @@ export default function SupervisorDashboardPage() {
             activeCourses,
             totalBatches
         };
-    }, [participants, batches, courses]);
+    }, [participants, batches]);
 
     if (loading) {
         return (
