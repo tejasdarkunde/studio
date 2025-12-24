@@ -26,15 +26,17 @@ export default function SupervisorDashboardPage() {
                     </CardHeader>
                 </Card>
             </Link>
-             <Card className="hover:bg-secondary transition-colors cursor-not-allowed bg-muted/50">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-muted-foreground">
-                        <Users className="h-6 w-6" />
-                        View Trainees
-                    </CardTitle>
-                    <CardDescription>View all trainees submitted by you (coming soon).</CardDescription>
-                </CardHeader>
-            </Card>
+             <Link href="/supervisor/trainees">
+                <Card className="hover:bg-secondary transition-colors">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Users className="h-6 w-6 text-primary" />
+                            View Trainees
+                        </CardTitle>
+                        <CardDescription>View all trainees submitted from your organization.</CardDescription>
+                    </CardHeader>
+                </Card>
+            </Link>
         </div>
     </div>
   );

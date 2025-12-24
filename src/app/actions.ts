@@ -499,6 +499,43 @@ export async function getParticipants(): Promise<Participant[]> {
     }
 }
 
+export async function getParticipantsByOrganization(organization: string): Promise<Participant[]> {
+    try {
+        const participantsCollectionRef = collection(db, "participants");
+        const q = query(participantsCollectionRef, where("organization", "==", organization), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        const participants = snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+
+            const examProgress = data.examProgress || {};
+            for(const examId in examProgress) {
+                const attempt = examProgress[examId];
+                if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
+                    attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
+                }
+                 if(attempt.startedAt && attempt.startedAt instanceof Timestamp) {
+                    attempt.startedAt = attempt.startedAt.toDate().toISOString();
+                }
+            }
+
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+                examProgress: examProgress,
+            } as Participant;
+        });
+
+        return participants;
+
+    } catch (error) {
+        console.error("Error fetching participants by organization:", error);
+        return [];
+    }
+}
+
 
 export async function getParticipantByIitpNo(iitpNo: string): Promise<Participant | null> {
     try {
@@ -2552,3 +2589,4 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+
