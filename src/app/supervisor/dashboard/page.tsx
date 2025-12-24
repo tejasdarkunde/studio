@@ -1,19 +1,34 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Users, Presentation, BookOpen, UserX, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Participant, Supervisor, Batch } from '@/lib/types';
-import { getParticipantsByOrganization, getBatches } from '@/app/actions';
+import type { Participant, Supervisor, Batch, Course } from '@/lib/types';
+import { getParticipantsByOrganization, getBatches, getCourses } from '@/app/actions';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter();
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [batches, setBatches] = useState<Batch[]>([]);
+    const [courses, setCourses] = useState<Course[]>([]);
     const [supervisor, setSupervisor] = useState<Supervisor | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const fetchData = useCallback(async (orgName: string) => {
+        setLoading(true);
+        const [participantData, batchData, courseData] = await Promise.all([
+            getParticipantsByOrganization(orgName),
+            getBatches(),
+            getCourses(),
+        ]);
+        setParticipants(participantData);
+        setBatches(batchData);
+        setCourses(courseData);
+        setLoading(false);
+    }, []);
 
     useEffect(() => {
         const userRole = sessionStorage.getItem('userRole');
@@ -22,48 +37,33 @@ export default function SupervisorDashboardPage() {
         if (userRole === 'supervisor' && userJson) {
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
-            
-            const fetchData = async () => {
-                setLoading(true);
-                if (currentUser.organization) {
-                    const [participantData, batchData] = await Promise.all([
-                        getParticipantsByOrganization(currentUser.organization),
-                        getBatches(),
-                    ]);
-                    setParticipants(participantData);
-                    setBatches(batchData);
-                }
-                setLoading(false);
+            if (currentUser.organization) {
+                fetchData(currentUser.organization);
+            } else {
+                setLoading(false); // No organization, so nothing to fetch
             }
-            fetchData();
-
         } else {
-            router.push('/supervisor-login');
+            router.push('/supervisor/login');
         }
-    }, [router]);
+    }, [router, fetchData]);
 
     const stats = useMemo(() => {
-        if (!supervisor?.organization) {
-            return { totalParticipants: 0, activeCourses: 0, totalBatches: 0 };
-        }
-        const orgParticipants = participants.filter(p => p.organization === supervisor.organization);
-        const totalParticipants = orgParticipants.length;
+        const totalParticipants = participants.length;
 
-        const enrolledCourseNames = new Set(orgParticipants.flatMap(p => p.enrolledCourses || []));
+        const enrolledCourseNames = new Set(participants.flatMap(p => p.enrolledCourses || []));
         const activeCourses = enrolledCourseNames.size;
 
-        const participantIitpNos = new Set(orgParticipants.map(p => p.iitpNo));
-        const relevantBatches = batches.filter(batch => 
+        const participantIitpNos = new Set(participants.map(p => p.iitpNo));
+        const totalBatches = batches.filter(batch => 
             batch.registrations.some(reg => participantIitpNos.has(reg.iitpNo))
-        );
-        const totalBatches = relevantBatches.length;
+        ).length;
 
         return {
             totalParticipants,
             activeCourses,
             totalBatches
         };
-    }, [participants, batches, supervisor]);
+    }, [participants, batches]);
 
 
     if (loading) {
@@ -142,3 +142,5 @@ export default function SupervisorDashboardPage() {
     </div>
   );
 }
+
+    
