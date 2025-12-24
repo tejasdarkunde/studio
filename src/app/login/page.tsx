@@ -22,7 +22,7 @@ export default function CentralLoginPage() {
     {
       role: "Supervisor",
       description: "Submit applications on behalf of students.",
-      href: "/supervisor/login",
+      href: "/supervisor-login",
       icon: <UserCog className="h-6 w-6 text-primary" />,
     },
   ];
