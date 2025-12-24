@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Participant, Supervisor } from '@/lib/types';
 import { getParticipantsByOrganization } from '@/app/actions';
@@ -18,7 +18,7 @@ export default function SupervisorTraineesPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
+    const fetchTrainees = useCallback(async () => {
         const userRole = sessionStorage.getItem('userRole');
         const userJson = sessionStorage.getItem('user');
 
@@ -26,17 +26,25 @@ export default function SupervisorTraineesPage() {
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
             if (currentUser.organization) {
-                getParticipantsByOrganization(currentUser.organization).then(data => {
+                try {
+                    const data = await getParticipantsByOrganization(currentUser.organization);
                     setParticipants(data);
-                    setLoading(false);
-                });
+                } catch (error) {
+                    console.error("Failed to fetch participants:", error);
+                    setParticipants([]);
+                }
             } else {
-                setLoading(false); // No organization to fetch for
+                setParticipants([]);
             }
         } else {
             router.push('/supervisor-login');
         }
+        setLoading(false);
     }, [router]);
+
+    useEffect(() => {
+        fetchTrainees();
+    }, [fetchTrainees]);
 
     const filteredParticipants = useMemo(() => {
         if (!searchTerm) return participants;
