@@ -1,19 +1,17 @@
-
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, Presentation, BookOpen, UserCheck, UserX, Loader2 } from 'lucide-react';
+import { FileText, Users, Presentation, BookOpen, UserX, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Participant, Supervisor, Batch, Course } from '@/lib/types';
-import { getParticipantsByOrganization, getBatches, getCourses } from '@/app/actions';
+import type { Participant, Supervisor, Batch } from '@/lib/types';
+import { getParticipantsByOrganization, getBatches } from '@/app/actions';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter();
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [batches, setBatches] = useState<Batch[]>([]);
-    const [courses, setCourses] = useState<Course[]>([]);
     const [supervisor, setSupervisor] = useState<Supervisor | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -26,15 +24,14 @@ export default function SupervisorDashboardPage() {
             setSupervisor(currentUser);
             
             const fetchData = async () => {
+                setLoading(true);
                 if (currentUser.organization) {
-                    const [participantData, batchData, courseData] = await Promise.all([
+                    const [participantData, batchData] = await Promise.all([
                         getParticipantsByOrganization(currentUser.organization),
                         getBatches(),
-                        getCourses()
                     ]);
                     setParticipants(participantData);
                     setBatches(batchData);
-                    setCourses(courseData);
                 }
                 setLoading(false);
             }
@@ -46,28 +43,30 @@ export default function SupervisorDashboardPage() {
     }, [router]);
 
     const stats = useMemo(() => {
+        if (!supervisor?.organization || participants.length === 0) {
+            return { totalParticipants: 0, activeCourses: 0, totalBatches: 0 };
+        }
+
+        // Total participants is simply the length of the fetched, pre-filtered list.
         const totalParticipants = participants.length;
 
+        // Get unique course names from the filtered participants.
         const enrolledCourseNames = new Set(participants.flatMap(p => p.enrolledCourses || []));
         const activeCourses = enrolledCourseNames.size;
 
-        const registeredBatchIds = new Set<string>();
+        // Filter batches to find only those where at least one participant from the organization is registered.
         const participantIitpNos = new Set(participants.map(p => p.iitpNo));
-
-        batches.forEach(batch => {
-            const hasOrgParticipant = batch.registrations.some(reg => participantIitpNos.has(reg.iitpNo));
-            if (hasOrgParticipant) {
-                 registeredBatchIds.add(batch.id);
-            }
-        });
-        const totalBatches = registeredBatchIds.size;
+        const relevantBatches = batches.filter(batch => 
+            batch.registrations.some(reg => participantIitpNos.has(reg.iitpNo))
+        );
+        const totalBatches = relevantBatches.length;
 
         return {
             totalParticipants,
             activeCourses,
             totalBatches
         };
-    }, [participants, batches]);
+    }, [participants, batches, supervisor]);
 
     if (loading) {
         return (
