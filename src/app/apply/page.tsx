@@ -190,7 +190,7 @@ export default function ApplyPage() {
             </div>
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Online Application Form</CardTitle>
+                    <CardTitle>New Admission Form</CardTitle>
                     <CardDescription>Enter your details to apply for our training programs. If you have applied before, enter your IITP No. and we'll fetch your details.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">

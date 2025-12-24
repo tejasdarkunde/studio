@@ -187,7 +187,7 @@ export default function SupervisorDashboardPage() {
         <div className="p-4 md:p-8">
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
-                    <CardTitle>Online Application Form</CardTitle>
+                    <CardTitle>New Admission Form</CardTitle>
                     <CardDescription>Enter student details to apply for training programs. If they have applied before, enter their IITP No. to fetch existing details.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
