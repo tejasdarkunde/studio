@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, Registration, FormAdmin } from '@/lib/types';
+import type { Batch, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, Supervisor, Exam, Question, Registration, FormAdmin } from '@/lib/types';
 import { AddParticipantDialog } from '@/components/features/add-participant-dialog';
 import { ImportParticipantsDialog } from '@/components/features/import-participants-dialog';
 import { ParticipantsTable } from '@/components/features/participants-table';
@@ -17,7 +17,7 @@ import { Pencil, PlusCircle, Trash, UserPlus, Upload, Download, Users, BookUser,
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, transferStudents, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getOrganizationAdmins, addOrganizationAdmin, updateOrganizationAdmin, deleteOrganizationAdmin, backfillOrganizationsFromParticipants, getFormAdmins, addFormAdmin, deleteFormAdmin, getParticipants, updateSelectedParticipants } from '@/app/actions';
+import { addParticipant, addParticipantsInBulk, updateParticipant, getTrainers, addTrainer, updateTrainer, deleteTrainer, getCourses, transferStudents, addSuperAdmin, getSuperAdmins, deleteSuperAdmin, updateSuperAdmin, isPrimaryAdmin, getOrganizations, addOrganization, getSupervisors, addSupervisor, updateSupervisor, deleteSupervisor, backfillOrganizationsFromParticipants, getFormAdmins, addFormAdmin, deleteFormAdmin, getParticipants, updateSelectedParticipants } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -185,23 +185,20 @@ const ManageAdminDialog = ({
     )
 }
 
-const ManageOrganizationAdminDialog = ({
+const ManageSupervisorDialog = ({
     isOpen,
     onClose,
     onSave,
     initialData,
-    organizations,
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: {id?: string; name: string; username: string; password?: string; organizationName: string;}) => Promise<void>;
-    initialData?: OrganizationAdmin | null;
-    organizations: Organization[];
+    onSave: (data: {id?: string; name: string; username: string; password?: string;}) => Promise<void>;
+    initialData?: Supervisor | null;
 }) => {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [organizationName, setOrganizationName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
 
@@ -209,19 +206,18 @@ const ManageOrganizationAdminDialog = ({
         if(isOpen) {
             setName(initialData?.name || '');
             setUsername(initialData?.username || '');
-            setOrganizationName(initialData?.organizationName || '');
             setPassword('');
             setIsSaving(false);
         }
     }, [isOpen, initialData]);
 
     const handleSave = async () => {
-        if (!name.trim() || !username.trim() || !organizationName) {
-            toast({ variant: 'destructive', title: "Missing fields", description: "Name, username, and organization are required."});
+        if (!name.trim() || !username.trim()) {
+            toast({ variant: 'destructive', title: "Missing fields", description: "Name and username are required."});
             return;
         }
         if (!initialData && !password.trim()) {
-            toast({ variant: 'destructive', title: "Missing fields", description: "Password is required for new admins."});
+            toast({ variant: 'destructive', title: "Missing fields", description: "Password is required for new supervisors."});
             return;
         }
         setIsSaving(true);
@@ -229,7 +225,6 @@ const ManageOrganizationAdminDialog = ({
             id: initialData?.id,
             name,
             username,
-            organizationName,
             password: password || undefined,
         });
         setIsSaving(false);
@@ -239,39 +234,28 @@ const ManageOrganizationAdminDialog = ({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent>
               <DialogHeader>
-                  <DialogTitle>{initialData ? 'Edit Organization Admin' : 'Add New Organization Admin'}</DialogTitle>
-                  <DialogDescription>{initialData ? `Update details for ${initialData.name}.` : 'Create a new representative account for an organization.'}</DialogDescription>
+                  <DialogTitle>{initialData ? 'Edit Supervisor' : 'Add New Supervisor'}</DialogTitle>
+                  <DialogDescription>{initialData ? `Update details for ${initialData.name}.` : 'Create a new supervisor account.'}</DialogDescription>
               </DialogHeader>
               <div className="py-4 space-y-4">
                   <div>
-                      <Label htmlFor="org-admin-name">Full Name</Label>
-                      <Input id="org-admin-name" value={name} onChange={(e) => setName(e.target.value)} />
-                  </div>
-                   <div>
-                        <Label htmlFor="org-select">Organization</Label>
-                        <Select onValueChange={setOrganizationName} value={organizationName}>
-                            <SelectTrigger id="org-select">
-                                <SelectValue placeholder="Select an organization" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {organizations.map((org) => <SelectItem key={org.id} value={org.name}>{org.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                      <Label htmlFor="supervisor-name">Full Name</Label>
+                      <Input id="supervisor-name" value={name} onChange={(e) => setName(e.target.value)} />
                   </div>
                   <Separator />
                   <div>
-                      <Label htmlFor="org-admin-username">Username</Label>
-                      <Input id="org-admin-username" value={username} onChange={(e) => setUsername(e.target.value)} />
+                      <Label htmlFor="supervisor-username">Username</Label>
+                      <Input id="supervisor-username" value={username} onChange={(e) => setUsername(e.target.value)} />
                   </div>
                    <div>
-                      <Label htmlFor="org-admin-password">Password</Label>
-                      <Input id="org-admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={initialData ? 'Leave blank to keep unchanged' : 'Min 6 characters'} />
+                      <Label htmlFor="supervisor-password">Password</Label>
+                      <Input id="supervisor-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={initialData ? 'Leave blank to keep unchanged' : 'Min 6 characters'} />
                   </div>
               </div>
               <DialogFooter>
                   <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
                   <Button onClick={handleSave} disabled={isSaving}>
-                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : (initialData ? 'Save Changes' : 'Add Admin')}
+                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : (initialData ? 'Save Changes' : 'Add Supervisor')}
                   </Button>
               </DialogFooter>
           </DialogContent>
@@ -366,7 +350,7 @@ export default function AdminUsersPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [superAdmins, setSuperAdmins] = useState<(SuperAdmin & {isPrimary: boolean})[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [organizationAdmins, setOrganizationAdmins] = useState<OrganizationAdmin[]>([]);
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [formAdmins, setFormAdmins] = useState<FormAdmin[]>([]);
   
   // Auth states
@@ -386,9 +370,9 @@ export default function AdminUsersPage() {
   const [editingAdmin, setEditingAdmin] = useState<SuperAdmin | null>(null);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [isAddOrgOpen, setIsAddOrgOpen] = useState(false);
-  const [editingOrgAdmin, setEditingOrgAdmin] = useState<OrganizationAdmin | null>(null);
-  const [isAddOrgAdminOpen, setIsAddOrgAdminOpen] = useState(false);
-  const [deletingOrgAdmin, setDeletingOrgAdmin] = useState<OrganizationAdmin | null>(null);
+  const [editingSupervisor, setEditingSupervisor] = useState<Supervisor | null>(null);
+  const [isAddSupervisorOpen, setIsAddSupervisorOpen] = useState(false);
+  const [deletingSupervisor, setDeletingSupervisor] = useState<Supervisor | null>(null);
   const [editingFormAdmin, setEditingFormAdmin] = useState<FormAdmin | null>(null);
   const [isAddFormAdminOpen, setIsAddFormAdminOpen] = useState(false);
   const [deletingFormAdmin, setDeletingFormAdmin] = useState<FormAdmin | null>(null);
@@ -413,16 +397,16 @@ export default function AdminUsersPage() {
     const role = sessionStorage.getItem('userRole');
     const actions: Promise<any>[] = [getParticipants(), getTrainers(), getCourses()];
     if (role === 'superadmin') {
-        actions.push(getSuperAdmins(), getOrganizations(), getOrganizationAdmins(), getFormAdmins());
+        actions.push(getSuperAdmins(), getOrganizations(), getSupervisors(), getFormAdmins());
     }
     
-    const [fetchedParticipants, fetchedTrainers, fetchedCourses, fetchedAdmins, fetchedOrgs, fetchedOrgAdmins, fetchedFormAdmins] = await Promise.all(actions);
+    const [fetchedParticipants, fetchedTrainers, fetchedCourses, fetchedAdmins, fetchedOrgs, fetchedSupervisors, fetchedFormAdmins] = await Promise.all(actions);
 
     setParticipants(fetchedParticipants);
     setTrainers(fetchedTrainers);
     setCourses(fetchedCourses);
     if(fetchedOrgs) setOrganizations(fetchedOrgs);
-    if(fetchedOrgAdmins) setOrganizationAdmins(fetchedOrgAdmins);
+    if(fetchedSupervisors) setSupervisors(fetchedSupervisors);
     if(fetchedFormAdmins) setFormAdmins(fetchedFormAdmins);
 
     if(fetchedAdmins) {
@@ -737,29 +721,29 @@ export default function AdminUsersPage() {
       }
   }
 
-  const handleSaveOrgAdmin = async (data: {id?: string; name: string; username: string; password?: string; organizationName: string;}) => {
-      const action = data.id ? updateOrganizationAdmin : addOrganizationAdmin;
+  const handleSaveSupervisor = async (data: {id?: string; name: string; username: string; password?: string;}) => {
+      const action = data.id ? updateSupervisor : addSupervisor;
       const result = await action(data as any);
       if(result.success) {
-          toast({ title: `Organization Admin ${data.id ? 'Updated' : 'Added'}` });
+          toast({ title: `Supervisor ${data.id ? 'Updated' : 'Added'}` });
           fetchAllData();
-          setEditingOrgAdmin(null);
-          setIsAddOrgAdminOpen(false);
+          setEditingSupervisor(null);
+          setIsAddSupervisorOpen(false);
       } else {
           toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
   }
 
-  const handleDeleteOrgAdmin = async () => {
-      if(!deletingOrgAdmin) return;
-      const result = await deleteOrganizationAdmin(deletingOrgAdmin.id);
+  const handleDeleteSupervisor = async () => {
+      if(!deletingSupervisor) return;
+      const result = await deleteSupervisor(deletingSupervisor.id);
       if(result.success) {
-          toast({ title: "Organization Admin Deleted" });
+          toast({ title: "Supervisor Deleted" });
           fetchAllData();
       } else {
            toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
-      setDeletingOrgAdmin(null);
+      setDeletingSupervisor(null);
   }
 
   const handleSaveFormAdmin = async (data: {id?: string; name: string; username: string; password?: string;}) => {
@@ -883,19 +867,18 @@ export default function AdminUsersPage() {
               </DialogFooter>
           </DialogContent>
       </Dialog>
-      <ManageOrganizationAdminDialog 
-        isOpen={isAddOrgAdminOpen || !!editingOrgAdmin}
-        onClose={() => {setIsAddOrgAdminOpen(false); setEditingOrgAdmin(null);}}
-        onSave={handleSaveOrgAdmin}
-        initialData={editingOrgAdmin}
-        organizations={organizations}
+      <ManageSupervisorDialog
+        isOpen={isAddSupervisorOpen || !!editingSupervisor}
+        onClose={() => {setIsAddSupervisorOpen(false); setEditingSupervisor(null);}}
+        onSave={handleSaveSupervisor}
+        initialData={editingSupervisor}
       />
       <ConfirmDialog 
-        isOpen={!!deletingOrgAdmin}
-        onClose={() => setDeletingOrgAdmin(null)}
-        onConfirm={handleDeleteOrgAdmin}
-        title="Delete Organization Admin?"
-        description={`This will permanently delete the admin account for "${deletingOrgAdmin?.name}". This action cannot be undone.`}
+        isOpen={!!deletingSupervisor}
+        onClose={() => setDeletingSupervisor(null)}
+        onConfirm={handleDeleteSupervisor}
+        title="Delete Supervisor?"
+        description={`This will permanently delete the supervisor account for "${deletingSupervisor?.name}". This action cannot be undone.`}
       />
       <ManageFormAdminDialog
         isOpen={isAddFormAdminOpen || !!editingFormAdmin}
@@ -1175,7 +1158,6 @@ export default function AdminUsersPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="organizations" className="mt-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Card>
                             <CardHeader className="flex flex-row items-start justify-between gap-2">
                                 <div>
@@ -1214,51 +1196,12 @@ export default function AdminUsersPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div>
-                                <CardTitle>Organization Admins</CardTitle>
-                                <CardDescription>Manage representative accounts for each organization.</CardDescription>
-                                </div>
-                                <Button size="sm" onClick={() => setIsAddOrgAdminOpen(true)}>
-                                    <UserPlus className="mr-2 h-4 w-4" />
-                                    Add Admin
-                                </Button>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="border rounded-lg">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Name</TableHead>
-                                                <TableHead>Organization</TableHead>
-                                                <TableHead>Username</TableHead>
-                                                <TableHead className="text-right">Actions</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {organizationAdmins.map(admin => (
-                                                <TableRow key={admin.id}>
-                                                    <TableCell className="font-medium">{admin.name}</TableCell>
-                                                    <TableCell><Badge variant="secondary">{admin.organizationName}</Badge></TableCell>
-                                                    <TableCell>{admin.username}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button variant="ghost" size="icon" onClick={() => setEditingOrgAdmin(admin)}><Pencil className="h-4 w-4"/></Button>
-                                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeletingOrgAdmin(admin)}><Trash className="h-4 w-4"/></Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
                 </TabsContent>
                 <TabsContent value="admins" className="mt-6">
                      <Tabs defaultValue="superadmins">
-                        <TabsList>
+                        <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="superadmins">Super Admins</TabsTrigger>
+                            <TabsTrigger value="supervisors">Supervisors</TabsTrigger>
                             <TabsTrigger value="formadmins">Form Admins</TabsTrigger>
                         </TabsList>
                         <TabsContent value="superadmins" className="mt-6">
@@ -1283,6 +1226,45 @@ export default function AdminUsersPage() {
                                             currentUser={currentUser}
                                         />
                                     )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="supervisors" className="mt-6">
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                    <CardTitle>Supervisor Management</CardTitle>
+                                    <CardDescription>Manage accounts for supervisors who can submit applications.</CardDescription>
+                                    </div>
+                                    <Button size="sm" onClick={() => setIsAddSupervisorOpen(true)}>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Add Supervisor
+                                    </Button>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="border rounded-lg">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Name</TableHead>
+                                                    <TableHead>Username</TableHead>
+                                                    <TableHead className="text-right">Actions</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {supervisors.map(admin => (
+                                                    <TableRow key={admin.id}>
+                                                        <TableCell className="font-medium">{admin.name}</TableCell>
+                                                        <TableCell>{admin.username}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="icon" onClick={() => setEditingSupervisor(admin)}><Pencil className="h-4 w-4"/></Button>
+                                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeletingSupervisor(admin)}><Trash className="h-4 w-4"/></Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>

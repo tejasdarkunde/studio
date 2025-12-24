@@ -168,15 +168,6 @@ export type Organization = {
     name: string;
     createdAt: string;
 };
-
-export type OrganizationAdmin = {
-    id: string;
-    name: string;
-    organizationName: string;
-    username: string;
-    password?: string;
-    createdAt: string;
-};
     
 export type ExamResult = {
     participantId: string;

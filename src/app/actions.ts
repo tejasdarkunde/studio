@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, OrganizationAdmin, Exam, Question, ExamAttempt, ExamResult, FormAdmin, Form as FormType, Supervisor } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, Supervisor, Exam, Question, ExamAttempt, ExamResult, FormAdmin, Form as FormType } from "@/lib/types";
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -13,7 +13,7 @@ const loginSchema = z.object({
   password: z.string().min(1, { message: "Password is required." }),
 });
 
-export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer' | 'organization-admin' | 'formadmin' | 'supervisor'; user?: SuperAdmin | OrganizationAdmin | FormAdmin | Supervisor; trainerId?: string; organizationName?: string; error?: string }> {
+export async function login(data: z.infer<typeof loginSchema>): Promise<{ success: boolean; role?: 'superadmin' | 'trainer' | 'supervisor' | 'formadmin'; user?: SuperAdmin | Supervisor | FormAdmin; trainerId?: string; error?: string }> {
     const validatedFields = loginSchema.safeParse(data);
     if (!validatedFields.success) {
         return { success: false, error: "Invalid login data." };
@@ -60,18 +60,18 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
             }
         }
 
-        // 3. Check for Organization Admin
-        const orgAdminsCollection = collection(db, "organizationAdmins");
-        const oaQuery = query(orgAdminsCollection, where("username", "==", username));
-        const oaSnapshot = await getDocs(oaQuery);
-
-        if (!oaSnapshot.empty) {
-            const orgAdminDoc = oaSnapshot.docs[0];
-            const orgAdminData = orgAdminDoc.data() as OrganizationAdmin;
-            if (orgAdminData.password === password) {
-                const { password, ...user } = orgAdminData;
+        // 3. Check for Supervisor
+        const supervisorsCollection = collection(db, "supervisors");
+        const supervisorQuery = query(supervisorsCollection, where("username", "==", username));
+        const supervisorSnapshot = await getDocs(supervisorQuery);
+        
+        if (!supervisorSnapshot.empty) {
+            const supervisorDoc = supervisorSnapshot.docs[0];
+            const supervisorData = supervisorDoc.data() as Supervisor;
+            if (supervisorData.password === password) {
+                const { password, ...user } = supervisorData;
                 const createdAt = user.createdAt as unknown as Timestamp;
-                return { success: true, role: 'organization-admin', user: {id: orgAdminDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as OrganizationAdmin, organizationName: user.organizationName };
+                return { success: true, role: 'supervisor', user: {id: supervisorDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as Supervisor };
             }
         }
 
@@ -87,21 +87,6 @@ export async function login(data: z.infer<typeof loginSchema>): Promise<{ succes
                 const { password, ...user } = formAdminData;
                 const createdAt = user.createdAt as unknown as Timestamp;
                 return { success: true, role: 'formadmin', user: {id: formAdminDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as FormAdmin };
-            }
-        }
-
-        // 5. Check for Supervisor
-        const supervisorsCollection = collection(db, "supervisors");
-        const supervisorQuery = query(supervisorsCollection, where("username", "==", username));
-        const supervisorSnapshot = await getDocs(supervisorQuery);
-        
-        if (!supervisorSnapshot.empty) {
-            const supervisorDoc = supervisorSnapshot.docs[0];
-            const supervisorData = supervisorDoc.data() as Supervisor;
-            if (supervisorData.password === password) {
-                const { password, ...user } = supervisorData;
-                const createdAt = user.createdAt as unknown as Timestamp;
-                return { success: true, role: 'supervisor', user: {id: supervisorDoc.id, ...user, createdAt: createdAt?.toDate().toISOString() || new Date().toISOString() } as Supervisor };
             }
         }
         
@@ -1978,86 +1963,84 @@ export async function backfillOrganizationsFromParticipants(): Promise<{success:
 }
 
 
-// ORGANIZATION ADMIN ACTIONS
-const organizationAdminSchema = z.object({
+// SUPERVISOR ACTIONS
+const supervisorSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  organizationName: z.string().min(1, "An organization must be selected."),
   username: z.string().min(3, "Username must be at least 3 characters."),
   password: z.string().min(6, "Password must be at least 6 characters.").optional().or(z.literal('')),
 });
 
-export async function getOrganizationAdmins(): Promise<OrganizationAdmin[]> {
+export async function getSupervisors(): Promise<Supervisor[]> {
     try {
-        const orgAdminsCollectionRef = collection(db, "organizationAdmins");
-        const q = query(orgAdminsCollectionRef, orderBy("createdAt", "desc"));
+        const supervisorsCollectionRef = collection(db, "supervisors");
+        const q = query(supervisorsCollectionRef, orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
 
         return snapshot.docs.map(doc => {
             const data = doc.data();
             const createdAt = data.createdAt as Timestamp;
-            // Omit password from the returned data
             const { password, ...rest } = data;
             return {
                 id: doc.id,
                 ...rest,
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-            } as OrganizationAdmin;
+            } as Supervisor;
         });
     } catch (error) {
-        console.error("Error fetching organization admins:", error);
+        console.error("Error fetching supervisors:", error);
         return [];
     }
 }
 
-export async function addOrganizationAdmin(data: z.infer<typeof organizationAdminSchema>): Promise<{ success: boolean; error?: string }> {
-    const validatedFields = organizationAdminSchema.safeParse(data);
+export async function addSupervisor(data: z.infer<typeof supervisorSchema>): Promise<{ success: boolean; error?: string }> {
+    const validatedFields = supervisorSchema.safeParse(data);
     if (!validatedFields.success) {
         console.error(validatedFields.error.flatten().fieldErrors);
         return { success: false, error: "Invalid data." };
     }
     if (!validatedFields.data.password) {
-        return { success: false, error: "Password is required for new admins." };
+        return { success: false, error: "Password is required for new supervisors." };
     }
     
     try {
         const { username, ...rest } = validatedFields.data;
-        const orgAdminsCollection = collection(db, "organizationAdmins");
+        const supervisorsCollection = collection(db, "supervisors");
         
-        const duplicateQuery = query(orgAdminsCollection, where("username", "==", username));
+        const duplicateQuery = query(supervisorsCollection, where("username", "==", username));
         const duplicateSnapshot = await getDocs(duplicateQuery);
         if(!duplicateSnapshot.empty) {
             return { success: false, error: "This username is already taken."};
         }
         
-        await addDoc(orgAdminsCollection, {
+        await addDoc(supervisorsCollection, {
             username,
             ...rest,
             createdAt: serverTimestamp(),
         });
         return { success: true };
     } catch (error) {
-        console.error("Error adding organization admin:", error);
-        return { success: false, error: "Could not add organization admin." };
+        console.error("Error adding supervisor:", error);
+        return { success: false, error: "Could not add supervisor." };
     }
 }
 
-const updateOrgAdminSchema = organizationAdminSchema.extend({
+const updateSupervisorSchema = supervisorSchema.extend({
   id: z.string().min(1),
 });
 
-export async function updateOrganizationAdmin(data: z.infer<typeof updateOrgAdminSchema>): Promise<{ success: boolean; error?: string }> {
+export async function updateSupervisor(data: z.infer<typeof updateSupervisorSchema>): Promise<{ success: boolean; error?: string }> {
     const { id, ...adminData } = data;
-    const validatedFields = organizationAdminSchema.safeParse(adminData);
+    const validatedFields = supervisorSchema.safeParse(adminData);
     if (!validatedFields.success) {
         return { success: false, error: "Invalid data." };
     }
 
     try {
-        const adminDocRef = doc(db, 'organizationAdmins', id);
+        const adminDocRef = doc(db, 'supervisors', id);
         
         const originalDoc = await getDoc(adminDocRef);
         if (originalDoc.exists() && originalDoc.data().username !== validatedFields.data.username) {
-            const duplicateQuery = query(collection(db, "organizationAdmins"), where("username", "==", validatedFields.data.username));
+            const duplicateQuery = query(collection(db, "supervisors"), where("username", "==", validatedFields.data.username));
             const duplicateSnapshot = await getDocs(duplicateQuery);
             if(!duplicateSnapshot.empty) {
                 return { success: false, error: "This username is already taken." };
@@ -2073,20 +2056,20 @@ export async function updateOrganizationAdmin(data: z.infer<typeof updateOrgAdmi
         return { success: true };
 
     } catch (error) {
-        console.error("Error updating organization admin:", error);
-        return { success: false, error: "Could not update organization admin." };
+        console.error("Error updating supervisor:", error);
+        return { success: false, error: "Could not update supervisor." };
     }
 }
 
-export async function deleteOrganizationAdmin(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteSupervisor(id: string): Promise<{ success: boolean; error?: string }> {
     if (!id) return { success: false, error: "Invalid ID." };
     try {
-        const adminDocRef = doc(db, 'organizationAdmins', id);
+        const adminDocRef = doc(db, 'supervisors', id);
         await deleteDoc(adminDocRef);
         return { success: true };
     } catch (error) {
-        console.error("Error deleting organization admin:", error);
-        return { success: false, error: "Could not delete organization admin." };
+        console.error("Error deleting supervisor:", error);
+        return { success: false, error: "Could not delete supervisor." };
     }
 }
 
@@ -2568,3 +2551,4 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+

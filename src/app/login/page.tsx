@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Shield, User, UserCog, UserSquare } from 'lucide-react';
+import { ArrowRight, Shield, User, UserCog } from 'lucide-react';
 
 export default function CentralLoginPage() {
   const loginOptions = [
@@ -24,12 +24,6 @@ export default function CentralLoginPage() {
       description: "Submit applications on behalf of students.",
       href: "/supervisor/login",
       icon: <UserCog className="h-6 w-6 text-primary" />,
-    },
-    {
-      role: "Form Admin",
-      description: "Create and manage custom forms and surveys.",
-      href: "/form-portal/login",
-      icon: <UserSquare className="h-6 w-6 text-primary" />,
     },
   ];
 
