@@ -54,15 +54,6 @@ export default function SupervisorLayout({
         </div>
       </header>
       <main className="container mx-auto flex-grow">
-        {!isDashboard && (
-            <div className="my-6">
-                <Button asChild variant="outline">
-                    <Link href="/supervisor/dashboard">
-                        <ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-                    </Link>
-                </Button>
-            </div>
-        )}
         {children}
       </main>
     </div>

@@ -43,19 +43,16 @@ export default function SupervisorDashboardPage() {
     }, [router]);
 
     const stats = useMemo(() => {
-        if (!supervisor?.organization || participants.length === 0) {
+        if (!supervisor?.organization) {
             return { totalParticipants: 0, activeCourses: 0, totalBatches: 0 };
         }
+        const orgParticipants = participants.filter(p => p.organization === supervisor.organization);
+        const totalParticipants = orgParticipants.length;
 
-        // Total participants is simply the length of the fetched, pre-filtered list.
-        const totalParticipants = participants.length;
-
-        // Get unique course names from the filtered participants.
-        const enrolledCourseNames = new Set(participants.flatMap(p => p.enrolledCourses || []));
+        const enrolledCourseNames = new Set(orgParticipants.flatMap(p => p.enrolledCourses || []));
         const activeCourses = enrolledCourseNames.size;
 
-        // Filter batches to find only those where at least one participant from the organization is registered.
-        const participantIitpNos = new Set(participants.map(p => p.iitpNo));
+        const participantIitpNos = new Set(orgParticipants.map(p => p.iitpNo));
         const relevantBatches = batches.filter(batch => 
             batch.registrations.some(reg => participantIitpNos.has(reg.iitpNo))
         );
@@ -67,6 +64,7 @@ export default function SupervisorDashboardPage() {
             totalBatches
         };
     }, [participants, batches, supervisor]);
+
 
     if (loading) {
         return (
@@ -81,7 +79,7 @@ export default function SupervisorDashboardPage() {
         <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Supervisor Dashboard</h1>
             <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
-                Submit new admission forms or view the status of existing trainees for {supervisor?.organization}.
+                Manage trainees and submit applications for {supervisor?.organization}.
             </p>
         </div>
 
@@ -129,25 +127,14 @@ export default function SupervisorDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link href="/supervisor/new-admission">
-                <Card className="hover:bg-secondary transition-colors h-full">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <FileText className="h-6 w-6 text-primary" />
-                            New Admission Form
-                        </CardTitle>
-                        <CardDescription>Submit a new application for a trainee.</CardDescription>
-                    </CardHeader>
-                </Card>
-            </Link>
-             <Link href="/supervisor/trainees">
+            <Link href="/supervisor/users">
                 <Card className="hover:bg-secondary transition-colors h-full">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Users className="h-6 w-6 text-primary" />
-                            View Trainees
+                            User Management
                         </CardTitle>
-                        <CardDescription>View all trainees submitted from your organization.</CardDescription>
+                        <CardDescription>View, add, or update trainees in your organization.</CardDescription>
                     </CardHeader>
                 </Card>
             </Link>

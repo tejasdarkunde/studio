@@ -537,7 +537,7 @@ export async function getParticipantsByOrganization(organization: string): Promi
 }
 
 
-export async function getParticipantByIitpNo(iitpNo: string): Promise<Participant | null> {
+export async function getParticipantByIitpNo(iitpNo: string, supervisorOrg?: string): Promise<Participant | null> {
     try {
         const participantsCollection = collection(db, "participants");
         const q = query(participantsCollection, where("iitpNo", "==", iitpNo));
@@ -549,6 +549,11 @@ export async function getParticipantByIitpNo(iitpNo: string): Promise<Participan
 
         const participantDoc = querySnapshot.docs[0];
         const data = participantDoc.data();
+        
+        if (supervisorOrg && data.organization !== supervisorOrg) {
+            return null; // Return null if the participant is not in the supervisor's organization
+        }
+        
         const createdAt = data.createdAt as Timestamp;
         
         const examProgress = data.examProgress || {};
@@ -2589,4 +2594,5 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+
 
