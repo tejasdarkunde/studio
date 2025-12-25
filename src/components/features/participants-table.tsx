@@ -104,10 +104,16 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
       });
       return;
     }
-    const headers = "Name,IITP No,Mobile No,Organization,Year,Semester,Enrollment,Enrolled Courses,Date Added\n";
+    const headers = "Name,IITP No,Mobile No,Organization,Year,Semester,Enrollment,Enrolled Courses,Father/Husband Name,Date of Birth,Aadhar No,PAN No,Bank Name,Account No,IFSC Code,Email,Sex,Qualification,Pass-out Year,Date of Entry into Service,Address,Designation,Stipend,Left Date,Left Remark,Date Added\n";
     const csvRows = filteredParticipants.map(p => {
       const enrolledCourses = p.enrolledCourses?.join('; ') || '';
-      const row = [p.name, p.iitpNo, p.mobile, p.organization, p.year, p.semester, p.enrollmentSeason, enrolledCourses, new Date(p.createdAt).toLocaleString()];
+      const row = [
+        p.name, p.iitpNo, p.mobile, p.organization, p.year, p.semester, p.enrollmentSeason, enrolledCourses,
+        p.fatherOrHusbandName, p.birthDate, p.aadharCardNo, p.panCardNo, p.bankName, p.bankAccountNo, p.ifscCode,
+        p.email, p.sex, p.qualification, p.passOutYear, p.dateOfEntryIntoService, p.address, p.designation,
+        p.stipend, p.leftDate, p.leftRemark,
+        new Date(p.createdAt).toLocaleString()
+      ];
       return row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
     }).join('\n');
 
