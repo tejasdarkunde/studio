@@ -14,13 +14,14 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2, Filter, X, Search } from "lucide-react";
+import { Download, RefreshCw, Loader2, Filter, X, Search, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import Link from "next/link";
 
 type ParticipantsTableProps = {
   participants: Participant[];
@@ -283,60 +284,58 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
             <Table>
             <TableHeader>
                 <TableRow>
-                <TableHead className="w-[50px]">
-                    <Checkbox
-                        checked={selectedRows.size === filteredParticipants.length && filteredParticipants.length > 0}
-                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                        disabled={filteredParticipants.length === 0}
-                    />
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>IITP No</TableHead>
-                <TableHead>Mobile No</TableHead>
-                <TableHead>Organization</TableHead>
-                <TableHead>Year</TableHead>
-                <TableHead>Semester</TableHead>
-                <TableHead>Enrollment</TableHead>
-                <TableHead>Enrolled Courses</TableHead>
-                <TableHead>Date Added</TableHead>
+                    <TableHead className="w-[50px]">
+                        <Checkbox
+                            checked={selectedRows.size === filteredParticipants.length && filteredParticipants.length > 0}
+                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                            disabled={filteredParticipants.length === 0}
+                        />
+                    </TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>IITP No</TableHead>
+                    <TableHead>Enrolled Courses</TableHead>
+                    <TableHead>Year</TableHead>
+                    <TableHead>Semester</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {filteredParticipants.length > 0 ? (
                 filteredParticipants.map((p) => (
                     <TableRow key={p.id} data-state={selectedRows.has(p.id) && "selected"}>
-                    <TableCell>
-                         <Checkbox
-                            checked={selectedRows.has(p.id)}
-                            onCheckedChange={() => handleSelectRow(p.id)}
-                        />
-                    </TableCell>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.iitpNo}</TableCell>
-                    <TableCell>{p.mobile}</TableCell>
-                    <TableCell>{p.organization}</TableCell>
-                    <TableCell>{p.year}</TableCell>
-                    <TableCell>{p.semester}</TableCell>
-                    <TableCell>{p.enrollmentSeason}</TableCell>
-                    <TableCell>
-                      {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {p.enrolledCourses.map(course => (
-                              <Badge key={course} variant="secondary">{course}</Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">None</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                        {p.createdAt ? new Date(p.createdAt).toLocaleString() : 'N/A'}
-                    </TableCell>
+                        <TableCell>
+                            <Checkbox
+                                checked={selectedRows.has(p.id)}
+                                onCheckedChange={() => handleSelectRow(p.id)}
+                            />
+                        </TableCell>
+                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell>{p.iitpNo}</TableCell>
+                        <TableCell>
+                        {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                            {p.enrolledCourses.map(course => (
+                                <Badge key={course} variant="secondary">{course}</Badge>
+                            ))}
+                            </div>
+                        ) : (
+                            <span className="text-muted-foreground">None</span>
+                        )}
+                        </TableCell>
+                        <TableCell>{p.year}</TableCell>
+                        <TableCell>{p.semester}</TableCell>
+                        <TableCell className="text-right">
+                            <Button asChild variant="ghost" size="icon">
+                                <Link href={`/supervisor/trainees/${p.iitpNo}`}>
+                                    <Eye className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                        </TableCell>
                     </TableRow>
                 ))
                 ) : (
                 <TableRow>
-                    <TableCell colSpan={10} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                     No participants found matching your filters.
                     </TableCell>
                 </TableRow>
@@ -348,9 +347,5 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
     </div>
   );
 }
-
-  
-
-    
 
     
