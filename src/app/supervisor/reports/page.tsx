@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Batch, Participant, Trainer, Course, Organization, Supervisor } from '@/lib/types';
-import { getBatches, getParticipantsByOrganization, getTrainers, getCourses } from '@/app/actions';
+import { getBatches, getParticipants, getTrainers, getCourses } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Users, Presentation, BookOpen, ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,12 +35,12 @@ export default function SupervisorReportsPage() {
 
     const { toast } = useToast();
 
-    const fetchData = useCallback(async (organization: string) => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [fetchedBatches, fetchedParticipants, fetchedCourses] = await Promise.all([
                 getBatches(),
-                getParticipantsByOrganization(organization),
+                getParticipants(),
                 getCourses(),
             ]);
             setBatches(fetchedBatches);
@@ -64,21 +64,11 @@ export default function SupervisorReportsPage() {
         if (userRole === 'supervisor' && userJson) {
             const supervisorData = JSON.parse(userJson) as Supervisor;
             setSupervisor(supervisorData);
-
-            if (supervisorData.organization) {
-                fetchData(supervisorData.organization);
-            } else {
-                setLoading(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'No Organization Found',
-                    description: 'Your account is not associated with an organization.'
-                });
-            }
+            fetchData();
         } else {
             router.push('/supervisor-login');
         }
-    }, [fetchData, router, toast]);
+    }, [fetchData, router]);
     
     const reportStats = useMemo(() => {
         if (!participants.length) {
@@ -90,15 +80,6 @@ export default function SupervisorReportsPage() {
                 courseStats: [],
             };
         }
-        
-        const orgParticipantIitpNos = new Set(participants.map(p => p.iitpNo));
-
-        const orgBatches = batches.filter(batch => {
-            // A batch is relevant if its organization list includes the supervisor's org
-            // OR if any of the organization's trainees are registered in it.
-            return (batch.organizations && batch.organizations.includes(supervisor?.organization || '')) || 
-                   batch.registrations.some(reg => orgParticipantIitpNos.has(reg.iitpNo));
-        });
 
         const admissionsByYear: { [year: string]: number } = {};
         const courseEnrollments: { [courseName: string]: Set<string> } = {};
@@ -116,7 +97,7 @@ export default function SupervisorReportsPage() {
         });
 
         const courseSessions: { [courseName: string]: Set<string> } = {};
-        orgBatches.forEach(batch => {
+        batches.forEach(batch => {
             if (!courseSessions[batch.course]) {
                 courseSessions[batch.course] = new Set();
             }
@@ -124,7 +105,6 @@ export default function SupervisorReportsPage() {
         });
 
         const courseStats = courses
-            .filter(c => courseEnrollments[c.name])
             .map(c => ({
                 name: c.name,
                 enrollments: courseEnrollments[c.name]?.size || 0,
@@ -135,7 +115,7 @@ export default function SupervisorReportsPage() {
 
         return {
             totalParticipants: participants.length,
-            totalSessions: orgBatches.length,
+            totalSessions: batches.length,
             totalCourses,
             admissionsByYear: Object.entries(admissionsByYear)
                 .map(([year, count]) => ({ year, count }))
@@ -143,7 +123,7 @@ export default function SupervisorReportsPage() {
             courseStats,
         };
 
-    }, [participants, batches, courses, supervisor]);
+    }, [participants, batches, courses]);
 
 
     if (loading) {
@@ -167,7 +147,7 @@ export default function SupervisorReportsPage() {
                  <Card>
                     <CardHeader>
                         <CardTitle>Reports for {supervisor?.organization}</CardTitle>
-                        <CardDescription>A high-level overview of your organization's training statistics.</CardDescription>
+                        <CardDescription>A high-level overview of all training statistics.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 md:grid-cols-3">

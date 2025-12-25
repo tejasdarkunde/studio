@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Participant, Organization, Supervisor } from '@/lib/types';
-import { getParticipantsByOrganization, getOrganizations, updateSelectedParticipants } from '@/app/actions';
+import { getParticipants, getOrganizations, updateSelectedParticipants } from '@/app/actions';
 import { Loader2 } from 'lucide-react';
 import { ParticipantsTable } from '@/components/features/participants-table';
 
@@ -24,16 +24,13 @@ export default function SupervisorTraineesPage() {
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
             
-            if (currentUser.organization) {
-                const [fetchedParticipants, fetchedOrganizations] = await Promise.all([
-                    getParticipantsByOrganization(currentUser.organization),
-                    getOrganizations()
-                ]);
-                setParticipants(fetchedParticipants);
-                // We can still pass all organizations to the table for filter consistency,
-                // but the displayed participants are already scoped.
-                setOrganizations(fetchedOrganizations);
-            }
+            const [fetchedParticipants, fetchedOrganizations] = await Promise.all([
+                getParticipants(),
+                getOrganizations()
+            ]);
+            setParticipants(fetchedParticipants);
+            setOrganizations(fetchedOrganizations);
+            
             setLoading(false);
         } else {
             router.push('/supervisor-login');
