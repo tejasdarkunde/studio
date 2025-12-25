@@ -112,6 +112,7 @@ export type Participant = {
     address?: string;
     designation?: string;
     stipend?: number;
+    leftDate?: string;
 };
 
 export type Lesson = {

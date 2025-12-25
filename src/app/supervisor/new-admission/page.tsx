@@ -46,6 +46,7 @@ export default function NewAdmissionPage() {
         dateOfEntryIntoService: '',
         address: '',
         designation: '',
+        leftDate: '',
     });
     
     const [isSaving, setIsSaving] = useState(false);
@@ -101,6 +102,7 @@ export default function NewAdmissionPage() {
                 year: '', semester: '', fatherOrHusbandName: '', birthDate: '', aadharCardNo: '',
                 panCardNo: '', bankName: '', bankAccountNo: '', ifscCode: '', email: '',
                 qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '', designation: '',
+                leftDate: '',
             });
             setExistingParticipantId(null);
         } else {
@@ -168,6 +170,7 @@ export default function NewAdmissionPage() {
                 address: participant.address || '',
                 designation: participant.designation || '',
                 stipend: participant.stipend,
+                leftDate: participant.leftDate ? new Date(participant.leftDate).toISOString().split('T')[0] : '',
             });
             setExistingParticipantId(participant.id);
         } else {
@@ -289,6 +292,10 @@ export default function NewAdmissionPage() {
                         <div className="space-y-2">
                             <Label htmlFor="stipend">Stipend</Label>
                             <Input id="stipend" type="number" value={formData.stipend || ''} onChange={(e) => setFormData(prev => ({...prev, stipend: e.target.value ? Number(e.target.value) : undefined}))} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="leftDate">Left Date</Label>
+                            <Input id="leftDate" type="date" value={formData.leftDate} onChange={handleInputChange} />
                         </div>
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

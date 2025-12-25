@@ -609,6 +609,7 @@ const participantSchema = z.object({
   address: z.string().optional(),
   designation: z.string().optional(),
   stipend: z.number().optional(),
+  leftDate: z.string().optional(),
 });
 
 
@@ -2595,6 +2596,7 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+
 
 
 

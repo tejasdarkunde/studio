@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import type { Participant, Course } from '@/lib/types';
 import { getParticipantByIitpNo, getCourses } from '@/app/actions';
-import { Loader2, ChevronLeft, User, Building, Mail, Phone, Calendar, GraduationCap, Briefcase, Banknote, Shield, BookOpen, FileQuestion } from 'lucide-react';
+import { Loader2, ChevronLeft, User, Building, Mail, Phone, Calendar, GraduationCap, Briefcase, Banknote, Shield, BookOpen, FileQuestion, LogOut } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -103,6 +103,7 @@ export default function TraineeProfilePage() {
                             <InfoItem icon={Phone} label="Mobile" value={participant.mobile} />
                             <InfoItem icon={Calendar} label="Date of Birth" value={participant.birthDate ? new Date(participant.birthDate).toLocaleDateString() : ''} />
                             <InfoItem icon={User} label="Sex" value={participant.sex} />
+                             <InfoItem icon={LogOut} label="Left Date" value={participant.leftDate ? new Date(participant.leftDate).toLocaleDateString() : ''} />
                         </CardContent>
                     </Card>
 

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -47,6 +48,7 @@ export default function ApplyPage() {
         dateOfEntryIntoService: '',
         address: '',
         designation: '',
+        leftDate: '',
     });
     
     const [isSaving, setIsSaving] = useState(false);
@@ -96,6 +98,7 @@ export default function ApplyPage() {
                 year: '', semester: '', fatherOrHusbandName: '', birthDate: '', aadharCardNo: '',
                 panCardNo: '', bankName: '', bankAccountNo: '', ifscCode: '', email: '',
                 qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '', designation: '',
+                leftDate: '',
             });
             setExistingParticipantId(null);
         } else {
@@ -163,6 +166,7 @@ export default function ApplyPage() {
                 address: participant.address || '',
                 designation: participant.designation || '',
                 stipend: participant.stipend,
+                leftDate: participant.leftDate ? new Date(participant.leftDate).toISOString().split('T')[0] : '',
             });
             setExistingParticipantId(participant.id);
         } else {

@@ -227,6 +227,10 @@ export default function EditTraineePage() {
                             <Label htmlFor="stipend">Stipend</Label>
                             <Input id="stipend" type="number" value={formData.stipend || ''} onChange={(e) => setFormData(prev => ({...prev, stipend: e.target.value ? Number(e.target.value) : undefined}))} />
                         </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="leftDate">Left Date</Label>
+                            <Input id="leftDate" type="date" value={formData.leftDate ? new Date(formData.leftDate).toISOString().split('T')[0] : ''} onChange={handleInputChange} />
+                        </div>
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
