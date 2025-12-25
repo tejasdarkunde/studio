@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Loader2, BarChart } from 'lucide-react';
+import { Users, Loader2, BarChart, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -48,7 +48,28 @@ export default function SupervisorDashboardPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           {/* The dashboard is now clean. Add new cards here in the future. */}
+            <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Users />Trainee Management</CardTitle>
+                    <CardDescription>View, add, or update trainees in your organization.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button asChild className="w-full">
+                        <Link href="/supervisor/trainees">Manage Trainees <ChevronRight className="ml-2"/></Link>
+                    </Button>
+                </CardContent>
+            </Card>
+             <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><BarChart />Reports & Exports</CardTitle>
+                    <CardDescription>View detailed reports and export data for your organization.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button asChild className="w-full">
+                        <Link href="/supervisor/reports">View Reports <ChevronRight className="ml-2"/></Link>
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
     </div>
   );

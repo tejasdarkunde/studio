@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Supervisor } from '@/lib/types';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, LayoutDashboard, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function SupervisorLayout({
   children,
@@ -38,7 +39,10 @@ export default function SupervisorLayout({
       return null; // Or a loading spinner
   }
   
-  const isDashboard = pathname === '/supervisor/dashboard';
+  const navItems = [
+      { href: '/supervisor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/supervisor/trainees', label: 'Manage Trainees', icon: Users },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -61,9 +65,28 @@ export default function SupervisorLayout({
             </div>
         </div>
       </header>
-      <main className="container mx-auto flex-grow">
-        {children}
-      </main>
+      <div className="container mx-auto flex-grow">
+        <nav className="my-6">
+             <div className="flex items-center gap-2 rounded-lg border p-1 bg-muted">
+                {navItems.map(item => (
+                     <Button 
+                        key={item.href}
+                        asChild 
+                        variant={pathname === item.href ? 'default' : 'ghost'} 
+                        className={cn("flex-1 justify-start", pathname === item.href && "shadow-sm")}
+                    >
+                        <Link href={item.href} >
+                            <item.icon className="mr-2 h-4 w-4" />
+                            {item.label}
+                        </Link>
+                    </Button>
+                ))}
+            </div>
+        </nav>
+        <main>
+            {children}
+        </main>
+      </div>
     </div>
   );
 }
