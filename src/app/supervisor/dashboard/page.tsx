@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Loader2, BookOpen, Presentation, UserPlus } from 'lucide-react';
+import { Users, Loader2, BookOpen, Presentation } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -36,29 +36,30 @@ export default function SupervisorDashboardPage() {
         const userRole = sessionStorage.getItem('userRole');
         const userJson = sessionStorage.getItem('user');
 
-        if (userRole === 'supervisor' && userJson) {
-            const currentUser = JSON.parse(userJson) as Supervisor;
-            setSupervisor(currentUser);
-            if (currentUser.organization) {
-                const fetchData = async () => {
-                    setLoading(true);
-                    const [fetchedParticipants, fetchedBatches, fetchedCourses] = await Promise.all([
-                        getParticipantsByOrganization(currentUser.organization!),
-                        getBatches(),
-                        getCourses(),
-                    ]);
-
-                    setParticipants(fetchedParticipants);
-                    setBatches(fetchedBatches);
-                    setCourses(fetchedCourses);
-                    setLoading(false);
-                };
-                fetchData();
-            } else {
-                setLoading(false); // No organization, nothing to fetch.
-            }
-        } else {
+        if (userRole !== 'supervisor' || !userJson) {
             router.push('/supervisor-login');
+            return;
+        }
+
+        const currentUser = JSON.parse(userJson) as Supervisor;
+        setSupervisor(currentUser);
+
+        if (currentUser.organization) {
+            const fetchData = async () => {
+                setLoading(true);
+                const [fetchedParticipants, fetchedBatches, fetchedCourses] = await Promise.all([
+                    getParticipantsByOrganization(currentUser.organization!),
+                    getBatches(),
+                    getCourses(),
+                ]);
+                setParticipants(fetchedParticipants);
+                setBatches(fetchedBatches);
+                setCourses(fetchedCourses);
+                setLoading(false);
+            };
+            fetchData();
+        } else {
+            setLoading(false); // No organization, so no data to fetch
         }
     }, [router]);
 
@@ -71,11 +72,9 @@ export default function SupervisorDashboardPage() {
         const traineeIitpNos = new Set(participants.map(p => p.iitpNo));
 
         const organizationBatches = batches.filter(batch => {
-            // A batch belongs to the organization if the batch is explicitly assigned to it...
             if (batch.organizations?.includes(supervisor.organization!)) {
                 return true;
             }
-            // ...OR if any of the organization's trainees are registered in it.
             return batch.registrations.some(reg => traineeIitpNos.has(reg.iitpNo));
         });
 
@@ -105,7 +104,7 @@ export default function SupervisorDashboardPage() {
         <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Supervisor Dashboard</h1>
             <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
-                Welcome, {supervisor?.name}. An overview of trainees for {supervisor?.organization}.
+                An overview of trainees for {supervisor?.organization}.
             </p>
         </div>
         
