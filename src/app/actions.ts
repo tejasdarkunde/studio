@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import { z } from "zod";
@@ -809,6 +808,29 @@ export async function transferStudents(data: z.infer<typeof transferStudentsSche
     } catch (error) {
         console.error("Error transferring students:", error);
         return { success: false, error: "A database error occurred during the transfer." };
+    }
+}
+
+const exitParticipantSchema = z.object({
+    participantId: z.string().min(1),
+    leftDate: z.string().min(1),
+    leftRemark: z.string().min(1),
+});
+
+export async function exitParticipant(data: z.infer<typeof exitParticipantSchema>): Promise<{ success: boolean; error?: string; }> {
+    const validated = exitParticipantSchema.safeParse(data);
+    if (!validated.success) {
+        return { success: false, error: "Invalid data provided." };
+    }
+
+    try {
+        const { participantId, ...exitData } = validated.data;
+        const participantDocRef = doc(db, 'participants', participantId);
+        await updateDoc(participantDocRef, exitData);
+        return { success: true };
+    } catch(error) {
+        console.error("Error exiting participant:", error);
+        return { success: false, error: "Could not update participant exit details." };
     }
 }
 
@@ -2596,6 +2618,7 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+
 
 
 
