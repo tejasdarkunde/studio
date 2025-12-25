@@ -2,33 +2,16 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, Presentation, BookOpen, UserX, Loader2 } from 'lucide-react';
+import { Users, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Participant, Supervisor, Batch, Course } from '@/lib/types';
-import { getParticipantsByOrganization, getBatches, getCourses } from '@/app/actions';
+import type { Participant, Supervisor } from '@/lib/types';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter();
-    const [participants, setParticipants] = useState<Participant[]>([]);
-    const [batches, setBatches] = useState<Batch[]>([]);
-    const [courses, setCourses] = useState<Course[]>([]);
     const [supervisor, setSupervisor] = useState<Supervisor | null>(null);
     const [loading, setLoading] = useState(true);
-
-    const fetchData = useCallback(async (orgName: string) => {
-        setLoading(true);
-        const [participantData, batchData, courseData] = await Promise.all([
-            getParticipantsByOrganization(orgName),
-            getBatches(),
-            getCourses(),
-        ]);
-        setParticipants(participantData);
-        setBatches(batchData);
-        setCourses(courseData);
-        setLoading(false);
-    }, []);
 
     useEffect(() => {
         const userRole = sessionStorage.getItem('userRole');
@@ -37,33 +20,11 @@ export default function SupervisorDashboardPage() {
         if (userRole === 'supervisor' && userJson) {
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
-            if (currentUser.organization) {
-                fetchData(currentUser.organization);
-            } else {
-                setLoading(false); // No organization, so nothing to fetch
-            }
+            setLoading(false);
         } else {
             router.push('/supervisor/login');
         }
-    }, [router, fetchData]);
-
-    const stats = useMemo(() => {
-        const totalParticipants = participants.length;
-
-        const enrolledCourseNames = new Set(participants.flatMap(p => p.enrolledCourses || []));
-        const activeCourses = enrolledCourseNames.size;
-
-        const participantIitpNos = new Set(participants.map(p => p.iitpNo));
-        const totalBatches = batches.filter(batch => 
-            batch.registrations.some(reg => participantIitpNos.has(reg.iitpNo))
-        ).length;
-
-        return {
-            totalParticipants,
-            activeCourses,
-            totalBatches
-        };
-    }, [participants, batches]);
+    }, [router]);
 
 
     if (loading) {
@@ -79,51 +40,8 @@ export default function SupervisorDashboardPage() {
         <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Supervisor Dashboard</h1>
             <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
-                Manage trainees and submit applications for {supervisor?.organization}.
+                Manage trainees for {supervisor?.organization}.
             </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Trainees</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{stats.totalParticipants}</div>
-                    <p className="text-xs text-muted-foreground">in your organization</p>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Courses</CardTitle>
-                    <BookOpen className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{stats.activeCourses}</div>
-                    <p className="text-xs text-muted-foreground">Trainees are enrolled in</p>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Batches</CardTitle>
-                    <Presentation className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{stats.totalBatches}</div>
-                    <p className="text-xs text-muted-foreground">attended by trainees</p>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Left Trainees</CardTitle>
-                    <UserX className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">0</div>
-                    <p className="text-xs text-muted-foreground">(Feature coming soon)</p>
-                </CardContent>
-            </Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -142,5 +60,3 @@ export default function SupervisorDashboardPage() {
     </div>
   );
 }
-
-    
