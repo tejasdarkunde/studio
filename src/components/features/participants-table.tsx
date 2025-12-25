@@ -14,7 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2, Filter, X, Search, Eye, Pencil } from "lucide-react";
+import { Download, RefreshCw, Loader2, Filter, X, Search, Eye, Pencil, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
@@ -22,6 +22,8 @@ import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import Link from "next/link";
+import { ExitParticipantDialog } from "./exit-participant-dialog";
+import { exitParticipant } from "@/app/actions";
 
 type ParticipantsTableProps = {
   participants: Participant[];
@@ -45,6 +47,8 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
   const [filterEnrollment, setFilterEnrollment] = useState<'Summer' | 'Winter' | 'all'>('all');
   const [filterOrganization, setFilterOrganization] = useState(defaultOrganization || 'all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [exitingParticipant, setExitingParticipant] = useState<Participant | null>(null);
 
   const uniqueYears = useMemo(() => {
     const years = new Set(participants.map(p => p.year).filter((y): y is string => !!y));
@@ -166,190 +170,219 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
       }
       setSearchTerm('');
   }
+  
+  const handleConfirmExit = async (details: { leftDate: Date; leftRemark: string; }) => {
+      if (!exitingParticipant) return;
+      
+      const result = await exitParticipant({
+          participantId: exitingParticipant.id,
+          leftDate: details.leftDate.toISOString(),
+          leftRemark: details.leftRemark
+      });
+
+      if (result.success) {
+          toast({ title: 'Participant Exited', description: `${exitingParticipant.name} has been marked as exited.`});
+          onDataRefreshed();
+      } else {
+          toast({ variant: 'destructive', title: 'Error', description: result.error});
+      }
+      setExitingParticipant(null);
+  };
 
   return (
-    <div className="w-full space-y-4">
-      {selectedRows.size > 0 && (
-        <Card className="bg-secondary">
-          <CardHeader>
-            <CardTitle>{selectedRows.size} Participant(s) Selected</CardTitle>
-            <CardDescription>Choose the new values and click update. Fields left blank will not be changed.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-grow space-y-2">
-              <Label htmlFor="bulk-year">Year</Label>
-              <Input id="bulk-year" value={year} onChange={e => setYear(e.target.value)} placeholder="e.g. Winter 2025" />
-            </div>
-            <div className="flex-grow space-y-2">
-              <Label htmlFor="bulk-semester">Semester</Label>
-              <Input id="bulk-semester" value={semester} onChange={e => setSemester(e.target.value)} placeholder="e.g. 1st Year" />
-            </div>
-            <div className="flex-grow space-y-2">
-              <Label htmlFor="bulk-season">Enrollment Season</Label>
-              <Select onValueChange={(v: 'Summer' | 'Winter') => setEnrollmentSeason(v)} value={enrollmentSeason}>
-                <SelectTrigger id="bulk-season"><SelectValue placeholder="Select season" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Summer">Summer</SelectItem>
-                  <SelectItem value="Winter">Winter</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={handleUpdateSelected} disabled={isUpdating} className="w-full md:w-auto">
-              {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <RefreshCw className="mr-2 h-4 w-4"/>}
-              Update Selected
-            </Button>
-          </CardContent>
+    <>
+      <ExitParticipantDialog
+        isOpen={!!exitingParticipant}
+        onClose={() => setExitingParticipant(null)}
+        onConfirm={handleConfirmExit}
+        participantName={exitingParticipant?.name || ''}
+      />
+      <div className="w-full space-y-4">
+        {selectedRows.size > 0 && (
+          <Card className="bg-secondary">
+            <CardHeader>
+              <CardTitle>{selectedRows.size} Participant(s) Selected</CardTitle>
+              <CardDescription>Choose the new values and click update. Fields left blank will not be changed.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex-grow space-y-2">
+                <Label htmlFor="bulk-year">Year</Label>
+                <Input id="bulk-year" value={year} onChange={e => setYear(e.target.value)} placeholder="e.g. Winter 2025" />
+              </div>
+              <div className="flex-grow space-y-2">
+                <Label htmlFor="bulk-semester">Semester</Label>
+                <Input id="bulk-semester" value={semester} onChange={e => setSemester(e.target.value)} placeholder="e.g. 1st Year" />
+              </div>
+              <div className="flex-grow space-y-2">
+                <Label htmlFor="bulk-season">Enrollment Season</Label>
+                <Select onValueChange={(v: 'Summer' | 'Winter') => setEnrollmentSeason(v)} value={enrollmentSeason}>
+                  <SelectTrigger id="bulk-season"><SelectValue placeholder="Select season" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Summer">Summer</SelectItem>
+                    <SelectItem value="Winter">Winter</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleUpdateSelected} disabled={isUpdating} className="w-full md:w-auto">
+                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <RefreshCw className="mr-2 h-4 w-4"/>}
+                Update Selected
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+        <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5"/> Filter & Export Participants</CardTitle>
+              <CardDescription>Filter the directory and export the results to CSV.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                      placeholder="Search by name or IITP No..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                  />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                  <div className="space-y-2">
+                      <Label htmlFor="filter-year">Year</Label>
+                      <Select onValueChange={setFilterYear} value={filterYear}>
+                          <SelectTrigger id="filter-year"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="all">All Years</SelectItem>
+                              {uniqueYears.map(year => (
+                                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="filter-semester">Semester</Label>
+                      <Select onValueChange={setFilterSemester} value={filterSemester}>
+                          <SelectTrigger id="filter-semester"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="all">All Semesters</SelectItem>
+                              {uniqueSemesters.map(semester => (
+                                  <SelectItem key={semester} value={semester}>{semester}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="filter-enrollment">Enrollment</Label>
+                      <Select onValueChange={(v: 'Summer' | 'Winter' | 'all') => setFilterEnrollment(v)} value={filterEnrollment}>
+                          <SelectTrigger id="filter-enrollment"><SelectValue/></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="all">All Seasons</SelectItem>
+                              <SelectItem value="Summer">Summer</SelectItem>
+                              <SelectItem value="Winter">Winter</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+                   <div className="space-y-2">
+                      <Label htmlFor="filter-organization">Organization</Label>
+                      <Select onValueChange={setFilterOrganization} value={filterOrganization} disabled={!!defaultOrganization}>
+                          <SelectTrigger id="filter-organization"><SelectValue placeholder="All Organizations"/></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="all">All Organizations</SelectItem>
+                              {organizations.map(org => <SelectItem key={org.id} value={org.name}>{org.name}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                  </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={clearFilters}><X className="mr-2 h-4 w-4"/>Clear Filters</Button>
+                  <Button variant="secondary" onClick={handleExport} disabled={participants.length === 0}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Export CSV
+                  </Button>
+              </div>
+            </CardContent>
         </Card>
-      )}
-      <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5"/> Filter & Export Participants</CardTitle>
-            <CardDescription>Filter the directory and export the results to CSV.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                    placeholder="Search by name or IITP No..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                />
+        
+        <div className="flex flex-row items-center justify-between mt-6">
+            <div>
+              <h3 className="text-lg font-medium">Full Participant Directory</h3>
+              <p className="text-sm text-muted-foreground">{filteredParticipants.length} of {participants.length} participants shown.</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div className="space-y-2">
-                    <Label htmlFor="filter-year">Year</Label>
-                    <Select onValueChange={setFilterYear} value={filterYear}>
-                        <SelectTrigger id="filter-year"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Years</SelectItem>
-                            {uniqueYears.map(year => (
-                                <SelectItem key={year} value={year}>{year}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="filter-semester">Semester</Label>
-                    <Select onValueChange={setFilterSemester} value={filterSemester}>
-                        <SelectTrigger id="filter-semester"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Semesters</SelectItem>
-                            {uniqueSemesters.map(semester => (
-                                <SelectItem key={semester} value={semester}>{semester}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="filter-enrollment">Enrollment</Label>
-                    <Select onValueChange={(v: 'Summer' | 'Winter' | 'all') => setFilterEnrollment(v)} value={filterEnrollment}>
-                        <SelectTrigger id="filter-enrollment"><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Seasons</SelectItem>
-                            <SelectItem value="Summer">Summer</SelectItem>
-                            <SelectItem value="Winter">Winter</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="filter-organization">Organization</Label>
-                    <Select onValueChange={setFilterOrganization} value={filterOrganization} disabled={!!defaultOrganization}>
-                        <SelectTrigger id="filter-organization"><SelectValue placeholder="All Organizations"/></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Organizations</SelectItem>
-                            {organizations.map(org => <SelectItem key={org.id} value={org.name}>{org.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-            <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={clearFilters}><X className="mr-2 h-4 w-4"/>Clear Filters</Button>
-                <Button variant="secondary" onClick={handleExport} disabled={participants.length === 0}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export CSV
-                </Button>
-            </div>
-          </CardContent>
-      </Card>
-      
-      <div className="flex flex-row items-center justify-between mt-6">
-          <div>
-            <h3 className="text-lg font-medium">Full Participant Directory</h3>
-            <p className="text-sm text-muted-foreground">{filteredParticipants.length} of {participants.length} participants shown.</p>
+        </div>
+
+        <div className="border rounded-lg">
+          <ScrollArea className="h-[60vh]">
+              <Table>
+              <TableHeader>
+                  <TableRow>
+                      <TableHead className="w-[50px]">
+                          <Checkbox
+                              checked={selectedRows.size === filteredParticipants.length && filteredParticipants.length > 0}
+                              onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                              disabled={filteredParticipants.length === 0}
+                          />
+                      </TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>IITP No</TableHead>
+                      <TableHead>Enrolled Courses</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>Semester</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+              </TableHeader>
+              <TableBody>
+                  {filteredParticipants.length > 0 ? (
+                  filteredParticipants.map((p) => (
+                      <TableRow key={p.id} data-state={selectedRows.has(p.id) && "selected"}>
+                          <TableCell>
+                              <Checkbox
+                                  checked={selectedRows.has(p.id)}
+                                  onCheckedChange={() => handleSelectRow(p.id)}
+                              />
+                          </TableCell>
+                          <TableCell className="font-medium">{p.name}</TableCell>
+                          <TableCell>{p.iitpNo}</TableCell>
+                          <TableCell>
+                          {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                              {p.enrolledCourses.map(course => (
+                                  <Badge key={course} variant="secondary">{course}</Badge>
+                              ))}
+                              </div>
+                          ) : (
+                              <span className="text-muted-foreground">None</span>
+                          )}
+                          </TableCell>
+                          <TableCell>{p.year}</TableCell>
+                          <TableCell>{p.semester}</TableCell>
+                          <TableCell className="text-right">
+                              <Button asChild variant="ghost" size="icon">
+                                  <Link href={`${profilePath}/${p.iitpNo}`}>
+                                      <Eye className="h-4 w-4" />
+                                  </Link>
+                              </Button>
+                              <Button asChild variant="ghost" size="icon">
+                                  <Link href={`${profilePath}/${p.iitpNo}/edit`}>
+                                      <Pencil className="h-4 w-4" />
+                                  </Link>
+                              </Button>
+                               <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setExitingParticipant(p)}>
+                                    <LogOut className="h-4 w-4" />
+                               </Button>
+                          </TableCell>
+                      </TableRow>
+                  ))
+                  ) : (
+                  <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center">
+                      No participants found matching your filters.
+                      </TableCell>
+                  </TableRow>
+                  )}
+              </TableBody>
+              </Table>
+          </ScrollArea>
           </div>
       </div>
-
-      <div className="border rounded-lg">
-        <ScrollArea className="h-[60vh]">
-            <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead className="w-[50px]">
-                        <Checkbox
-                            checked={selectedRows.size === filteredParticipants.length && filteredParticipants.length > 0}
-                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                            disabled={filteredParticipants.length === 0}
-                        />
-                    </TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>IITP No</TableHead>
-                    <TableHead>Enrolled Courses</TableHead>
-                    <TableHead>Year</TableHead>
-                    <TableHead>Semester</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {filteredParticipants.length > 0 ? (
-                filteredParticipants.map((p) => (
-                    <TableRow key={p.id} data-state={selectedRows.has(p.id) && "selected"}>
-                        <TableCell>
-                            <Checkbox
-                                checked={selectedRows.has(p.id)}
-                                onCheckedChange={() => handleSelectRow(p.id)}
-                            />
-                        </TableCell>
-                        <TableCell className="font-medium">{p.name}</TableCell>
-                        <TableCell>{p.iitpNo}</TableCell>
-                        <TableCell>
-                        {p.enrolledCourses && p.enrolledCourses.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                            {p.enrolledCourses.map(course => (
-                                <Badge key={course} variant="secondary">{course}</Badge>
-                            ))}
-                            </div>
-                        ) : (
-                            <span className="text-muted-foreground">None</span>
-                        )}
-                        </TableCell>
-                        <TableCell>{p.year}</TableCell>
-                        <TableCell>{p.semester}</TableCell>
-                        <TableCell className="text-right">
-                            <Button asChild variant="ghost" size="icon">
-                                <Link href={`${profilePath}/${p.iitpNo}`}>
-                                    <Eye className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                            <Button asChild variant="ghost" size="icon">
-                                <Link href={`${profilePath}/${p.iitpNo}/edit`}>
-                                    <Pencil className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                ))
-                ) : (
-                <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                    No participants found matching your filters.
-                    </TableCell>
-                </TableRow>
-                )}
-            </TableBody>
-            </Table>
-        </ScrollArea>
-        </div>
-    </div>
+    </>
   );
 }

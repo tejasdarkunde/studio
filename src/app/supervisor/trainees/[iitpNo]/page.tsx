@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const InfoItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string | number | null }) => {
     if (!value) return null;
@@ -85,6 +86,17 @@ export default function TraineeProfilePage() {
                 </Button>
             </div>
             
+            {participant.leftDate && (
+                <Alert variant="destructive" className="mb-6">
+                    <LogOut className="h-4 w-4" />
+                    <AlertTitle>Participant Exited</AlertTitle>
+                    <AlertDescription>
+                        This participant left the organization on {new Date(participant.leftDate).toLocaleDateString()}.
+                        {participant.leftRemark && <p className="mt-2"><strong>Remark:</strong> {participant.leftRemark}</p>}
+                    </AlertDescription>
+                </Alert>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1 space-y-6">
                      <Card>
@@ -196,5 +208,3 @@ export default function TraineeProfilePage() {
         </main>
     )
 }
-
-    

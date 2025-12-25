@@ -113,6 +113,7 @@ export type Participant = {
     designation?: string;
     stipend?: number;
     leftDate?: string;
+    leftRemark?: string;
 };
 
 export type Lesson = {
