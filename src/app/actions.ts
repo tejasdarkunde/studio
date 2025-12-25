@@ -550,6 +550,7 @@ export async function getParticipantByIitpNo(iitpNo: string, supervisorOrg?: str
         const participantDoc = querySnapshot.docs[0];
         const data = participantDoc.data();
         
+        // If a supervisor's organization is provided, check if the participant belongs to it
         if (supervisorOrg && data.organization !== supervisorOrg) {
             return null; // Return null if the participant is not in the supervisor's organization
         }
@@ -2594,5 +2595,6 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+
 
 

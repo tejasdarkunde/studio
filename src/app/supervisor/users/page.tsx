@@ -13,7 +13,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronLeft, Search } from 'lucide-react';
+import { Loader2, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -68,12 +68,10 @@ const DirectoryTab = ({ participants }: { participants: Participant[] }) => {
 
 const AddUpdateTab = ({ 
     courses, 
-    organizations,
     onParticipantAdded,
     supervisor
 }: { 
     courses: Course[], 
-    organizations: Organization[],
     onParticipantAdded: () => void,
     supervisor: Supervisor | null
 }) => {
@@ -255,11 +253,9 @@ export default function SupervisorUsersPage() {
     const [supervisor, setSupervisor] = useState<Supervisor | null>(null);
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
-    const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
-        setLoading(true);
         const userRole = sessionStorage.getItem('userRole');
         const userJson = sessionStorage.getItem('user');
 
@@ -267,31 +263,28 @@ export default function SupervisorUsersPage() {
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
             
-            const [fetchedCourses, fetchedOrganizations, fetchedParticipants] = await Promise.all([
-                getCourses(),
-                getOrganizations(),
-                currentUser.organization ? getParticipantsByOrganization(currentUser.organization) : Promise.resolve([]),
-            ]);
-            
-            setCourses(fetchedCourses);
-            setOrganizations(fetchedOrganizations);
-            setParticipants(fetchedParticipants);
+            if (currentUser.organization) {
+                setLoading(true);
+                const [fetchedCourses, fetchedParticipants] = await Promise.all([
+                    getCourses(),
+                    getParticipantsByOrganization(currentUser.organization),
+                ]);
+                
+                setCourses(fetchedCourses);
+                setParticipants(fetchedParticipants);
+                setLoading(false);
+            } else {
+                 setLoading(false);
+            }
         } else {
             router.push('/supervisor-login');
         }
-        setLoading(false);
     }, [router]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
-
-    const handleParticipantAddedOrUpdated = () => {
-        fetchData();
-    }
     
-
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -310,7 +303,7 @@ export default function SupervisorUsersPage() {
                 </Button>
             </div>
             <Tabs defaultValue="directory">
-                <TabsList>
+                <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="directory">Trainee Directory</TabsTrigger>
                     <TabsTrigger value="add-update">Add/Update Trainee</TabsTrigger>
                 </TabsList>
@@ -320,8 +313,7 @@ export default function SupervisorUsersPage() {
                 <TabsContent value="add-update" className="mt-4">
                     <AddUpdateTab 
                         courses={courses}
-                        organizations={organizations}
-                        onParticipantAdded={handleParticipantAddedOrUpdated}
+                        onParticipantAdded={fetchData}
                         supervisor={supervisor}
                     />
                 </TabsContent>
@@ -329,5 +321,3 @@ export default function SupervisorUsersPage() {
         </div>
     );
 }
-
-    

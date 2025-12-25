@@ -32,20 +32,6 @@ export default function SupervisorDashboardPage() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async (organizationName: string) => {
-        setLoading(true);
-        const [fetchedParticipants, fetchedBatches, fetchedCourses] = await Promise.all([
-            getParticipantsByOrganization(organizationName),
-            getBatches(),
-            getCourses(),
-        ]);
-
-        setParticipants(fetchedParticipants);
-        setBatches(fetchedBatches);
-        setCourses(fetchedCourses);
-        setLoading(false);
-    }, []);
-
     useEffect(() => {
         const userRole = sessionStorage.getItem('userRole');
         const userJson = sessionStorage.getItem('user');
@@ -54,26 +40,42 @@ export default function SupervisorDashboardPage() {
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
             if (currentUser.organization) {
-                fetchData(currentUser.organization);
+                const fetchData = async () => {
+                    setLoading(true);
+                    const [fetchedParticipants, fetchedBatches, fetchedCourses] = await Promise.all([
+                        getParticipantsByOrganization(currentUser.organization!),
+                        getBatches(),
+                        getCourses(),
+                    ]);
+
+                    setParticipants(fetchedParticipants);
+                    setBatches(fetchedBatches);
+                    setCourses(fetchedCourses);
+                    setLoading(false);
+                };
+                fetchData();
             } else {
-                setLoading(false); // No organization to fetch data for
+                setLoading(false); // No organization, nothing to fetch.
             }
         } else {
-            router.push('/supervisor/login');
+            router.push('/supervisor-login');
         }
-    }, [router, fetchData]);
+    }, [router]);
 
 
     const stats = useMemo(() => {
-        if (!supervisor?.organization) return { totalTrainees: 0, activeCourses: 0, totalBatches: 0 };
+        if (!supervisor?.organization || loading) {
+            return { totalTrainees: 0, activeCourses: 0, totalBatches: 0 };
+        }
 
         const traineeIitpNos = new Set(participants.map(p => p.iitpNo));
 
         const organizationBatches = batches.filter(batch => {
-            // Include if the batch is for the whole organization OR if any trainee is registered
-            if(batch.organizations?.includes(supervisor.organization!)){
+            // A batch belongs to the organization if the batch is explicitly assigned to it...
+            if (batch.organizations?.includes(supervisor.organization!)) {
                 return true;
             }
+            // ...OR if any of the organization's trainees are registered in it.
             return batch.registrations.some(reg => traineeIitpNos.has(reg.iitpNo));
         });
 
@@ -87,7 +89,7 @@ export default function SupervisorDashboardPage() {
             activeCourses: activeCourseNames.size,
             totalBatches: organizationBatches.length
         };
-    }, [participants, batches, supervisor]);
+    }, [participants, batches, supervisor, loading]);
 
 
     if (loading) {
