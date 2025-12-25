@@ -6,7 +6,8 @@ import { Users, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Participant, Supervisor } from '@/lib/types';
+import type { Participant, Supervisor, Batch, Course } from '@/lib/types';
+import { getParticipantsByOrganization, getBatches, getCourses } from '@/app/actions';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter();
@@ -40,23 +41,10 @@ export default function SupervisorDashboardPage() {
         <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Supervisor Dashboard</h1>
             <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
-                Manage trainees for {supervisor?.organization}.
+                Welcome, {supervisor?.name}. Use the portal to manage trainees for {supervisor?.organization}.
             </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link href="/supervisor/users">
-                <Card className="hover:bg-secondary transition-colors h-full">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Users className="h-6 w-6 text-primary" />
-                            User Management
-                        </CardTitle>
-                        <CardDescription>View, add, or update trainees in your organization.</CardDescription>
-                    </CardHeader>
-                </Card>
-            </Link>
-        </div>
     </div>
   );
 }
