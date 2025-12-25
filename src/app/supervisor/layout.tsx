@@ -44,7 +44,15 @@ export default function SupervisorLayout({
     <div className="min-h-screen flex flex-col">
       <header className="bg-background border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
-          <p className="text-xl font-bold text-primary tracking-tight">Supervisor Portal</p>
+          <div className="flex items-center gap-4">
+             <p className="text-xl font-bold text-primary tracking-tight">Supervisor Portal</p>
+             {user.organization && (
+                <>
+                    <div className="h-6 w-px bg-border" />
+                    <p className="text-lg font-semibold text-muted-foreground">{user.organization}</p>
+                </>
+             )}
+          </div>
            <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground hidden sm:inline">Welcome, {user.name}</span>
                 <Button variant="outline" onClick={handleLogout}>
