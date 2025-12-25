@@ -14,7 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2, Filter, X, Search, Eye } from "lucide-react";
+import { Download, RefreshCw, Loader2, Filter, X, Search, Eye, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
@@ -329,6 +329,11 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                             <Button asChild variant="ghost" size="icon">
                                 <Link href={`${profilePath}/${p.iitpNo}`}>
                                     <Eye className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="ghost" size="icon">
+                                <Link href={`${profilePath}/${p.iitpNo}/edit`}>
+                                    <Pencil className="h-4 w-4" />
                                 </Link>
                             </Button>
                         </TableCell>
