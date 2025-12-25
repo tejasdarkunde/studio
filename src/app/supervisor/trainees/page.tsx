@@ -3,9 +3,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Participant, Course, Organization, Supervisor } from '@/lib/types';
-import { getCourses, getParticipantsByOrganization } from '@/app/actions';
-import { Button } from "@/components/ui/button";
+import type { Participant, Organization, Supervisor } from '@/lib/types';
+import { getParticipantsByOrganization, getOrganizations, updateSelectedParticipants } from '@/app/actions';
 import { Loader2 } from 'lucide-react';
 import { ParticipantsTable } from '@/components/features/participants-table';
 
@@ -21,17 +20,21 @@ export default function SupervisorTraineesPage() {
         const userJson = sessionStorage.getItem('user');
 
         if (userRole === 'supervisor' && userJson) {
+            setLoading(true);
             const currentUser = JSON.parse(userJson) as Supervisor;
             setSupervisor(currentUser);
             
             if (currentUser.organization) {
-                setLoading(true);
-                const fetchedParticipants = await getParticipantsByOrganization(currentUser.organization);
+                const [fetchedParticipants, fetchedOrganizations] = await Promise.all([
+                    getParticipantsByOrganization(currentUser.organization),
+                    getOrganizations()
+                ]);
                 setParticipants(fetchedParticipants);
-                setLoading(false);
-            } else {
-                 setLoading(false);
+                // We can still pass all organizations to the table for filter consistency,
+                // but the displayed participants are already scoped.
+                setOrganizations(fetchedOrganizations);
             }
+            setLoading(false);
         } else {
             router.push('/supervisor-login');
         }
@@ -54,7 +57,7 @@ export default function SupervisorTraineesPage() {
             <ParticipantsTable
                 participants={participants}
                 organizations={organizations}
-                onUpdateSelected={async () => ({success: false, error: 'Not implemented'})}
+                onUpdateSelected={updateSelectedParticipants}
                 onDataRefreshed={fetchData}
             />
         </div>
