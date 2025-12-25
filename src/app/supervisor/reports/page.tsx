@@ -6,258 +6,236 @@ import { useRouter } from 'next/navigation';
 import type { Batch, Participant, Trainer, Course, Organization, Supervisor } from '@/lib/types';
 import { getBatches, getParticipantsByOrganization, getTrainers, getCourses } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Users, Presentation, Building, UserCog, BookCopy, ChevronLeft, Filter, X } from 'lucide-react';
+import { Loader2, Users, Presentation, BookOpen, ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+const StatCard = ({ title, value, icon: Icon }: { title: string, value: string | number, icon: React.ElementType }) => (
+    <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            <Icon className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+            <div className="text-2xl font-bold">{value}</div>
+        </CardContent>
+    </Card>
+);
 
 export default function SupervisorReportsPage() {
     const router = useRouter();
     const [supervisor, setSupervisor] = useState<Supervisor | null>(null);
     const [batches, setBatches] = useState<Batch[]>([]);
     const [participants, setParticipants] = useState<Participant[]>([]);
-    const [trainers, setTrainers] = useState<Trainer[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [courseFilter, setCourseFilter] = useState('all');
-
     const { toast } = useToast();
 
-    const fetchAllData = useCallback(async (organization: string) => {
+    const fetchData = useCallback(async (organization: string) => {
         setLoading(true);
-        const [fetchedBatches, fetchedParticipants, fetchedTrainers, fetchedCourses] = await Promise.all([
-            getBatches(),
-            getParticipantsByOrganization(organization),
-            getTrainers(),
-            getCourses(),
-        ]);
-        setBatches(fetchedBatches);
-        setParticipants(fetchedParticipants);
-        setTrainers(fetchedTrainers);
-        setCourses(fetchedCourses);
-        setLoading(false);
-    }, []);
+        try {
+            const [fetchedBatches, fetchedParticipants, fetchedCourses] = await Promise.all([
+                getBatches(),
+                getParticipantsByOrganization(organization),
+                getCourses(),
+            ]);
+            setBatches(fetchedBatches);
+            setParticipants(fetchedParticipants);
+            setCourses(fetchedCourses);
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error fetching data',
+                description: 'Could not load reports data. Please try again later.'
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, [toast]);
     
     useEffect(() => {
         const userRole = sessionStorage.getItem('userRole');
         const userJson = sessionStorage.getItem('user');
         
-        if (userRole !== 'supervisor' || !userJson) {
-            router.push('/login');
-            return;
-        }
-        
-        const supervisorData = JSON.parse(userJson) as Supervisor;
-        setSupervisor(supervisorData);
+        if (userRole === 'supervisor' && userJson) {
+            const supervisorData = JSON.parse(userJson) as Supervisor;
+            setSupervisor(supervisorData);
 
-        if (supervisorData.organization) {
-            fetchAllData(supervisorData.organization);
-        } else {
-            setLoading(false);
-            toast({
-                variant: 'destructive',
-                title: 'No Organization Found',
-                description: 'Your account is not associated with an organization.'
-            });
-        }
-    }, [fetchAllData, router, toast]);
-    
-    const filteredParticipants = useMemo(() => {
-        return participants.filter(p => {
-            const courseMatch = courseFilter === 'all' || p.enrolledCourses?.includes(courseFilter);
-            return courseMatch;
-        });
-    }, [participants, courseFilter]);
-
-    const reportStats = useMemo(() => {
-        let totalEnrollments = 0;
-        const admissionStats: { [key: string]: { year: string, season: string, semester: string, count: number } } = {};
-
-        filteredParticipants.forEach(participant => {
-            participant.enrolledCourses?.forEach(() => {
-                totalEnrollments++;
-            });
-
-            const year = participant.year || 'N/A';
-            const season = participant.enrollmentSeason || 'N/A';
-            const semester = participant.semester || 'N/A';
-            const key = `${year}-${season}-${semester}`;
-            
-            if (admissionStats[key]) {
-                admissionStats[key].count++;
+            if (supervisorData.organization) {
+                fetchData(supervisorData.organization);
             } else {
-                admissionStats[key] = { year, season, semester, count: 1 };
-            }
-        });
-
-        const sortedAdmissionStats = Object.values(admissionStats).sort((a, b) => {
-            if (a.year !== b.year) return b.year.localeCompare(a.year);
-            if (a.season !== b.season) return a.season.localeCompare(b.season);
-            return a.semester.localeCompare(b.semester);
-        });
-
-        return {
-            totalParticipants: filteredParticipants.length,
-            totalSessions: batches.length, // Can be improved to filter by org
-            totalTrainers: trainers.length, // This is global, might need adjustment
-            admissionStats: sortedAdmissionStats,
-        };
-    }, [filteredParticipants, batches, trainers]);
-
-    const downloadCsv = (data: any[], filename: string) => {
-        if (data.length === 0) {
-            toast({ variant: 'destructive', title: 'No data to export' });
-            return;
-        }
-        const headers = Object.keys(data[0]);
-        const csvRows = [
-            headers.join(','),
-            ...data.map(row =>
-                headers.map(header => {
-                    const value = String(row[header] ?? '');
-                    return `"${value.replace(/"/g, '""')}"`;
-                }).join(',')
-            )
-        ];
-        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.setAttribute('href', url);
-        a.setAttribute('download', `${filename}.csv`);
-        a.click();
-        toast({ title: 'Export Complete', description: `${filename}.csv has been downloaded.` });
-    };
-
-    const handleExportParticipants = () => {
-        const dataToExport = filteredParticipants.map(p => ({
-            id: p.id, name: p.name, iitpNo: p.iitpNo, mobile: p.mobile, organization: p.organization, createdAt: p.createdAt,
-            enrolledCourses: p.enrolledCourses?.join('; ') || '',
-        }));
-        downloadCsv(dataToExport, `${supervisor?.organization}_participants`);
-    };
-
-    const handleExportTrainings = () => {
-        const dataToExport: any[] = [];
-        const orgTraineeIitpNos = new Set(participants.map(p => p.iitpNo));
-
-        batches.forEach(batch => {
-            const orgRegistrations = batch.registrations.filter(reg => orgTraineeIitpNos.has(reg.iitpNo));
-            if (orgRegistrations.length > 0) {
-                orgRegistrations.forEach(reg => {
-                    dataToExport.push({
-                        batchId: batch.id, batchName: batch.name, course: batch.course, batchStartDate: batch.startDate,
-                        trainerName: trainers.find(t => t.id === batch.trainerId)?.name || '', isCancelled: batch.isCancelled,
-                        participantName: reg.name, participantIitpNo: reg.iitpNo, registrationTime: reg.submissionTime
-                    });
+                setLoading(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'No Organization Found',
+                    description: 'Your account is not associated with an organization.'
                 });
             }
+        } else {
+            router.push('/supervisor-login');
+        }
+    }, [fetchData, router, toast]);
+    
+    const reportStats = useMemo(() => {
+        if (!participants.length) {
+            return {
+                totalParticipants: 0,
+                totalSessions: 0,
+                totalCourses: 0,
+                admissionsByYear: [],
+                courseStats: [],
+            };
+        }
+
+        const orgParticipantIitpNos = new Set(participants.map(p => p.iitpNo));
+
+        const orgBatches = batches.filter(batch => 
+            batch.registrations.some(reg => orgParticipantIitpNos.has(reg.iitpNo))
+        );
+
+        const admissionsByYear: { [year: string]: number } = {};
+        const courseEnrollments: { [courseName: string]: Set<string> } = {};
+        const courseSessions: { [courseName: string]: Set<string> } = {};
+
+        participants.forEach(p => {
+            const year = p.year || 'N/A';
+            admissionsByYear[year] = (admissionsByYear[year] || 0) + 1;
+
+            p.enrolledCourses?.forEach(courseName => {
+                if (!courseEnrollments[courseName]) {
+                    courseEnrollments[courseName] = new Set();
+                }
+                courseEnrollments[courseName].add(p.id);
+            });
         });
-        downloadCsv(dataToExport, `${supervisor?.organization}_trainings`);
-    };
+
+        orgBatches.forEach(batch => {
+            if (!courseSessions[batch.course]) {
+                courseSessions[batch.course] = new Set();
+            }
+            courseSessions[batch.course].add(batch.id);
+        });
+
+        const courseStats = courses
+            .filter(c => courseEnrollments[c.name])
+            .map(c => ({
+                name: c.name,
+                enrollments: courseEnrollments[c.name]?.size || 0,
+                sessions: courseSessions[c.name]?.size || 0,
+            })).sort((a,b) => b.enrollments - a.enrollments);
+
+        const totalCourses = Object.keys(courseEnrollments).length;
+
+        return {
+            totalParticipants: participants.length,
+            totalSessions: orgBatches.length,
+            totalCourses,
+            admissionsByYear: Object.entries(admissionsByYear)
+                .map(([year, count]) => ({ year, count }))
+                .sort((a, b) => b.year.localeCompare(a.year)),
+            courseStats,
+        };
+
+    }, [participants, batches, courses]);
+
 
     if (loading) {
         return (
-            <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-screen">
+            <main className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
             </main>
         );
     }
 
     return (
-        <main>
-            <div className="mb-6 mt-6">
+        <main className="container mx-auto p-4 md:p-8">
+            <div className="mb-8">
                 <Button asChild variant="outline">
                     <Link href="/supervisor/dashboard">
                         <ChevronLeft className="mr-2 h-4 w-4" /> Back to Dashboard
                     </Link>
                 </Button>
             </div>
-            <div className="grid grid-cols-1 gap-6">
-                <Card>
+            <div className="space-y-8">
+                 <Card>
                     <CardHeader>
                         <CardTitle>Reports for {supervisor?.organization}</CardTitle>
                         <CardDescription>A high-level overview of your organization's training statistics.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                 <div>
-                                    <CardTitle className="text-lg flex items-center gap-2"><Filter className="h-5 w-5"/> Filters</CardTitle>
-                                    <CardDescription>Refine the data shown in the statistics below.</CardDescription>
-                                 </div>
-                                  <Button variant="outline" size="sm" onClick={() => {setCourseFilter('all')}}>
-                                    <X className="mr-2 h-4 w-4"/> Clear Filters
-                                  </Button>
-                            </CardHeader>
-                            <CardContent className="grid md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Course</Label>
-                                    <Select value={courseFilter} onValueChange={setCourseFilter}>
-                                        <SelectTrigger><SelectValue/></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Courses</SelectItem>
-                                             {courses.map(course => <SelectItem key={course.id} value={course.name}>{course.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <Card className="p-4 text-center"><div className="flex flex-col items-center gap-2"><Users className="h-8 w-8 text-primary" /><p className="text-2xl font-bold">{reportStats.totalParticipants}</p><p className="text-sm text-muted-foreground">Filtered Participants</p></div></Card>
-                            <Card className="p-4 text-center"><div className="flex flex-col items-center gap-2"><Presentation className="h-8 w-8 text-primary" /><p className="text-2xl font-bold">{reportStats.totalSessions}</p><p className="text-sm text-muted-foreground">Total Sessions</p></div></Card>
+                    <CardContent>
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <StatCard title="Total Trainees" value={reportStats.totalParticipants} icon={Users} />
+                            <StatCard title="Total Sessions Conducted" value={reportStats.totalSessions} icon={Presentation} />
+                            <StatCard title="Active Courses" value={reportStats.totalCourses} icon={BookOpen} />
                         </div>
-                        <Separator />
-                        <div>
-                            <h3 className="text-lg font-medium mb-4">Year-Season-Semester Wise Admission Stats</h3>
-                            <div className="border rounded-lg max-h-96 overflow-y-auto">
+                    </CardContent>
+                </Card>
+                <div className="grid gap-8 md:grid-cols-2">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Admissions by Year</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <ScrollArea className="h-72">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Year</TableHead>
-                                            <TableHead>Season</TableHead>
-                                            <TableHead>Semester</TableHead>
                                             <TableHead className="text-right">Participants</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {reportStats.admissionStats.length > 0 ? (
-                                            reportStats.admissionStats.map((stat) => (
-                                            <TableRow key={`${stat.year}-${stat.season}-${stat.semester}`}>
-                                                <TableCell>{stat.year}</TableCell>
-                                                <TableCell>{stat.season}</TableCell>
-                                                <TableCell>{stat.semester}</TableCell>
-                                                <TableCell className="text-right font-medium">{stat.count}</TableCell>
+                                        {reportStats.admissionsByYear.length > 0 ? reportStats.admissionsByYear.map(item => (
+                                            <TableRow key={item.year}>
+                                                <TableCell className="font-medium">{item.year}</TableCell>
+                                                <TableCell className="text-right">{item.count}</TableCell>
                                             </TableRow>
-                                        ))
-                                        ) : (
-                                             <TableRow>
-                                                <TableCell colSpan={4} className="h-24 text-center">
-                                                    No admission data for the current filter.
-                                                </TableCell>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="h-24 text-center">No admission data.</TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
                                 </Table>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Data Exports</CardTitle>
-                        <CardDescription>Download your organization's data as CSV files. Exports will respect the filters set above.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Button variant="outline" onClick={handleExportParticipants}><Users className="mr-2"/> Export Participants</Button>
-                        <Button variant="outline" onClick={handleExportTrainings}><Presentation className="mr-2"/> Export Trainings</Button>
-                    </CardContent>
-                </Card>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Course Statistics</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <ScrollArea className="h-72">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Course</TableHead>
+                                            <TableHead className="text-right">Enrollments</TableHead>
+                                            <TableHead className="text-right">Sessions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {reportStats.courseStats.length > 0 ? reportStats.courseStats.map(item => (
+                                            <TableRow key={item.name}>
+                                                <TableCell className="font-medium">{item.name}</TableCell>
+                                                <TableCell className="text-right">{item.enrollments}</TableCell>
+                                                <TableCell className="text-right">{item.sessions}</TableCell>
+                                            </TableRow>
+                                        )) : (
+                                             <TableRow>
+                                                <TableCell colSpan={3} className="h-24 text-center">No course data.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </main>
     );
