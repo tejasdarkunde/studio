@@ -159,7 +159,9 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
       setFilterYear('all');
       setFilterSemester('all');
       setFilterEnrollment('all');
-      setFilterOrganization('all');
+      if (!defaultOrganization) {
+        setFilterOrganization('all');
+      }
       setSearchTerm('');
   }
 
@@ -250,7 +252,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="filter-organization">Organization</Label>
-                    <Select onValueChange={setFilterOrganization} value={filterOrganization}>
+                    <Select onValueChange={setFilterOrganization} value={filterOrganization} disabled={!!defaultOrganization}>
                         <SelectTrigger id="filter-organization"><SelectValue placeholder="All Organizations"/></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Organizations</SelectItem>
@@ -348,5 +350,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
 }
 
   
+
+    
 
     
