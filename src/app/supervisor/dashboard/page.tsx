@@ -40,38 +40,15 @@ export default function SupervisorDashboardPage() {
     <div className="p-4 md:p-8">
         <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Supervisor Dashboard</h1>
-            <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
-                Manage trainees and view reports for {supervisor.organization}.
-            </p>
+            {supervisor.organization && (
+                <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
+                    Manage trainees and view reports for {supervisor.organization}.
+                </p>
+            )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>User Management</CardTitle>
-                    <CardDescription>View, add, or update trainees in your organization.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild className="w-full">
-                        <Link href="/supervisor/users">
-                            <Users className="mr-2 h-4 w-4" /> Manage Trainees
-                        </Link>
-                    </Button>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Reports & Exports</CardTitle>
-                    <CardDescription>View detailed reports and export data for your organization.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild className="w-full">
-                        <Link href="/supervisor/reports">
-                            <BarChart className="mr-2 h-4 w-4" /> View Reports
-                        </Link>
-                    </Button>
-                </CardContent>
-            </Card>
+           {/* The dashboard is now clean. Add new cards here in the future. */}
         </div>
     </div>
   );
