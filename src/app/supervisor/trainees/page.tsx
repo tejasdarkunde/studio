@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Participant, Organization, Supervisor } from '@/lib/types';
-import { getParticipants, getOrganizations, updateSelectedParticipants } from '@/app/actions';
+import { getParticipantsByOrganization, getOrganizations, updateSelectedParticipants, getParticipants } from '@/app/actions';
 import { Loader2 } from 'lucide-react';
 import { ParticipantsTable } from '@/components/features/participants-table';
 
@@ -28,6 +28,7 @@ export default function SupervisorTraineesPage() {
                 getParticipants(),
                 getOrganizations()
             ]);
+            
             setParticipants(fetchedParticipants);
             setOrganizations(fetchedOrganizations);
             
@@ -56,6 +57,7 @@ export default function SupervisorTraineesPage() {
                 organizations={organizations}
                 onUpdateSelected={updateSelectedParticipants}
                 onDataRefreshed={fetchData}
+                defaultOrganization={supervisor?.organization}
             />
         </div>
     );

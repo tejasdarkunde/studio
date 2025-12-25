@@ -27,9 +27,10 @@ type ParticipantsTableProps = {
   organizations: Organization[];
   onUpdateSelected: (data: { ids: string[], year?: string, semester?: string, enrollmentSeason?: 'Summer' | 'Winter' }) => Promise<{success: boolean, error?: string, updatedCount?: number}>;
   onDataRefreshed: () => void;
+  defaultOrganization?: string;
 };
 
-export function ParticipantsTable({ participants, organizations, onUpdateSelected, onDataRefreshed }: ParticipantsTableProps) {
+export function ParticipantsTable({ participants, organizations, onUpdateSelected, onDataRefreshed, defaultOrganization }: ParticipantsTableProps) {
   const { toast } = useToast();
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [year, setYear] = useState('');
@@ -40,7 +41,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
   const [filterYear, setFilterYear] = useState('all');
   const [filterSemester, setFilterSemester] = useState('all');
   const [filterEnrollment, setFilterEnrollment] = useState<'Summer' | 'Winter' | 'all'>('all');
-  const [filterOrganization, setFilterOrganization] = useState('all');
+  const [filterOrganization, setFilterOrganization] = useState(defaultOrganization || 'all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const uniqueYears = useMemo(() => {
