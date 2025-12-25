@@ -90,17 +90,19 @@ export default function SupervisorReportsPage() {
                 courseStats: [],
             };
         }
-
+        
         const orgParticipantIitpNos = new Set(participants.map(p => p.iitpNo));
 
-        const orgBatches = batches.filter(batch => 
-            batch.registrations.some(reg => orgParticipantIitpNos.has(reg.iitpNo))
-        );
+        const orgBatches = batches.filter(batch => {
+            // A batch is relevant if its organization list includes the supervisor's org
+            // OR if any of the organization's trainees are registered in it.
+            return (batch.organizations && batch.organizations.includes(supervisor?.organization || '')) || 
+                   batch.registrations.some(reg => orgParticipantIitpNos.has(reg.iitpNo));
+        });
 
         const admissionsByYear: { [year: string]: number } = {};
         const courseEnrollments: { [courseName: string]: Set<string> } = {};
-        const courseSessions: { [courseName: string]: Set<string> } = {};
-
+        
         participants.forEach(p => {
             const year = p.year || 'N/A';
             admissionsByYear[year] = (admissionsByYear[year] || 0) + 1;
@@ -113,6 +115,7 @@ export default function SupervisorReportsPage() {
             });
         });
 
+        const courseSessions: { [courseName: string]: Set<string> } = {};
         orgBatches.forEach(batch => {
             if (!courseSessions[batch.course]) {
                 courseSessions[batch.course] = new Set();
@@ -140,7 +143,7 @@ export default function SupervisorReportsPage() {
             courseStats,
         };
 
-    }, [participants, batches, courses]);
+    }, [participants, batches, courses, supervisor]);
 
 
     if (loading) {
