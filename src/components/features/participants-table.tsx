@@ -29,9 +29,10 @@ type ParticipantsTableProps = {
   onUpdateSelected: (data: { ids: string[], year?: string, semester?: string, enrollmentSeason?: 'Summer' | 'Winter' }) => Promise<{success: boolean, error?: string, updatedCount?: number}>;
   onDataRefreshed: () => void;
   defaultOrganization?: string;
+  profilePath?: string;
 };
 
-export function ParticipantsTable({ participants, organizations, onUpdateSelected, onDataRefreshed, defaultOrganization }: ParticipantsTableProps) {
+export function ParticipantsTable({ participants, organizations, onUpdateSelected, onDataRefreshed, defaultOrganization, profilePath = '/supervisor/trainees' }: ParticipantsTableProps) {
   const { toast } = useToast();
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [year, setYear] = useState('');
@@ -326,7 +327,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                         <TableCell>{p.semester}</TableCell>
                         <TableCell className="text-right">
                             <Button asChild variant="ghost" size="icon">
-                                <Link href={`/supervisor/trainees/${p.iitpNo}`}>
+                                <Link href={`${profilePath}/${p.iitpNo}`}>
                                     <Eye className="h-4 w-4" />
                                 </Link>
                             </Button>
@@ -347,5 +348,3 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
     </div>
   );
 }
-
-    

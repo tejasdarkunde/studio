@@ -942,6 +942,7 @@ export default function AdminUsersPage() {
                         organizations={organizations}
                         onUpdateSelected={updateSelectedParticipants}
                         onDataRefreshed={fetchAllData}
+                        profilePath="/admin/users"
                     />
                 </TabsContent>
 
@@ -1339,3 +1340,4 @@ export default function AdminUsersPage() {
     
 
     
+
