@@ -32,7 +32,7 @@ export default function CentralLoginPage() {
     <main className="container mx-auto p-4 md:p-8 flex flex-col items-center justify-center min-h-screen">
        <div className="flex flex-col items-center justify-center text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-              BSA Training Academy Portal
+              BSA Edutech India Pvt. Ltd. Portal
             </h1>
             <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
               Please select your role to log in.

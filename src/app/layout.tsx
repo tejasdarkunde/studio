@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 // export const metadata: Metadata = { // Metadata must be defined in a Server Component
-//   title: 'BSA Training Academy, Pune',
+//   title: 'BSA Edutech India Pvt. Ltd.',
 //   description: 'Register for our ongoing and upcoming training sessions.',
 // };
 
@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>BSA Training Academy, Pune</title>
+        <title>BSA Edutech India Pvt. Ltd.</title>
         <meta name="description" content="Register for our ongoing and upcoming training sessions." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -43,7 +43,7 @@ export default function RootLayout({
            <header className="bg-background border-b sticky top-0 z-10">
             <nav className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
               <Link href="/home2" className="text-xl font-bold text-primary">
-                BSA Training Academy
+                BSA Edutech India Pvt. Ltd.
               </Link>
               <div className="hidden md:flex items-center gap-4">
                 <Button asChild disabled={isLoginPage}>
@@ -80,7 +80,7 @@ export default function RootLayout({
           </main>
            <footer className="bg-background border-t">
               <div className="container mx-auto px-4 md:px-8 h-14 flex items-center justify-between text-sm text-muted-foreground">
-                  <p>&copy; {new Date().getFullYear()} BSA Training Academy. All rights reserved.</p>
+                  <p>&copy; {new Date().getFullYear()} BSA Edutech India Pvt. Ltd.. All rights reserved.</p>
                   <p>Version {version}</p>
               </div>
           </footer>

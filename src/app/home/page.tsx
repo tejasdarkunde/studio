@@ -174,7 +174,7 @@ export default function Home() {
     const eventDate = new Date(b.startDate);
     eventDate.setHours(0,0,0,0);
     return eventDate < today || (eventDate.getTime() === today.getTime() && b.endTime <= currentTime);
-  }).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+  }).sort((a, b) => new Date(b.startDate).getTime() - new Date(b.startDate).getTime());
   
   const legacy = batches.filter(b => !b.startDate);
 
@@ -185,7 +185,7 @@ export default function Home() {
       <div className="w-full max-w-6xl relative">
         <div className="flex flex-col items-center justify-center text-center pt-16 mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-              BSA Training Academy, Pune
+              BSA Edutech India Pvt. Ltd.
             </h1>
             <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
               Register for our ongoing and upcoming training sessions.

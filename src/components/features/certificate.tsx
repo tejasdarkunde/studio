@@ -46,7 +46,7 @@ export const Certificate = forwardRef<HTMLDivElement, CertificateProps>(({ stude
                         <p className="text-sm text-muted-foreground">Date</p>
                     </div>
                     <div className="text-center">
-                        <p className="border-t-2 border-muted-foreground pt-2 w-48 font-semibold">BSA Training Academy</p>
+                        <p className="border-t-2 border-muted-foreground pt-2 w-48 font-semibold">BSA Edutech India Pvt. Ltd.</p>
                         <p className="text-sm text-muted-foreground">Issuing Authority</p>
                     </div>
                 </div>
