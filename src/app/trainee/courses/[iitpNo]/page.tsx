@@ -10,13 +10,13 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
-type StudentCoursesPageProps = {
+type TraineeCoursesPageProps = {
     params: {
         iitpNo: string;
     }
 };
 
-export default async function StudentCoursesPage({ params }: StudentCoursesPageProps) {
+export default async function TraineeCoursesPage({ params }: TraineeCoursesPageProps) {
     const { iitpNo } = params;
     const [allCourses, participant] = await Promise.all([
         getCourses(),
@@ -27,7 +27,7 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
         notFound();
     }
     
-    // 1. Get all courses the student is enrolled in
+    // 1. Get all courses the trainee is enrolled in
     const enrolledCourses = allCourses.filter(course =>
       participant.enrolledCourses?.some(enrolledCourseName =>
         course.name.toLowerCase() === enrolledCourseName.toLowerCase()
@@ -56,9 +56,9 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
         const totalLessons = allLessonIds.size;
         if (totalLessons === 0) return { totalLessons: 0, completedLessons: 0, percentage: 0 };
         
-        const completedStudentLessons = new Set(participant.completedLessons || []);
+        const completedTraineeLessons = new Set(participant.completedLessons || []);
         
-        const completedInCourse = Array.from(allLessonIds).filter(lessonId => completedStudentLessons.has(lessonId)).length;
+        const completedInCourse = Array.from(allLessonIds).filter(lessonId => completedTraineeLessons.has(lessonId)).length;
 
         return {
             totalLessons: totalLessons,
@@ -142,7 +142,7 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
                                                     </div>
                                                     {attempt?.isSubmitted ? (
                                                         <Button asChild size="sm" variant="outline">
-                                                            <Link href={`/student/results/${participant.iitpNo}/${exam.id}`}>View Result</Link>
+                                                            <Link href={`/trainee/results/${participant.iitpNo}/${exam.id}`}>View Result</Link>
                                                         </Button>
                                                     ) : (
                                                         <Badge variant="destructive">Pending</Badge>
@@ -156,7 +156,7 @@ export default async function StudentCoursesPage({ params }: StudentCoursesPageP
                             </CardContent>
                             <CardFooter>
                                 <Button asChild className="w-full">
-                                    <Link href={`/student/courses/${iitpNo}/${course.id}`}>
+                                    <Link href={`/trainee/courses/${iitpNo}/${course.id}`}>
                                         {progress.percentage === 100 ? 'Review Course' : 'Continue Course'} <ArrowRight />
                                     </Link>
                                 </Button>

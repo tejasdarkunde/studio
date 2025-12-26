@@ -114,7 +114,7 @@ export default function ExamPage() {
                     document.exitFullscreen();
                 }
                 toast({ title: "Exam Submitted Successfully!" });
-                router.push(`/student/results/${iitpNo}/${examId}`);
+                router.push(`/trainee/results/${iitpNo}/${examId}`);
             } else {
                 toast({ variant: 'destructive', title: "Submission Failed", description: result.error });
             }
@@ -142,7 +142,7 @@ export default function ExamPage() {
             const savedAttempt = participantData.examProgress?.[examId];
             if (savedAttempt?.isSubmitted) {
                 // If already submitted, redirect to results
-                router.replace(`/student/results/${iitpNo}/${examId}`);
+                router.replace(`/trainee/results/${iitpNo}/${examId}`);
                 return;
             }
 
@@ -365,7 +365,7 @@ export default function ExamPage() {
             )}
              <div className="mb-8">
                 <Button asChild variant="outline">
-                    <Link href={`/student/courses/${iitpNo}/${courseId}`}>
+                    <Link href={`/trainee/courses/${iitpNo}/${courseId}`}>
                         <ChevronLeft className="mr-2 h-4 w-4" />
                         Back to Course Content
                     </Link>

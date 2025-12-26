@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { StudentLoginForm } from '@/components/features/student-login-form';
+import { TraineeLoginForm } from '@/components/features/trainee-login-form';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 
-export default function StudentLoginPage() {
+export default function TraineeLoginPage() {
   const { toast } = useToast();
   const router = useRouter();
 
@@ -18,7 +18,7 @@ export default function StudentLoginPage() {
       title: "Login Successful!",
       description: "Welcome back. Redirecting you to your courses...",
     });
-    router.push(`/student/courses/${iitpNo}`);
+    router.push(`/trainee/courses/${iitpNo}`);
   };
 
   return (
@@ -26,7 +26,7 @@ export default function StudentLoginPage() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center text-center mb-8">
             <h1 className="text-4xl font-bold text-primary tracking-tight">
-              Student Portal
+              Trainee Portal
             </h1>
             <p className="mt-3 text-lg text-muted-foreground">
               Access your learning materials.
@@ -39,7 +39,7 @@ export default function StudentLoginPage() {
                 <CardDescription>Enter your credentials to access the portal.</CardDescription>
             </CardHeader>
             <CardContent>
-                <StudentLoginForm onSuccess={handleLoginSuccess} />
+                <TraineeLoginForm onSuccess={handleLoginSuccess} />
             </CardContent>
         </Card>
         

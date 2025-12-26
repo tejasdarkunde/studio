@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -14,9 +15,9 @@ export default function CentralLoginPage() {
       icon: <Shield className="h-6 w-6 text-primary" />,
     },
     {
-      role: "Student",
+      role: "Trainee",
       description: "Access your course materials, lessons, and take exams.",
-      href: "/student-login",
+      href: "/trainee-login",
       icon: <User className="h-6 w-6 text-primary" />,
     },
     {

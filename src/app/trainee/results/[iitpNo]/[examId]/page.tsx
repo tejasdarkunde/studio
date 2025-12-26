@@ -181,7 +181,7 @@ export default function ExamResultPage() {
 
             <div className="mb-8">
                 <Button asChild variant="outline">
-                    <Link href={`/student/courses/${iitpNo}`}>
+                    <Link href={`/trainee/courses/${iitpNo}`}>
                         <ChevronLeft className="mr-2 h-4 w-4" />
                         Back to My Courses
                     </Link>

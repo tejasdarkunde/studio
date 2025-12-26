@@ -285,7 +285,7 @@ const CourseContentPageClient = () => {
             <main className="container mx-auto p-4 md:p-8">
                 <div className="mb-8">
                     <Button asChild variant="outline">
-                        <Link href={`/student/courses/${iitpNo}`}>
+                        <Link href={`/trainee/courses/${iitpNo}`}>
                             <ChevronLeft className="mr-2 h-4 w-4" />
                             Back to My Courses
                         </Link>
@@ -349,7 +349,7 @@ const CourseContentPageClient = () => {
                                     </CardHeader>
                                     <CardFooter>
                                         <Button asChild className="w-full">
-                                            <Link href={`/student/exam/${iitpNo}/${course.id}/${exam.id}`}>
+                                            <Link href={`/trainee/exam/${iitpNo}/${course.id}/${exam.id}`}>
                                                 Start Exam <ChevronRight className="ml-2 h-4 w-4"/>
                                             </Link>
                                         </Button>

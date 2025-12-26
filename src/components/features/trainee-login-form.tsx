@@ -18,18 +18,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { studentLogin } from "@/app/actions";
+import { traineeLogin } from "@/app/actions";
 
 const formSchema = z.object({
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
   passkey: z.string().min(1, { message: "Passkey is required." }),
 });
 
-type StudentLoginFormProps = {
+type TraineeLoginFormProps = {
   onSuccess: (iitpNo: string) => void;
 };
 
-export function StudentLoginForm({ onSuccess }: StudentLoginFormProps) {
+export function TraineeLoginForm({ onSuccess }: TraineeLoginFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -44,7 +44,7 @@ export function StudentLoginForm({ onSuccess }: StudentLoginFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      const result = await studentLogin(values);
+      const result = await traineeLogin(values);
 
       if (result.success && result.iitpNo) {
         onSuccess(result.iitpNo);
@@ -112,5 +112,3 @@ export function StudentLoginForm({ onSuccess }: StudentLoginFormProps) {
     </Form>
   );
 }
-
-    

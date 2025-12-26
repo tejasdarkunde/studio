@@ -609,6 +609,7 @@ const participantSchema = z.object({
   designation: z.string().optional(),
   stipend: z.number().optional(),
   leftDate: z.string().optional(),
+  leftRemark: z.string().optional(),
 });
 
 
@@ -1868,14 +1869,14 @@ export async function deleteQuestion(data: z.infer<typeof deleteQuestionSchema>)
 }
 
 
-// STUDENT LOGIN
-const studentLoginSchema = z.object({
+// TRAINEE LOGIN
+const traineeLoginSchema = z.object({
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
   passkey: z.string().min(1, { message: "Passkey is required." }),
 });
 
-export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Promise<{ success: boolean; iitpNo?: string; error?: string }> {
-    const validatedFields = studentLoginSchema.safeParse(data);
+export async function traineeLogin(data: z.infer<typeof traineeLoginSchema>): Promise<{ success: boolean; iitpNo?: string; error?: string }> {
+    const validatedFields = traineeLoginSchema.safeParse(data);
     if (!validatedFields.success) {
         return { success: false, error: "Invalid login data." };
     }
@@ -1901,7 +1902,7 @@ export async function studentLogin(data: z.infer<typeof studentLoginSchema>): Pr
         }
 
     } catch (error) {
-        console.error("Error during student login:", error);
+        console.error("Error during trainee login:", error);
         return { success: false, error: "An unexpected error occurred." };
     }
 }
@@ -2618,6 +2619,7 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+
 
 
 

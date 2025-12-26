@@ -9,7 +9,7 @@ import { getParticipantByIitpNo } from '@/app/actions';
 import type { Participant } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function StudentLayout({
+export default function TraineeLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -29,7 +29,7 @@ export default function StudentLayout({
     }
   }, [iitpNo]);
 
-  const isExamPage = pathname.includes('/student/exam/');
+  const isExamPage = pathname.includes('/trainee/exam/');
 
   return (
     <div className="min-h-screen flex flex-col">
