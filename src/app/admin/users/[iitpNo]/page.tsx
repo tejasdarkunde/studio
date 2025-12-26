@@ -5,12 +5,12 @@ import { useEffect, useState } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import type { Participant, Course } from '@/lib/types';
 import { getParticipantByIitpNo, getCourses } from '@/app/actions';
-import { Loader2, ChevronLeft, User, Building, Mail, Phone, Calendar, GraduationCap, Briefcase, Banknote, Shield, BookOpen, FileQuestion, LogOut } from 'lucide-react';
+import { Loader2, ChevronLeft, User, Building, Mail, Phone, Calendar, GraduationCap, Briefcase, Banknote, Shield, BookOpen, FileQuestion, LogOut, History } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 
 const InfoItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string | number | null }) => {
@@ -85,6 +85,17 @@ export default function AdminTraineeProfilePage() {
                 </Button>
             </div>
             
+             {participant.leftDate && (
+                <Alert variant="destructive" className="mb-6">
+                    <LogOut className="h-4 w-4" />
+                    <AlertTitle>Participant Exited</AlertTitle>
+                    <AlertDescription>
+                        This participant left the organization on {new Date(participant.leftDate).toLocaleDateString()}.
+                        {participant.leftRemark && <p className="mt-2"><strong>Remark:</strong> {participant.leftRemark}</p>}
+                    </AlertDescription>
+                </Alert>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1 space-y-6">
                      <Card>
@@ -112,8 +123,6 @@ export default function AdminTraineeProfilePage() {
                         <CardContent className="space-y-4">
                             <InfoItem icon={GraduationCap} label="Qualification" value={participant.qualification} />
                             <InfoItem icon={Briefcase} label="Designation" value={participant.designation} />
-                            <InfoItem icon={Calendar} label="Date of Entry into Service" value={participant.dateOfEntryIntoService ? new Date(participant.dateOfEntryIntoService).toLocaleDateString() : ''} />
-                            <InfoItem icon={Banknote} label="Stipend" value={participant.stipend ? `₹${participant.stipend.toLocaleString()}`: ''} />
                         </CardContent>
                     </Card>
                      <Card>
@@ -188,6 +197,31 @@ export default function AdminTraineeProfilePage() {
                                 })
                             ) : (
                                 <p className="text-muted-foreground">No exam attempts found.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <History className="h-6 w-6 text-primary" />
+                                Service History
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                            <InfoItem icon={Briefcase} label="Designation" value={participant.designation} />
+                            <InfoItem icon={Calendar} label="Date of Entry into Service" value={participant.dateOfEntryIntoService ? new Date(participant.dateOfEntryIntoService).toLocaleDateString() : ''} />
+                            <InfoItem icon={Banknote} label="Stipend" value={participant.stipend ? `₹${participant.stipend.toLocaleString()}`: ''} />
+                            <InfoItem icon={LogOut} label="Left Date" value={participant.leftDate ? new Date(participant.leftDate).toLocaleDateString() : ''} />
+                             {participant.leftRemark && (
+                                <div className="md:col-span-2">
+                                    <Alert variant="destructive">
+                                        <LogOut className="h-4 w-4" />
+                                        <AlertTitle>Exit Remark</AlertTitle>
+                                        <AlertDescription>
+                                            {participant.leftRemark}
+                                        </AlertDescription>
+                                    </Alert>
+                                </div>
                             )}
                         </CardContent>
                     </Card>
