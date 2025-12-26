@@ -106,13 +106,6 @@ export default async function Home2Page() {
           <p className="mt-4 text-lg md:text-xl max-w-2xl mx-auto">
             Welcome to the future of training. Explore our courses and unlock your potential.
           </p>
-           <div className="mt-8 flex justify-center gap-4">
-              <Button asChild size="lg">
-                <Link href="/apply">
-                  <FileText className="mr-2" /> Online Application Form
-                </Link>
-              </Button>
-            </div>
         </div>
       </section>
 
