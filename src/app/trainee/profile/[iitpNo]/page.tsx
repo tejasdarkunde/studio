@@ -206,12 +206,14 @@ export default function TraineeProfilePage() {
                             <InfoItem icon={Banknote} label="Stipend" value={participant.stipend ? `₹${participant.stipend.toLocaleString()}`: ''} />
                             <InfoItem icon={LogOut} label="Left Date" value={participant.leftDate ? new Date(participant.leftDate).toLocaleDateString() : ''} />
                              {participant.leftRemark && (
-                                <div className="md:col-span-2 flex items-start gap-3">
-                                    <LogOut className="h-5 w-5 text-muted-foreground mt-1" />
-                                    <div>
-                                        <p className="text-sm font-semibold text-muted-foreground">Exit Remark</p>
-                                        <p className="text-base">{participant.leftRemark}</p>
-                                    </div>
+                                <div className="md:col-span-2">
+                                    <Alert variant="destructive">
+                                        <LogOut className="h-4 w-4" />
+                                        <AlertTitle>Exit Remark</AlertTitle>
+                                        <AlertDescription>
+                                            {participant.leftRemark}
+                                        </AlertDescription>
+                                    </Alert>
                                 </div>
                             )}
                         </CardContent>
