@@ -166,7 +166,7 @@ export default function ReportsPage() {
                     </CardContent>
                 </Card>
                 <div className="grid gap-8 md:grid-cols-3">
-                    <Card className="md:col-span-1">
+                    <Card className="md:col-span-3">
                         <CardHeader>
                             <CardTitle>Admissions by Organization</CardTitle>
                         </CardHeader>
@@ -220,7 +220,7 @@ export default function ReportsPage() {
                             </ScrollArea>
                         </CardContent>
                     </Card>
-                     <Card className="md:col-span-1">
+                     <Card className="md:col-span-2">
                         <CardHeader>
                             <CardTitle>Course Statistics</CardTitle>
                         </CardHeader>
