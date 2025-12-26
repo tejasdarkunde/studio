@@ -17,6 +17,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 
+const enrollmentSchemes = ["NEEM", "NAPS", "NATS", "MSBTE", "ASDC"];
+
 export default function EditTraineePage() {
     const router = useRouter();
     const { iitpNo } = useParams() as { iitpNo: string };
@@ -77,6 +79,37 @@ export default function EditTraineePage() {
             return { ...prev, enrolledCourses: newCourses };
         });
     }
+
+    const handleSchemeChange = (scheme: string, checked: boolean) => {
+        setFormData(prev => {
+            const currentSchemes = prev.enrollmentScheme || [];
+            const newSchemes = checked
+                ? [...currentSchemes, scheme]
+                : currentSchemes.filter(s => s !== scheme && s !== `Other: ${(prev as any).otherSchemeText}`);
+            
+            if (scheme === 'Other' && !checked) {
+                return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: '' };
+            }
+
+            return { ...prev, enrollmentScheme: newSchemes };
+        });
+    };
+    
+    const handleOtherSchemeTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const text = e.target.value;
+        setFormData(prev => {
+            const otherValue = `Other: ${text}`;
+            // remove old "Other: " value and add new one
+            const newSchemes = prev.enrollmentScheme?.filter(s => !s.startsWith("Other:")) || [];
+            if (text) {
+                newSchemes.push(otherValue);
+            }
+             // Also manage the 'Other' checkbox itself
+            const finalSchemes = text ? Array.from(new Set([...newSchemes, 'Other'])) : newSchemes.filter(s => s !== 'Other');
+
+            return { ...prev, otherSchemeText: text, enrollmentScheme: finalSchemes };
+        });
+    };
     
     const handleSave = async () => {
         if (!participant) return;
@@ -252,6 +285,38 @@ export default function EditTraineePage() {
                             </Select>
                         </div>
                     </div>
+                     <div className="space-y-4">
+                        <Label>Enrollment Scheme</Label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {enrollmentSchemes.map(scheme => (
+                                <div key={scheme} className="flex items-center gap-2">
+                                    <Checkbox 
+                                        id={`scheme-${scheme}`}
+                                        checked={formData.enrollmentScheme?.includes(scheme)}
+                                        onCheckedChange={(checked) => handleSchemeChange(scheme, !!checked)}
+                                    />
+                                    <Label htmlFor={`scheme-${scheme}`} className="font-normal">{scheme}</Label>
+                                </div>
+                            ))}
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="scheme-other"
+                                    checked={formData.enrollmentScheme?.includes('Other')}
+                                    onCheckedChange={(checked) => handleSchemeChange('Other', !!checked)}
+                                />
+                                <Label htmlFor="scheme-other" className="font-normal">Other</Label>
+                            </div>
+                        </div>
+                        {formData.enrollmentScheme?.includes('Other') && (
+                            <div className="pl-4">
+                                <Input 
+                                    placeholder="Please specify other scheme"
+                                    value={(formData as any).otherSchemeText || ''}
+                                    onChange={handleOtherSchemeTextChange}
+                                />
+                            </div>
+                        )}
+                    </div>
                     <div className="space-y-2">
                         <Label>Courses of Interest</Label>
                         <ScrollArea className="h-32 w-full rounded-md border p-2">
@@ -282,3 +347,5 @@ export default function EditTraineePage() {
         </main>
     )
 }
+
+    
