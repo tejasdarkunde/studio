@@ -48,9 +48,10 @@ export default function AdminEditTraineePage() {
                     return;
                 }
                 
-                let scheme = participantData.enrollmentScheme || '';
+                let schemeValue = participantData.enrollmentScheme || '';
+                let scheme = Array.isArray(schemeValue) ? schemeValue[0] || '' : schemeValue;
                 let otherText = '';
-                if (scheme.startsWith('Other: ')) {
+                if (typeof scheme === 'string' && scheme.startsWith('Other: ')) {
                     otherText = scheme.replace('Other: ', '');
                     scheme = 'Other';
                 }
@@ -95,13 +96,7 @@ export default function AdminEditTraineePage() {
     }
 
     const handleSchemeChange = (value: string) => {
-        const isOther = value.startsWith('Other');
-        if (isOther && value.includes(':')) {
-            const otherText = value.split(': ')[1];
-            setFormData(prev => ({ ...prev, enrollmentScheme: 'Other', otherSchemeText: otherText }));
-        } else {
-            setFormData(prev => ({ ...prev, enrollmentScheme: value, otherSchemeText: value === 'Other' ? prev.otherSchemeText : '' }));
-        }
+        setFormData(prev => ({ ...prev, enrollmentScheme: value, otherSchemeText: value === 'Other' ? prev.otherSchemeText : '' }));
     };
     
     const handleOtherSchemeTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -344,3 +339,5 @@ export default function AdminEditTraineePage() {
         </main>
     )
 }
+
+    
