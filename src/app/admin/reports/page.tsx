@@ -66,7 +66,7 @@ export default function ReportsPage() {
     }, [fetchAllData, router]);
     
     const reportStats = useMemo(() => {
-        const admissionsByOrg: { [org: string]: number } = {};
+        const admissionsByOrg: { [org: string]: { total: number; active: number; exited: number } } = {};
         const admissionsByYear: { [year: string]: number } = {};
         const courseEnrollments: { [courseName: string]: Set<string> } = {};
         const courseSessions: { [courseName: string]: Set<string> } = {};
@@ -81,7 +81,15 @@ export default function ReportsPage() {
             }
 
             const org = p.organization || 'N/A';
-            admissionsByOrg[org] = (admissionsByOrg[org] || 0) + 1;
+            if (!admissionsByOrg[org]) {
+                admissionsByOrg[org] = { total: 0, active: 0, exited: 0 };
+            }
+            admissionsByOrg[org].total++;
+            if (p.leftDate) {
+                admissionsByOrg[org].exited++;
+            } else {
+                admissionsByOrg[org].active++;
+            }
 
             const year = p.year || 'N/A';
             admissionsByYear[year] = (admissionsByYear[year] || 0) + 1;
@@ -114,7 +122,7 @@ export default function ReportsPage() {
             totalSessions: batches.length,
             totalOrganizations: organizations.length,
             totalTrainers: trainers.length,
-            admissionsByOrg: Object.entries(admissionsByOrg).map(([org, count]) => ({ org, count })).sort((a, b) => b.count - a.count),
+            admissionsByOrg: Object.entries(admissionsByOrg).map(([org, counts]) => ({ org, ...counts })).sort((a, b) => b.total - a.total),
             admissionsByYear: Object.entries(admissionsByYear).map(([year, count]) => ({ year, count })).sort((a, b) => b.year.localeCompare(a.year)),
             courseStats,
         };
@@ -168,14 +176,18 @@ export default function ReportsPage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Organization</TableHead>
-                                            <TableHead className="text-right">Participants</TableHead>
+                                            <TableHead className="text-right">Active</TableHead>
+                                            <TableHead className="text-right">Exited</TableHead>
+                                            <TableHead className="text-right">Total</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {reportStats.admissionsByOrg.map(item => (
                                             <TableRow key={item.org}>
                                                 <TableCell className="font-medium">{item.org}</TableCell>
-                                                <TableCell className="text-right">{item.count}</TableCell>
+                                                <TableCell className="text-right text-green-600 font-medium">{item.active}</TableCell>
+                                                <TableCell className="text-right text-red-600 font-medium">{item.exited}</TableCell>
+                                                <TableCell className="text-right font-bold">{item.total}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
