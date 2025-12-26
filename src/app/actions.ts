@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import { z } from "zod";
@@ -610,12 +611,14 @@ const participantSchema = z.object({
   stipend: z.number().optional(),
   leftDate: z.string().optional(),
   leftRemark: z.string().optional(),
+  enrollmentScheme: z.array(z.string()).optional(),
 });
 
 
 export async function addParticipant(data: z.infer<typeof participantSchema>): Promise<{ success: boolean; error?: string }> {
     const validatedFields = participantSchema.safeParse(data);
     if (!validatedFields.success) {
+        console.log(validatedFields.error.flatten().fieldErrors);
         return { success: false, error: "Invalid form data." };
     }
     
@@ -653,6 +656,7 @@ export async function updateParticipant(data: z.infer<typeof participantUpdateSc
   const validatedFields = participantSchema.safeParse(participantData);
 
   if (!validatedFields.success) {
+    console.log(validatedFields.error.flatten().fieldErrors);
     return { success: false, error: "Invalid participant data." };
   }
 
@@ -2619,6 +2623,7 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+
 
 
 
