@@ -18,6 +18,7 @@ import { getCourses, getOrganizations, addParticipant, getParticipantByIitpNo, u
 import Link from 'next/link';
 import { Textarea } from "@/components/ui/textarea";
 
+const enrollmentSchemes = ["NEEM", "NAPS", "NATS", "MSBTE", "ASDC"];
 
 export default function ApplyPage() {
     const router = useRouter();
@@ -27,7 +28,7 @@ export default function ApplyPage() {
     const [loading, setLoading] = useState(true);
     const [existingParticipantId, setExistingParticipantId] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState<Partial<Omit<Participant, 'id' | 'createdAt'>>>({
+    const [formData, setFormData] = useState<Partial<Omit<Participant, 'id' | 'createdAt'>> & { otherSchemeText?: string }>({
         name: '',
         iitpNo: '',
         mobile: '',
@@ -49,6 +50,8 @@ export default function ApplyPage() {
         address: '',
         designation: '',
         leftDate: '',
+        enrollmentScheme: [],
+        otherSchemeText: '',
     });
     
     const [isSaving, setIsSaving] = useState(false);
@@ -98,7 +101,7 @@ export default function ApplyPage() {
                 year: '', semester: '', fatherOrHusbandName: '', birthDate: '', aadharCardNo: '',
                 panCardNo: '', bankName: '', bankAccountNo: '', ifscCode: '', email: '',
                 qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '', designation: '',
-                leftDate: '',
+                leftDate: '', enrollmentScheme: [], otherSchemeText: ''
             });
             setExistingParticipantId(null);
         } else {
@@ -129,6 +132,43 @@ export default function ApplyPage() {
     const handleSelectChange = (id: keyof Participant, value: string) => {
         setFormData(prev => ({ ...prev, [id]: value }));
     }
+    
+    const handleSchemeChange = (scheme: string, checked: boolean) => {
+        setFormData(prev => {
+            const currentSchemes = prev.enrollmentScheme || [];
+            let newSchemes: string[];
+
+            if (checked) {
+                newSchemes = [...currentSchemes, scheme];
+            } else {
+                newSchemes = currentSchemes.filter(s => s !== scheme);
+                // If 'Other' is unchecked, also clear the 'Other' text value
+                if (scheme === 'Other') {
+                    newSchemes = newSchemes.filter(s => !s.startsWith('Other: '));
+                }
+            }
+            
+            const otherText = scheme === 'Other' && !checked ? '' : prev.otherSchemeText;
+
+            return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: otherText };
+        });
+    };
+
+    const handleOtherSchemeTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const text = e.target.value;
+        setFormData(prev => {
+            const otherValue = `Other: ${text}`;
+            // remove old "Other: " value and add new one
+            const newSchemes = prev.enrollmentScheme?.filter(s => !s.startsWith("Other:")) || [];
+            if (text) {
+                newSchemes.push(otherValue);
+            }
+             // Also manage the 'Other' checkbox itself
+            const finalSchemes = text ? Array.from(new Set([...newSchemes, 'Other'])) : newSchemes.filter(s => s !== 'Other');
+
+            return { ...prev, otherSchemeText: text, enrollmentScheme: finalSchemes };
+        });
+    };
 
     const handleIitpNoBlur = async () => {
         if (!formData.iitpNo?.trim()) return;
@@ -142,6 +182,8 @@ export default function ApplyPage() {
                 title: "Participant Found",
                 description: "Your details have been pre-filled. Please review and update if necessary.",
             });
+            const otherScheme = participant.enrollmentScheme?.find(s => s.startsWith('Other: '));
+
             setFormData({
                 name: participant.name || '',
                 iitpNo: participant.iitpNo || '',
@@ -167,6 +209,8 @@ export default function ApplyPage() {
                 designation: participant.designation || '',
                 stipend: participant.stipend,
                 leftDate: participant.leftDate ? new Date(participant.leftDate).toISOString().split('T')[0] : '',
+                enrollmentScheme: participant.enrollmentScheme || [],
+                otherSchemeText: otherScheme ? otherScheme.replace('Other: ', '') : '',
             });
             setExistingParticipantId(participant.id);
         } else {
@@ -317,6 +361,38 @@ export default function ApplyPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+                     <div className="space-y-4">
+                        <Label>Enrollment Scheme</Label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {enrollmentSchemes.map(scheme => (
+                                <div key={scheme} className="flex items-center gap-2">
+                                    <Checkbox 
+                                        id={`scheme-${scheme}`}
+                                        checked={formData.enrollmentScheme?.includes(scheme)}
+                                        onCheckedChange={(checked) => handleSchemeChange(scheme, !!checked)}
+                                    />
+                                    <Label htmlFor={`scheme-${scheme}`} className="font-normal">{scheme}</Label>
+                                </div>
+                            ))}
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="scheme-other"
+                                    checked={formData.enrollmentScheme?.includes('Other')}
+                                    onCheckedChange={(checked) => handleSchemeChange('Other', !!checked)}
+                                />
+                                <Label htmlFor="scheme-other" className="font-normal">Other</Label>
+                            </div>
+                        </div>
+                        {formData.enrollmentScheme?.includes('Other') && (
+                            <div className="pl-4">
+                                <Input 
+                                    placeholder="Please specify other scheme"
+                                    value={formData.otherSchemeText || ''}
+                                    onChange={handleOtherSchemeTextChange}
+                                />
+                            </div>
+                        )}
                     </div>
                     <div className="space-y-2">
                         <Label>Courses of Interest</Label>

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -24,7 +25,7 @@ export default function EditTraineePage() {
     const { iitpNo } = useParams() as { iitpNo: string };
     
     const [participant, setParticipant] = useState<Participant | null>(null);
-    const [formData, setFormData] = useState<Partial<Participant>>({});
+    const [formData, setFormData] = useState<Partial<Participant> & { otherSchemeText?: string }>({});
     const [courses, setCourses] = useState<Course[]>([]);
     const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,8 +46,14 @@ export default function EditTraineePage() {
                     notFound();
                     return;
                 }
+
+                const otherScheme = participantData.enrollmentScheme?.find(s => s.startsWith('Other: '));
+
                 setParticipant(participantData);
-                setFormData(participantData);
+                setFormData({
+                    ...participantData,
+                    otherSchemeText: otherScheme ? otherScheme.replace('Other: ', '') : '',
+                });
                 setCourses(coursesData);
                 setOrganizations(orgsData);
             } catch (error) {
@@ -83,15 +90,21 @@ export default function EditTraineePage() {
     const handleSchemeChange = (scheme: string, checked: boolean) => {
         setFormData(prev => {
             const currentSchemes = prev.enrollmentScheme || [];
-            const newSchemes = checked
-                ? [...currentSchemes, scheme]
-                : currentSchemes.filter(s => s !== scheme && s !== `Other: ${(prev as any).otherSchemeText}`);
-            
-            if (scheme === 'Other' && !checked) {
-                return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: '' };
-            }
+            let newSchemes: string[];
 
-            return { ...prev, enrollmentScheme: newSchemes };
+            if (checked) {
+                newSchemes = [...currentSchemes, scheme];
+            } else {
+                newSchemes = currentSchemes.filter(s => s !== scheme);
+                // If 'Other' is unchecked, also clear the 'Other' text value
+                if (scheme === 'Other') {
+                    newSchemes = newSchemes.filter(s => !s.startsWith('Other: '));
+                }
+            }
+            
+            const otherText = scheme === 'Other' && !checked ? '' : prev.otherSchemeText;
+
+            return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: otherText };
         });
     };
     
@@ -311,7 +324,7 @@ export default function EditTraineePage() {
                             <div className="pl-4">
                                 <Input 
                                     placeholder="Please specify other scheme"
-                                    value={(formData as any).otherSchemeText || ''}
+                                    value={formData.otherSchemeText || ''}
                                     onChange={handleOtherSchemeTextChange}
                                 />
                             </div>

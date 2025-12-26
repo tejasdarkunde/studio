@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -27,7 +28,7 @@ export default function NewAdmissionPage() {
     const [loading, setLoading] = useState(true);
     const [existingParticipantId, setExistingParticipantId] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState<Partial<Omit<Participant, 'id' | 'createdAt'>>>({
+    const [formData, setFormData] = useState<Partial<Omit<Participant, 'id' | 'createdAt'>> & { otherSchemeText?: string }>({
         name: '',
         iitpNo: '',
         mobile: '',
@@ -50,6 +51,7 @@ export default function NewAdmissionPage() {
         designation: '',
         leftDate: '',
         enrollmentScheme: [],
+        otherSchemeText: '',
     });
     
     const [isSaving, setIsSaving] = useState(false);
@@ -105,7 +107,7 @@ export default function NewAdmissionPage() {
                 year: '', semester: '', fatherOrHusbandName: '', birthDate: '', aadharCardNo: '',
                 panCardNo: '', bankName: '', bankAccountNo: '', ifscCode: '', email: '',
                 qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '', designation: '',
-                leftDate: '', enrollmentScheme: []
+                leftDate: '', enrollmentScheme: [], otherSchemeText: ''
             });
             setExistingParticipantId(null);
         } else {
@@ -140,15 +142,21 @@ export default function NewAdmissionPage() {
     const handleSchemeChange = (scheme: string, checked: boolean) => {
         setFormData(prev => {
             const currentSchemes = prev.enrollmentScheme || [];
-            const newSchemes = checked
-                ? [...currentSchemes, scheme]
-                : currentSchemes.filter(s => s !== scheme && s !== `Other: ${formData.otherSchemeText}`);
-            
-            if (scheme === 'Other' && !checked) {
-                return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: '' };
-            }
+            let newSchemes: string[];
 
-            return { ...prev, enrollmentScheme: newSchemes };
+            if (checked) {
+                newSchemes = [...currentSchemes, scheme];
+            } else {
+                newSchemes = currentSchemes.filter(s => s !== scheme);
+                // If 'Other' is unchecked, also clear the 'Other' text value
+                if (scheme === 'Other') {
+                    newSchemes = newSchemes.filter(s => !s.startsWith('Other: '));
+                }
+            }
+            
+            const otherText = scheme === 'Other' && !checked ? '' : prev.otherSchemeText;
+
+            return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: otherText };
         });
     };
     
