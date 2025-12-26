@@ -14,7 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2, Filter, X, Search, Eye, Pencil, LogOut } from "lucide-react";
+import { Download, RefreshCw, Loader2, Filter, X, Search, Eye, Pencil, LogOut, ArrowUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
@@ -34,6 +34,9 @@ type ParticipantsTableProps = {
   profilePath?: string;
 };
 
+type SortKey = 'name' | 'iitpNo';
+type SortDirection = 'asc' | 'desc';
+
 export function ParticipantsTable({ participants, organizations, onUpdateSelected, onDataRefreshed, defaultOrganization, profilePath = '/supervisor/trainees' }: ParticipantsTableProps) {
   const { toast } = useToast();
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
@@ -48,6 +51,9 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
   const [filterOrganization, setFilterOrganization] = useState(defaultOrganization || 'all');
   const [filterLeftStatus, setFilterLeftStatus] = useState<'all' | 'active' | 'exited'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
   const [exitingParticipant, setExitingParticipant] = useState<Participant | null>(null);
 
@@ -61,8 +67,8 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
     return Array.from(semesters).sort();
   }, [participants]);
 
-  const filteredParticipants = useMemo(() => {
-      return participants.filter(p => {
+  const filteredAndSortedParticipants = useMemo(() => {
+      const filtered = participants.filter(p => {
           const yearMatch = filterYear === 'all' || p.year === filterYear;
           const semesterMatch = filterSemester === 'all' || p.semester === filterSemester;
           const enrollmentMatch = filterEnrollment === 'all' || p.enrollmentSeason === filterEnrollment;
@@ -75,8 +81,27 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                               p.iitpNo.toLowerCase().includes(searchTerm.toLowerCase());
           return yearMatch && semesterMatch && enrollmentMatch && searchMatch && organizationMatch && leftStatusMatch;
       });
-  }, [participants, filterYear, filterSemester, filterEnrollment, searchTerm, filterOrganization, filterLeftStatus]);
 
+      return filtered.sort((a, b) => {
+          const valA = a[sortKey] || '';
+          const valB = b[sortKey] || '';
+          if (sortDirection === 'asc') {
+              return valA.localeCompare(valB, undefined, { numeric: true });
+          } else {
+              return valB.localeCompare(valA, undefined, { numeric: true });
+          }
+      });
+
+  }, [participants, filterYear, filterSemester, filterEnrollment, searchTerm, filterOrganization, filterLeftStatus, sortKey, sortDirection]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  }
 
   const handleSelectRow = (id: string) => {
     setSelectedRows(prev => {
@@ -92,7 +117,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-        setSelectedRows(new Set(filteredParticipants.map(p => p.id)));
+        setSelectedRows(new Set(filteredAndSortedParticipants.map(p => p.id)));
     } else {
         setSelectedRows(new Set());
     }
@@ -100,7 +125,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
 
   // A simple CSV export for participants
   const handleExport = () => {
-    if (filteredParticipants.length === 0) {
+    if (filteredAndSortedParticipants.length === 0) {
       toast({
         variant: 'destructive',
         title: "No Data",
@@ -109,7 +134,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
       return;
     }
     const headers = "Name,IITP No,Mobile No,Organization,Year,Semester,Enrollment,Enrolled Courses,Father/Husband Name,Date of Birth,Aadhar No,PAN No,Bank Name,Account No,IFSC Code,Email,Sex,Qualification,Pass-out Year,Date of Entry into Service,Address,Designation,Stipend,Left Date,Left Remark,Date Added\n";
-    const csvRows = filteredParticipants.map(p => {
+    const csvRows = filteredAndSortedParticipants.map(p => {
       const enrolledCourses = p.enrolledCourses?.join('; ') || '';
       const row = [
         p.name, p.iitpNo, p.mobile, p.organization, p.year, p.semester, p.enrollmentSeason, enrolledCourses,
@@ -327,7 +352,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
         <div className="flex flex-row items-center justify-between mt-6">
             <div>
               <h3 className="text-lg font-medium">Full Participant Directory</h3>
-              <p className="text-sm text-muted-foreground">{filteredParticipants.length} of {participants.length} participants shown.</p>
+              <p className="text-sm text-muted-foreground">{filteredAndSortedParticipants.length} of {participants.length} participants shown.</p>
             </div>
         </div>
 
@@ -338,13 +363,21 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                   <TableRow>
                       <TableHead className="w-[50px]">
                           <Checkbox
-                              checked={selectedRows.size === filteredParticipants.length && filteredParticipants.length > 0}
+                              checked={selectedRows.size === filteredAndSortedParticipants.length && filteredAndSortedParticipants.length > 0}
                               onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                              disabled={filteredParticipants.length === 0}
+                              disabled={filteredAndSortedParticipants.length === 0}
                           />
                       </TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>IITP No</TableHead>
+                      <TableHead>
+                        <Button variant="ghost" onClick={() => handleSort('name')}>
+                          Name <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button variant="ghost" onClick={() => handleSort('iitpNo')}>
+                          IITP No <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
                       <TableHead>Enrolled Courses</TableHead>
                       <TableHead>Year</TableHead>
                       <TableHead>Semester</TableHead>
@@ -352,8 +385,8 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                   </TableRow>
               </TableHeader>
               <TableBody>
-                  {filteredParticipants.length > 0 ? (
-                  filteredParticipants.map((p) => (
+                  {filteredAndSortedParticipants.length > 0 ? (
+                  filteredAndSortedParticipants.map((p) => (
                       <TableRow key={p.id} data-state={selectedRows.has(p.id) && "selected"}>
                           <TableCell>
                               <Checkbox
