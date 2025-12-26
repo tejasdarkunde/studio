@@ -10,9 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 
 const InfoItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string | number | null }) => {
     if (!value) return null;
@@ -209,7 +208,7 @@ export default function TraineeProfilePage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
-                            <InfoItem icon={Award} label="Enrollment Scheme" value={participant.enrollmentScheme?.join(', ')} />
+                            <InfoItem icon={Award} label="Enrollment Scheme" value={participant.enrollmentScheme} />
                             <InfoItem icon={Briefcase} label="Designation" value={participant.designation} />
                             <InfoItem icon={Calendar} label="Date of Entry into Service" value={participant.dateOfEntryIntoService ? new Date(participant.dateOfEntryIntoService).toLocaleDateString() : ''} />
                             <InfoItem icon={Banknote} label="Stipend" value={participant.stipend ? `₹${participant.stipend.toLocaleString()}`: ''} />

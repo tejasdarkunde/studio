@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const enrollmentSchemes = ["NEEM", "NAPS", "NATS", "MSBTE", "ASDC"];
 
@@ -46,12 +47,19 @@ export default function AdminEditTraineePage() {
                     notFound();
                     return;
                 }
-                const otherScheme = participantData.enrollmentScheme?.find(s => s.startsWith('Other: '));
+                
+                let scheme = participantData.enrollmentScheme || '';
+                let otherText = '';
+                if (scheme.startsWith('Other: ')) {
+                    otherText = scheme.replace('Other: ', '');
+                    scheme = 'Other';
+                }
 
                 setParticipant(participantData);
                 setFormData({
                     ...participantData,
-                    otherSchemeText: otherScheme ? otherScheme.replace('Other: ', '') : '',
+                    enrollmentScheme: scheme,
+                    otherSchemeText: otherText,
                 });
                 setCourses(coursesData);
                 setOrganizations(orgsData);
@@ -86,53 +94,34 @@ export default function AdminEditTraineePage() {
         });
     }
 
-    const handleSchemeChange = (scheme: string, checked: boolean) => {
-        setFormData(prev => {
-            let currentSchemes = prev.enrollmentScheme || [];
-            let newSchemes: string[];
-
-            if (checked) {
-                newSchemes = [...currentSchemes, scheme];
-            } else {
-                newSchemes = currentSchemes.filter(s => s !== scheme);
-            }
-            
-            // If 'Other' is unchecked, also clear the 'Other' text value and its specific entry
-            const otherText = scheme === 'Other' && !checked ? '' : prev.otherSchemeText;
-            if (scheme === 'Other' && !checked) {
-                newSchemes = newSchemes.filter(s => !s.startsWith('Other: '));
-            }
-
-            return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: otherText };
-        });
+    const handleSchemeChange = (value: string) => {
+        const isOther = value.startsWith('Other');
+        if (isOther && value.includes(':')) {
+            const otherText = value.split(': ')[1];
+            setFormData(prev => ({ ...prev, enrollmentScheme: 'Other', otherSchemeText: otherText }));
+        } else {
+            setFormData(prev => ({ ...prev, enrollmentScheme: value, otherSchemeText: value === 'Other' ? prev.otherSchemeText : '' }));
+        }
     };
     
     const handleOtherSchemeTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const text = e.target.value;
-        setFormData(prev => {
-            const otherValue = `Other: ${text}`;
-            // remove old "Other: " value and add new one
-            let newSchemes = prev.enrollmentScheme?.filter(s => !s.startsWith("Other:")) || [];
-            if (text) {
-                newSchemes.push(otherValue);
-            }
-             // Also manage the 'Other' checkbox itself
-            if (text) {
-                if (!newSchemes.includes('Other')) newSchemes.push('Other');
-            } else {
-                newSchemes = newSchemes.filter(s => s !== 'Other');
-            }
-
-            return { ...prev, otherSchemeText: text, enrollmentScheme: newSchemes };
-        });
+        setFormData(prev => ({ ...prev, otherSchemeText: text }));
     };
     
     const handleSave = async () => {
         if (!participant) return;
 
         setIsSaving(true);
+        
+        const dataToSave = { ...formData };
+        if (formData.enrollmentScheme === 'Other' && formData.otherSchemeText) {
+            dataToSave.enrollmentScheme = `Other: ${formData.otherSchemeText}`;
+        }
+        delete dataToSave.otherSchemeText;
+
         const result = await updateParticipant({
-          ...formData,
+          ...dataToSave,
           id: participant.id
         } as Participant);
 
@@ -303,27 +292,19 @@ export default function AdminEditTraineePage() {
                     </div>
                     <div className="space-y-4">
                         <Label>Enrollment Scheme</Label>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <RadioGroup value={formData.enrollmentScheme} onValueChange={handleSchemeChange} className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {enrollmentSchemes.map(scheme => (
                                 <div key={scheme} className="flex items-center gap-2">
-                                    <Checkbox 
-                                        id={`scheme-${scheme}`}
-                                        checked={formData.enrollmentScheme?.includes(scheme)}
-                                        onCheckedChange={(checked) => handleSchemeChange(scheme, !!checked)}
-                                    />
+                                    <RadioGroupItem value={scheme} id={`scheme-${scheme}`} />
                                     <Label htmlFor={`scheme-${scheme}`} className="font-normal">{scheme}</Label>
                                 </div>
                             ))}
                             <div className="flex items-center gap-2">
-                                <Checkbox
-                                    id="scheme-other"
-                                    checked={formData.enrollmentScheme?.includes('Other')}
-                                    onCheckedChange={(checked) => handleSchemeChange('Other', !!checked)}
-                                />
+                                <RadioGroupItem value="Other" id="scheme-other" />
                                 <Label htmlFor="scheme-other" className="font-normal">Other</Label>
                             </div>
-                        </div>
-                        {formData.enrollmentScheme?.includes('Other') && (
+                        </RadioGroup>
+                        {formData.enrollmentScheme === 'Other' && (
                             <div className="pl-4">
                                 <Input 
                                     placeholder="Please specify other scheme"
@@ -363,5 +344,3 @@ export default function AdminEditTraineePage() {
         </main>
     )
 }
-
-    
