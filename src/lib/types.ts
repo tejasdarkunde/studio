@@ -114,6 +114,7 @@ export type Participant = {
     stipend?: number;
     leftDate?: string;
     leftRemark?: string;
+    enrollmentScheme?: string[];
 };
 
 export type Lesson = {

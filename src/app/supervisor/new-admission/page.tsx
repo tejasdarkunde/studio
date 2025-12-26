@@ -17,6 +17,8 @@ import { getCourses, getOrganizations, addParticipant, getParticipantByIitpNo, u
 import Link from 'next/link';
 import { Textarea } from "@/components/ui/textarea";
 
+const enrollmentSchemes = ["NEEM", "NAPS", "NATS", "MSBTE", "ASDC"];
+
 export default function NewAdmissionPage() {
     const router = useRouter();
 
@@ -47,6 +49,7 @@ export default function NewAdmissionPage() {
         address: '',
         designation: '',
         leftDate: '',
+        enrollmentScheme: [],
     });
     
     const [isSaving, setIsSaving] = useState(false);
@@ -102,7 +105,7 @@ export default function NewAdmissionPage() {
                 year: '', semester: '', fatherOrHusbandName: '', birthDate: '', aadharCardNo: '',
                 panCardNo: '', bankName: '', bankAccountNo: '', ifscCode: '', email: '',
                 qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '', designation: '',
-                leftDate: '',
+                leftDate: '', enrollmentScheme: []
             });
             setExistingParticipantId(null);
         } else {
@@ -134,6 +137,37 @@ export default function NewAdmissionPage() {
         setFormData(prev => ({ ...prev, [id]: value }));
     }
 
+    const handleSchemeChange = (scheme: string, checked: boolean) => {
+        setFormData(prev => {
+            const currentSchemes = prev.enrollmentScheme || [];
+            const newSchemes = checked
+                ? [...currentSchemes, scheme]
+                : currentSchemes.filter(s => s !== scheme && s !== `Other: ${formData.otherSchemeText}`);
+            
+            if (scheme === 'Other' && !checked) {
+                return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: '' };
+            }
+
+            return { ...prev, enrollmentScheme: newSchemes };
+        });
+    };
+    
+    const handleOtherSchemeTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const text = e.target.value;
+        setFormData(prev => {
+            const otherValue = `Other: ${text}`;
+            // remove old "Other: " value and add new one
+            const newSchemes = prev.enrollmentScheme?.filter(s => !s.startsWith("Other:")) || [];
+            if (text) {
+                newSchemes.push(otherValue);
+            }
+             // Also manage the 'Other' checkbox itself
+            const finalSchemes = text ? Array.from(new Set([...newSchemes, 'Other'])) : newSchemes.filter(s => s !== 'Other');
+
+            return { ...prev, otherSchemeText: text, enrollmentScheme: finalSchemes };
+        });
+    };
+
     const handleIitpNoBlur = async () => {
         if (!formData.iitpNo?.trim()) return;
 
@@ -146,6 +180,8 @@ export default function NewAdmissionPage() {
                 title: "Participant Found",
                 description: "Details have been pre-filled. Please review and update if necessary.",
             });
+            const otherScheme = participant.enrollmentScheme?.find(s => s.startsWith('Other: '));
+
             setFormData({
                 name: participant.name || '',
                 iitpNo: participant.iitpNo || '',
@@ -171,6 +207,8 @@ export default function NewAdmissionPage() {
                 designation: participant.designation || '',
                 stipend: participant.stipend,
                 leftDate: participant.leftDate ? new Date(participant.leftDate).toISOString().split('T')[0] : '',
+                enrollmentScheme: participant.enrollmentScheme || [],
+                otherSchemeText: otherScheme ? otherScheme.replace('Other: ', '') : '',
             });
             setExistingParticipantId(participant.id);
         } else {
@@ -317,6 +355,38 @@ export default function NewAdmissionPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+                    <div className="space-y-4">
+                        <Label>Enrollment Scheme</Label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {enrollmentSchemes.map(scheme => (
+                                <div key={scheme} className="flex items-center gap-2">
+                                    <Checkbox 
+                                        id={`scheme-${scheme}`}
+                                        checked={formData.enrollmentScheme?.includes(scheme)}
+                                        onCheckedChange={(checked) => handleSchemeChange(scheme, !!checked)}
+                                    />
+                                    <Label htmlFor={`scheme-${scheme}`} className="font-normal">{scheme}</Label>
+                                </div>
+                            ))}
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="scheme-other"
+                                    checked={formData.enrollmentScheme?.includes('Other')}
+                                    onCheckedChange={(checked) => handleSchemeChange('Other', !!checked)}
+                                />
+                                <Label htmlFor="scheme-other" className="font-normal">Other</Label>
+                            </div>
+                        </div>
+                        {formData.enrollmentScheme?.includes('Other') && (
+                            <div className="pl-4">
+                                <Input 
+                                    placeholder="Please specify other scheme"
+                                    value={(formData as any).otherSchemeText || ''}
+                                    onChange={handleOtherSchemeTextChange}
+                                />
+                            </div>
+                        )}
                     </div>
                     <div className="space-y-2">
                         <Label>Courses of Interest</Label>
