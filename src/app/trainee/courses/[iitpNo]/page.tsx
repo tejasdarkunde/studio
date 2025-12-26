@@ -1,5 +1,4 @@
 
-
 import { getCourses, getParticipantByIitpNo } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,8 +71,15 @@ export default async function TraineeCoursesPage({ params }: TraineeCoursesPageP
         <main className="container mx-auto p-4 md:p-8">
             <Card className="mb-12 bg-secondary/50">
                 <CardHeader>
-                    <CardTitle className="text-2xl">Welcome back, {participant.name}!</CardTitle>
-                    <CardDescription>We're glad to see you.</CardDescription>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle className="text-2xl">Welcome back, {participant.name}!</CardTitle>
+                            <CardDescription>We're glad to see you.</CardDescription>
+                        </div>
+                        <Button asChild variant="outline">
+                            <Link href={`/trainee/profile/${iitpNo}`}>View Profile</Link>
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2">

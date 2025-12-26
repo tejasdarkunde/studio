@@ -8,6 +8,8 @@ import { useParams, usePathname } from 'next/navigation';
 import { getParticipantByIitpNo } from '@/app/actions';
 import type { Participant } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Home, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function TraineeLayout({
   children,
@@ -31,6 +33,11 @@ export default function TraineeLayout({
 
   const isExamPage = pathname.includes('/trainee/exam/');
 
+  const navItems = [
+    { href: `/trainee/courses/${iitpNo}`, label: 'My Courses', icon: Home },
+    { href: `/trainee/profile/${iitpNo}`, label: 'My Profile', icon: User },
+  ];
+
   return (
     <div className="min-h-screen flex flex-col">
       {!isExamPage && (
@@ -53,6 +60,25 @@ export default function TraineeLayout({
         </header>
       )}
       <main className="flex-grow">
+        {!isExamPage && (
+          <div className="container mx-auto px-4 md:px-8 mt-6">
+            <div className="flex items-center gap-2 rounded-lg border p-1 bg-muted max-w-sm">
+              {navItems.map(item => (
+                <Button 
+                    key={item.href}
+                    asChild 
+                    variant={pathname === item.href ? 'default' : 'ghost'} 
+                    className={cn("flex-1 justify-start", pathname === item.href && "shadow-sm")}
+                >
+                    <Link href={item.href} >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {item.label}
+                    </Link>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
         {children}
       </main>
     </div>
