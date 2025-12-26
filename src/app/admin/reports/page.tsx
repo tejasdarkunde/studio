@@ -70,8 +70,16 @@ export default function ReportsPage() {
         const admissionsByYear: { [year: string]: number } = {};
         const courseEnrollments: { [courseName: string]: Set<string> } = {};
         const courseSessions: { [courseName: string]: Set<string> } = {};
+        let activeParticipants = 0;
+        let exitedParticipants = 0;
 
         participants.forEach(p => {
+            if (p.leftDate) {
+                exitedParticipants++;
+            } else {
+                activeParticipants++;
+            }
+
             const org = p.organization || 'N/A';
             admissionsByOrg[org] = (admissionsByOrg[org] || 0) + 1;
 
@@ -101,6 +109,8 @@ export default function ReportsPage() {
 
         return {
             totalParticipants: participants.length,
+            activeParticipants,
+            exitedParticipants,
             totalSessions: batches.length,
             totalOrganizations: organizations.length,
             totalTrainers: trainers.length,
@@ -135,7 +145,12 @@ export default function ReportsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <StatCard title="Total Participants" value={reportStats.totalParticipants} icon={Users} />
+                            <StatCard 
+                                title="Total Participants" 
+                                value={reportStats.totalParticipants} 
+                                icon={Users} 
+                                description={`${reportStats.activeParticipants} active, ${reportStats.exitedParticipants} exited`}
+                            />
                             <StatCard title="Total Sessions Conducted" value={reportStats.totalSessions} icon={Presentation} />
                             <StatCard title="Unique Organizations" value={reportStats.totalOrganizations} icon={Building} />
                             <StatCard title="Registered Trainers" value={reportStats.totalTrainers} icon={UserCog} />
