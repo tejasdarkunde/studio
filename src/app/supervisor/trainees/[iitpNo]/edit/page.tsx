@@ -89,20 +89,20 @@ export default function EditTraineePage() {
 
     const handleSchemeChange = (scheme: string, checked: boolean) => {
         setFormData(prev => {
-            const currentSchemes = prev.enrollmentScheme || [];
+            let currentSchemes = prev.enrollmentScheme || [];
             let newSchemes: string[];
 
             if (checked) {
                 newSchemes = [...currentSchemes, scheme];
             } else {
                 newSchemes = currentSchemes.filter(s => s !== scheme);
-                // If 'Other' is unchecked, also clear the 'Other' text value
-                if (scheme === 'Other') {
-                    newSchemes = newSchemes.filter(s => !s.startsWith('Other: '));
-                }
             }
             
+            // If 'Other' is unchecked, also clear the 'Other' text value and its specific entry
             const otherText = scheme === 'Other' && !checked ? '' : prev.otherSchemeText;
+            if (scheme === 'Other' && !checked) {
+                newSchemes = newSchemes.filter(s => !s.startsWith('Other: '));
+            }
 
             return { ...prev, enrollmentScheme: newSchemes, otherSchemeText: otherText };
         });
@@ -113,14 +113,18 @@ export default function EditTraineePage() {
         setFormData(prev => {
             const otherValue = `Other: ${text}`;
             // remove old "Other: " value and add new one
-            const newSchemes = prev.enrollmentScheme?.filter(s => !s.startsWith("Other:")) || [];
+            let newSchemes = prev.enrollmentScheme?.filter(s => !s.startsWith("Other:")) || [];
             if (text) {
                 newSchemes.push(otherValue);
             }
              // Also manage the 'Other' checkbox itself
-            const finalSchemes = text ? Array.from(new Set([...newSchemes, 'Other'])) : newSchemes.filter(s => s !== 'Other');
+            if (text) {
+                if (!newSchemes.includes('Other')) newSchemes.push('Other');
+            } else {
+                newSchemes = newSchemes.filter(s => s !== 'Other');
+            }
 
-            return { ...prev, otherSchemeText: text, enrollmentScheme: finalSchemes };
+            return { ...prev, otherSchemeText: text, enrollmentScheme: newSchemes };
         });
     };
     
