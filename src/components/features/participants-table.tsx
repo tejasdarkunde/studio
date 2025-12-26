@@ -366,12 +366,12 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                                       <Eye className="h-4 w-4" />
                                   </Link>
                               </Button>
-                              <Button asChild variant="ghost" size="icon">
+                              <Button asChild variant="ghost" size="icon" disabled={!!p.leftDate}>
                                   <Link href={`${profilePath}/${p.iitpNo}/edit`}>
                                       <Pencil className="h-4 w-4" />
                                   </Link>
                               </Button>
-                               <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setExitingParticipant(p)}>
+                               <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setExitingParticipant(p)} disabled={!!p.leftDate}>
                                     <LogOut className="h-4 w-4" />
                                </Button>
                           </TableCell>
