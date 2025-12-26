@@ -46,6 +46,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
   const [filterSemester, setFilterSemester] = useState('all');
   const [filterEnrollment, setFilterEnrollment] = useState<'Summer' | 'Winter' | 'all'>('all');
   const [filterOrganization, setFilterOrganization] = useState(defaultOrganization || 'all');
+  const [filterLeftStatus, setFilterLeftStatus] = useState<'all' | 'active' | 'exited'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
   const [exitingParticipant, setExitingParticipant] = useState<Participant | null>(null);
@@ -66,12 +67,15 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
           const semesterMatch = filterSemester === 'all' || p.semester === filterSemester;
           const enrollmentMatch = filterEnrollment === 'all' || p.enrollmentSeason === filterEnrollment;
           const organizationMatch = filterOrganization === 'all' || p.organization === filterOrganization;
+          const leftStatusMatch = filterLeftStatus === 'all' ||
+                                  (filterLeftStatus === 'active' && !p.leftDate) ||
+                                  (filterLeftStatus === 'exited' && !!p.leftDate);
           const searchMatch = searchTerm.trim() === '' || 
                               p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                               p.iitpNo.toLowerCase().includes(searchTerm.toLowerCase());
-          return yearMatch && semesterMatch && enrollmentMatch && searchMatch && organizationMatch;
+          return yearMatch && semesterMatch && enrollmentMatch && searchMatch && organizationMatch && leftStatusMatch;
       });
-  }, [participants, filterYear, filterSemester, filterEnrollment, searchTerm, filterOrganization]);
+  }, [participants, filterYear, filterSemester, filterEnrollment, searchTerm, filterOrganization, filterLeftStatus]);
 
 
   const handleSelectRow = (id: string) => {
@@ -171,6 +175,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
       setFilterYear('all');
       setFilterSemester('all');
       setFilterEnrollment('all');
+      setFilterLeftStatus('all');
       if (!defaultOrganization) {
         setFilterOrganization('all');
       }
@@ -251,7 +256,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                       className="pl-10"
                   />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                   <div className="space-y-2">
                       <Label htmlFor="filter-year">Year</Label>
                       <Select onValueChange={setFilterYear} value={filterYear}>
@@ -294,6 +299,17 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                           <SelectContent>
                               <SelectItem value="all">All Organizations</SelectItem>
                               {organizations.map(org => <SelectItem key={org.id} value={org.name}>{org.name}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="filter-left-status">Left Status</Label>
+                      <Select onValueChange={(v: 'all' | 'active' | 'exited') => setFilterLeftStatus(v)} value={filterLeftStatus}>
+                          <SelectTrigger id="filter-left-status"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="all">All Statuses</SelectItem>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="exited">Exited</SelectItem>
                           </SelectContent>
                       </Select>
                   </div>
