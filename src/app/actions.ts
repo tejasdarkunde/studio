@@ -1,5 +1,3 @@
-
-
 "use server";
 
 import { z } from "zod";
@@ -462,72 +460,55 @@ export async function deleteBatch(batchId: string): Promise<{ success: boolean, 
     }
 }
 
+const processParticipantDoc = (doc: any): Participant => {
+    const data = doc.data();
+    const createdAt = data.createdAt as Timestamp;
+
+    // This is the fix: convert nested timestamps inside examProgress
+    const examProgress = data.examProgress || {};
+    for(const examId in examProgress) {
+        const attempt = examProgress[examId];
+        if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
+            attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
+        }
+         if(attempt.startedAt && attempt.startedAt instanceof Timestamp) {
+            attempt.startedAt = attempt.startedAt.toDate().toISOString();
+        }
+    }
+
+    return {
+        id: doc.id,
+        ...data,
+        createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+        examProgress: examProgress,
+    } as Participant;
+}
+
+
 export async function getParticipants(): Promise<Participant[]> {
     try {
         const participantsCollectionRef = collection(db, "participants");
         const q = query(participantsCollectionRef, orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
 
-        const participants = snapshot.docs.map(doc => {
-            const data = doc.data();
-            const createdAt = data.createdAt as Timestamp;
-
-            // This is the fix: convert nested timestamps inside examProgress
-            const examProgress = data.examProgress || {};
-            for(const examId in examProgress) {
-                const attempt = examProgress[examId];
-                if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
-                    attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
-                }
-                 if(attempt.startedAt && attempt.startedAt instanceof Timestamp) {
-                    attempt.startedAt = attempt.startedAt.toDate().toISOString();
-                }
-            }
-
-            return {
-                id: doc.id,
-                ...data,
-                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-                examProgress: examProgress,
-            } as Participant;
-        });
+        const participants = snapshot.docs.map(processParticipantDoc);
 
         return participants;
 
     } catch (error) {
-        console.error("Error fetching participants with courses:", error);
+        console.error("Error fetching participants:", error);
         return [];
     }
 }
 
 export async function getParticipantsByOrganization(organization: string): Promise<Participant[]> {
+    if (!organization) return [];
     try {
         const participantsCollectionRef = collection(db, "participants");
         const q = query(participantsCollectionRef, where("organization", "==", organization), orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
 
-        const participants = snapshot.docs.map(doc => {
-            const data = doc.data();
-            const createdAt = data.createdAt as Timestamp;
-
-            const examProgress = data.examProgress || {};
-            for(const examId in examProgress) {
-                const attempt = examProgress[examId];
-                if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
-                    attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
-                }
-                 if(attempt.startedAt && attempt.startedAt instanceof Timestamp) {
-                    attempt.startedAt = attempt.startedAt.toDate().toISOString();
-                }
-            }
-
-            return {
-                id: doc.id,
-                ...data,
-                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-                examProgress: examProgress,
-            } as Participant;
-        });
+        const participants = snapshot.docs.map(processParticipantDoc);
 
         return participants;
 
@@ -549,32 +530,13 @@ export async function getParticipantByIitpNo(iitpNo: string, supervisorOrg?: str
         }
 
         const participantDoc = querySnapshot.docs[0];
-        const data = participantDoc.data();
         
         // If a supervisor's organization is provided, check if the participant belongs to it
-        if (supervisorOrg && data.organization !== supervisorOrg) {
+        if (supervisorOrg && participantDoc.data().organization !== supervisorOrg) {
             return null; // Return null if the participant is not in the supervisor's organization
         }
         
-        const createdAt = data.createdAt as Timestamp;
-        
-        const examProgress = data.examProgress || {};
-        for(const examId in examProgress) {
-            const attempt = examProgress[examId];
-            if(attempt.submittedAt && attempt.submittedAt instanceof Timestamp) {
-                attempt.submittedAt = attempt.submittedAt.toDate().toISOString();
-            }
-             if(attempt.startedAt && attempt.startedAt instanceof Timestamp) {
-                attempt.startedAt = attempt.startedAt.toDate().toISOString();
-            }
-        }
-
-        return {
-            id: participantDoc.id,
-            ...data,
-            createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
-            examProgress: examProgress,
-        } as Participant;
+        return processParticipantDoc(participantDoc);
 
     } catch (error) {
         console.error("Error fetching participant by IITP No.:", error);
@@ -2714,4 +2676,5 @@ export async function generateAppointmentLetter(participantId: string): Promise<
 
 
     
+
 

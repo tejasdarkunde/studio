@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -32,6 +31,8 @@ export default function SupervisorTraineesPage() {
                 setParticipants(fetchedParticipants);
                 setOrganizations(fetchedOrganizations);
                 setLoading(false);
+            } else {
+                setLoading(false);
             }
         } else {
             router.push('/supervisor-login');
@@ -58,6 +59,7 @@ export default function SupervisorTraineesPage() {
                 onUpdateSelected={updateSelectedParticipants}
                 onDataRefreshed={fetchData}
                 defaultOrganization={supervisor?.organization}
+                profilePath="/admin/users"
             />
         </div>
     );

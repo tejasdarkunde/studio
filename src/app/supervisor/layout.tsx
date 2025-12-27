@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Supervisor } from '@/lib/types';
-import { ChevronLeft, LayoutDashboard, Users } from 'lucide-react';
+import { ChevronLeft, LayoutDashboard, Users, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function SupervisorLayout({
@@ -41,6 +40,7 @@ export default function SupervisorLayout({
   
   const navItems = [
       { href: '/supervisor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/supervisor/new-admission', label: 'New Admission', icon: FilePlus },
       { href: '/supervisor/trainees', label: 'Manage Trainees', icon: Users },
   ];
 

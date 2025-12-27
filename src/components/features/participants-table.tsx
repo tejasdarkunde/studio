@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -14,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, Loader2, Filter, X, Search, Eye, Pencil, LogOut, ArrowUpDown } from "lucide-react";
+import { Download, RefreshCw, Loader2, Filter, X, Search, Eye, Pencil, LogOut, ArrowUpDown, FileText as AppointmentIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
@@ -410,6 +409,13 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                           <TableCell>{p.year}</TableCell>
                           <TableCell>{p.semester}</TableCell>
                           <TableCell className="text-right">
+                              {profilePath === '/admin/users' && (
+                                <Button asChild variant="ghost" size="icon" title="Issue Appointment Letter">
+                                  <Link href={`${profilePath}/appointment-letter/${p.iitpNo}`}>
+                                    <AppointmentIcon className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                              )}
                               <Button asChild variant="ghost" size="icon">
                                   <Link href={`${profilePath}/${p.iitpNo}`}>
                                       <Eye className="h-4 w-4" />
