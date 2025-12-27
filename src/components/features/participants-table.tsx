@@ -416,7 +416,7 @@ export function ParticipantsTable({ participants, organizations, onUpdateSelecte
                                   </Link>
                               </Button>
                                <Button asChild variant="ghost" size="icon">
-                                  <Link href={`#`}>
+                                  <Link href={`/admin/appointment-letter/${p.iitpNo}`}>
                                       <FileText className="h-4 w-4" />
                                   </Link>
                               </Button>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
 import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, Supervisor, Exam, Question, ExamAttempt, ExamResult, FormAdmin, Form as FormType } from "@/lib/types";
+import { google } from 'googleapis';
 
 // GENERAL LOGIN
 const loginSchema = z.object({
@@ -2606,6 +2607,96 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
         return [];
     }
 }
+
+// APPOINTMENT LETTER GENERATION
+export async function generateAppointmentLetter(participantId: string): Promise<{ success: boolean; error?: string; docUrl?: string }> {
+    try {
+        // 1. Authenticate with Google
+        const auth = new google.auth.GoogleAuth({
+            credentials: {
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            },
+            scopes: [
+                'https://www.googleapis.com/auth/drive',
+                'https://www.googleapis.com/auth/documents',
+            ],
+        });
+
+        const docs = google.docs({ version: 'v1', auth });
+        const drive = google.drive({ version: 'v3', auth });
+
+        // 2. Fetch participant data
+        const participantDocRef = doc(db, 'participants', participantId);
+        const participantDoc = await getDoc(participantDocRef);
+        if (!participantDoc.exists()) {
+            return { success: false, error: 'Participant not found.' };
+        }
+        const participant = participantDoc.data() as Participant;
+
+        // 3. Copy the template document
+        const templateId = process.env.APPOINTMENT_LETTER_TEMPLATE_ID;
+        if (!templateId) {
+            return { success: false, error: 'Appointment letter template ID is not configured.' };
+        }
+
+        const newTitle = `Appointment Letter - ${participant.name}`;
+        const copiedFile = await drive.files.copy({
+            fileId: templateId,
+            requestBody: {
+                name: newTitle,
+            },
+        });
+        const newDocId = copiedFile.data.id;
+        if (!newDocId) {
+            return { success: false, error: 'Failed to copy the template document.' };
+        }
+
+        // 4. Define replacements
+        const replacements = [
+            { replaceText: '{{CANDIDATE_NAME}}', withText: participant.name },
+            { replaceText: '{{FATHER_HUSBAND_NAME}}', withText: participant.fatherOrHusbandName || '' },
+            { replaceText: '{{ADDRESS}}', withText: participant.address || '' },
+            { replaceText: '{{DESIGNATION}}', withText: participant.designation || '' },
+            { replaceText: '{{JOINING_DATE}}', withText: participant.dateOfEntryIntoService ? new Date(participant.dateOfEntryIntoService).toLocaleDateString('en-GB') : '' },
+            { replaceText: '{{STIPEND}}', withText: participant.stipend?.toString() || '0' },
+            { replaceText: '{{ORGANIZATION}}', withText: participant.organization || '' },
+        ];
+
+        // 5. Update the document with participant data
+        await docs.documents.batchUpdate({
+            documentId: newDocId,
+            requestBody: {
+                requests: replacements.map(r => ({
+                    replaceAllText: {
+                        containsText: {
+                            text: r.replaceText,
+                            matchCase: false,
+                        },
+                        replaceText: r.withText,
+                    },
+                })),
+            },
+        });
+        
+        // 6. Make the document publically viewable
+        await drive.permissions.create({
+            fileId: newDocId,
+            requestBody: {
+                role: 'reader',
+                type: 'anyone',
+            }
+        });
+
+        // 7. Return the link to the new document
+        const docUrl = `https://docs.google.com/document/d/${newDocId}/edit`;
+        return { success: true, docUrl };
+
+    } catch (error: any) {
+        console.error("Error generating appointment letter:", error);
+        return { success: false, error: error.message || "An unexpected error occurred while generating the document." };
+    }
+}
       
     
 
@@ -2623,3 +2714,4 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
 
 
     
+
