@@ -33,7 +33,7 @@ export default function AdminLayout({
     <div className="min-h-screen flex flex-col print:block">
         <header className="bg-background border-b sticky top-0 z-10 no-print">
             <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
-                 <p className="text-xl font-bold text-primary tracking-tight">BSA Edutech India Pvt. Ltd.</p>
+                 <p className="text-xl font-bold text-primary tracking-tight">Admin - BSA Edutech India Pvt. Ltd.</p>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={() => {
                             sessionStorage.clear();
