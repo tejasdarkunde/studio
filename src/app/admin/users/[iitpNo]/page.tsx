@@ -83,30 +83,33 @@ export default function AdminTraineeProfilePage() {
                         body {
                             margin: 0;
                             padding: 0;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
                         }
                         .no-print {
-                            display: none;
+                            display: none !important;
                         }
                         main {
-                            padding: 1rem !important;
+                            padding: 0 !important;
                             margin: 0 !important;
                         }
                         .printable-area {
                             display: block !important;
+                            page-break-before: auto;
+                            page-break-after: auto;
                         }
                         .print-grid {
-                            display: grid;
-                            grid-template-columns: 1fr 1fr;
-                            gap: 1rem;
+                            display: grid !important;
+                            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                            gap: 1rem !important;
                         }
                         .print-col-span-2 {
-                            grid-column: span 2;
+                            grid-column: span 2 / span 2 !important;
                         }
-                        .print\\:border-none {
+                        .print-card {
                             border: none !important;
-                        }
-                         .print\\:shadow-none {
                             box-shadow: none !important;
+                            page-break-inside: avoid !important;
                         }
                     }
                 `}
@@ -134,9 +137,9 @@ export default function AdminTraineeProfilePage() {
                     </Alert>
                 )}
 
-                <div className="printable-area space-y-6 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-8 print:block print:space-y-0">
-                    <div className="lg:col-span-1 space-y-6 print:grid print:grid-cols-2 print:gap-4">
-                        <Card className="print:shadow-none print:border-none">
+                <div className="printable-area lg:grid lg:grid-cols-3 lg:gap-8">
+                    <div className="lg:col-span-1 space-y-6 print-grid">
+                        <Card className="print-card">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-3">
                                     <User className="h-8 w-8 text-primary" />
@@ -156,14 +159,15 @@ export default function AdminTraineeProfilePage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="print:shadow-none print:border-none">
+                        <Card className="print-card">
                             <CardHeader><CardTitle>Professional Details</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
                                 <InfoItem icon={GraduationCap} label="Qualification" value={participant.qualification} />
                                 <InfoItem icon={Briefcase} label="Designation" value={participant.designation} />
                             </CardContent>
                         </Card>
-                        <Card className="print:shadow-none print:border-none">
+
+                        <Card className="print-card print-col-span-2">
                             <CardHeader><CardTitle>Identity & Bank Details</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
                                 <InfoItem icon={Shield} label="Aadhar No" value={participant.aadharCardNo} />
@@ -174,10 +178,10 @@ export default function AdminTraineeProfilePage() {
                                 <InfoItem icon={Briefcase} label="IFSC Code" value={participant.ifscCode} />
                             </CardContent>
                         </Card>
-
                     </div>
-                    <div className="lg:col-span-2 space-y-6 print:space-y-4 print:mt-4">
-                        <Card className="print:shadow-none print:border-none">
+
+                    <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
+                        <Card className="print-card">
                             <CardHeader>
                                 <CardTitle>Enrolled Courses & Progress</CardTitle>
                             </CardHeader>
@@ -204,7 +208,7 @@ export default function AdminTraineeProfilePage() {
                             }) : <p className="text-muted-foreground">Not enrolled in any courses.</p>}
                             </CardContent>
                         </Card>
-                        <Card className="print:shadow-none print:border-none">
+                        <Card className="print-card">
                             <CardHeader>
                                 <CardTitle>Exam Attempts</CardTitle>
                             </CardHeader>
@@ -238,7 +242,7 @@ export default function AdminTraineeProfilePage() {
                                 )}
                             </CardContent>
                         </Card>
-                        <Card className="print:shadow-none print:border-none">
+                        <Card className="print-card">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <History className="h-6 w-6 text-primary" />
