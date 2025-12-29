@@ -30,8 +30,8 @@ export default function AdminLayout({
   }, [router]);
 
   return (
-    <div className="min-h-screen flex flex-col">
-        <header className="bg-background border-b sticky top-0 z-10">
+    <div className="min-h-screen flex flex-col print:block">
+        <header className="bg-background border-b sticky top-0 z-10 no-print">
             <div className="container mx-auto px-4 md:px-8 flex items-center justify-between h-16">
                  <p className="text-xl font-bold text-primary tracking-tight">BSA Edutech India Pvt. Ltd.</p>
                 <div className="flex items-center gap-2">
@@ -44,7 +44,7 @@ export default function AdminLayout({
         </header>
 
         <main className="container mx-auto p-4 md:p-8 flex-grow">
-             <div className="flex justify-between items-start mb-8">
+             <div className="flex justify-between items-start mb-8 no-print">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
                         {currentUser ? `Welcome, ${currentUser.name}` : (userRole === 'superadmin' ? 'Admin Dashboard' : 'Trainer Dashboard')}
