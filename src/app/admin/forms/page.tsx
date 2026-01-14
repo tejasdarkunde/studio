@@ -10,6 +10,56 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+const FormsTable = ({ title, description, forms, getAdminNameById, loading }: { title: string, description: string, forms: Form[], getAdminNameById: (id: string) => string, loading: boolean }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="border rounded-lg">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Form Title</TableHead>
+                            <TableHead>Created By</TableHead>
+                            <TableHead>Date Created</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                                </TableCell>
+                            </TableRow>
+                        ) : forms.length > 0 ? (
+                            forms.map(form => (
+                                <TableRow key={form.id}>
+                                    <TableCell className="font-medium">{form.title}</TableCell>
+                                    <TableCell>{getAdminNameById(form.createdBy)}</TableCell>
+                                    <TableCell>{new Date(form.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-right">
+                                        {/* Actions like view, view responses, delete will go here */}
+                                        <Button variant="ghost" size="sm">View</Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    No forms found in this category.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </CardContent>
+    </Card>
+);
+
 export default function AdminFormsPage() {
     const [forms, setForms] = useState<Form[]>([]);
     const [formAdmins, setFormAdmins] = useState<FormAdmin[]>([]);
@@ -34,6 +84,9 @@ export default function AdminFormsPage() {
         return formAdmins.find(admin => admin.id === id)?.name || 'Unknown Admin';
     }
 
+    const enrollmentForms = forms.filter(form => form.title.toLowerCase().includes('enrollment'));
+    const otherForms = forms.filter(form => !form.title.toLowerCase().includes('enrollment'));
+
     return (
         <main className="container mx-auto p-4 md:p-8">
             <div className="mb-8">
@@ -43,54 +96,22 @@ export default function AdminFormsPage() {
                     </Link>
                 </Button>
             </div>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Form Management</CardTitle>
-                    <CardDescription>View all forms created across the platform.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="border rounded-lg">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Form Title</TableHead>
-                                    <TableHead>Created By</TableHead>
-                                    <TableHead>Date Created</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                                        </TableCell>
-                                    </TableRow>
-                                ) : forms.length > 0 ? (
-                                    forms.map(form => (
-                                        <TableRow key={form.id}>
-                                            <TableCell className="font-medium">{form.title}</TableCell>
-                                            <TableCell>{getAdminNameById(form.createdBy)}</TableCell>
-                                            <TableCell>{new Date(form.createdAt).toLocaleDateString()}</TableCell>
-                                            <TableCell className="text-right">
-                                                {/* Actions like view, view responses, delete will go here */}
-                                                <Button variant="ghost" size="sm">View</Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            No forms have been created yet.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="space-y-8">
+                 <FormsTable
+                    title="Course Enrollment Forms"
+                    description="Forms related to student course enrollment."
+                    forms={enrollmentForms}
+                    getAdminNameById={getAdminNameById}
+                    loading={loading}
+                />
+                <FormsTable
+                    title="Other Forms"
+                    description="General purpose forms and surveys."
+                    forms={otherForms}
+                    getAdminNameById={getAdminNameById}
+                    loading={loading}
+                />
+            </div>
         </main>
     );
 }
-
