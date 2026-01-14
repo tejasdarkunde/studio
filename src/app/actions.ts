@@ -1,3 +1,4 @@
+
 "use server";
 
 import { z } from "zod";
@@ -2570,6 +2571,34 @@ export async function getFormsByCreator(creatorId: string): Promise<FormType[]> 
     }
 }
 
+export async function getAllForms(): Promise<FormType[]> {
+    try {
+        const formsCollection = collection(db, "forms");
+        const q = query(formsCollection, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            return [];
+        }
+
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt as Timestamp;
+            return {
+                id: doc.id,
+                title: data.title,
+                description: data.description,
+                questions: data.questions,
+                createdBy: data.createdBy,
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching all forms:", error);
+        return [];
+    }
+}
+
 // APPOINTMENT LETTER GENERATION
 export async function generateAppointmentLetter(participantId: string): Promise<{ success: boolean; error?: string; docUrl?: string }> {
     try {
@@ -2676,5 +2705,6 @@ export async function generateAppointmentLetter(participantId: string): Promise<
 
 
     
+
 
 

@@ -175,7 +175,7 @@ export default function AdminPage() {
                         </CardHeader>
                         <CardContent>
                             <Button asChild className="w-full" variant="secondary">
-                                <Link href="#">
+                                <Link href="/admin/forms">
                                     <FileText className="mr-2 h-4 w-4" /> Manage Forms
                                 </Link>
                             </Button>
