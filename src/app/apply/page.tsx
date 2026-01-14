@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,13 +13,107 @@ import type { Participant, Course, Organization } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronLeft, Search } from 'lucide-react';
+import { Loader2, ChevronLeft, Search, Printer } from 'lucide-react';
 import { getCourses, getOrganizations, addParticipant, getParticipantByIitpNo, updateParticipant } from '@/app/actions';
 import Link from 'next/link';
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 
 const enrollmentSchemes = ["NEEM", "NAPS", "NATS", "MSBTE", "ASDC"];
+
+const PrintPreview = ({ data }: { data: Participant }) => {
+    
+    const InfoItem = ({ label, value }: { label: string; value?: string | number | null }) => {
+        if (!value) return null;
+        return (
+            <div>
+                <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+                <p className="text-sm">{value}</p>
+            </div>
+        );
+    };
+
+    return (
+        <div className="printable-area p-8 border rounded-lg bg-white text-black">
+            <style>
+                {`
+                    @media print {
+                        body { margin: 0; }
+                        .no-print { display: none !important; }
+                        .printable-area { 
+                            border: none !important;
+                            box-shadow: none !important;
+                            padding: 0 !important;
+                        }
+                    }
+                `}
+            </style>
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold">Admission Form</h2>
+                    <p className="text-muted-foreground">Application Summary</p>
+                </div>
+                <div className="w-32 h-40 border-2 border-dashed flex items-center justify-center">
+                    <p className="text-xs text-muted-foreground text-center">Paste Passport Size Photo Here</p>
+                </div>
+            </div>
+            <Separator className="my-6" />
+
+            <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Full Name" value={data.name} />
+                    <InfoItem label="IITP No." value={data.iitpNo} />
+                    <InfoItem label="Father/Husband Name" value={data.fatherOrHusbandName} />
+                </div>
+                <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Email" value={data.email} />
+                    <InfoItem label="Mobile No." value={data.mobile} />
+                    <InfoItem label="Date of Birth" value={data.birthDate ? new Date(data.birthDate).toLocaleDateString() : ''} />
+                </div>
+                <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Sex" value={data.sex} />
+                    <InfoItem label="Organization" value={data.organization} />
+                     <InfoItem label="Address" value={data.address} />
+                </div>
+                 <Separator />
+                <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Aadhar Card No." value={data.aadharCardNo} />
+                    <InfoItem label="PAN Card No." value={data.panCardNo} />
+                </div>
+                <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Bank Name" value={data.bankName} />
+                    <InfoItem label="Bank Account No." value={data.bankAccountNo} />
+                    <InfoItem label="IFSC Code" value={data.ifscCode} />
+                </div>
+                <Separator />
+                 <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Qualification" value={data.qualification} />
+                    <InfoItem label="Pass-out Year" value={data.passOutYear} />
+                    <InfoItem label="Designation" value={data.designation} />
+                </div>
+                <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Date of Entry into Service" value={data.dateOfEntryIntoService ? new Date(data.dateOfEntryIntoService).toLocaleDateString() : ''} />
+                    <InfoItem label="Stipend" value={data.stipend?.toString()} />
+                    <InfoItem label="Enrollment Scheme" value={data.enrollmentScheme} />
+                </div>
+                 <Separator />
+                 <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Courses of Interest</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {data.enrolledCourses?.map(course => <Badge key={course} variant="secondary">{course}</Badge>)}
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-24 flex justify-end">
+                <div className="w-64 border-t pt-2 text-center">
+                    <p className="text-sm">Signature</p>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export default function ApplyPage() {
     const router = useRouter();
@@ -30,31 +124,13 @@ export default function ApplyPage() {
     const [existingParticipantId, setExistingParticipantId] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<Partial<Omit<Participant, 'id' | 'createdAt'>> & { otherSchemeText?: string }>({
-        name: '',
-        iitpNo: '',
-        mobile: '',
-        organization: '',
-        enrolledCourses: [],
-        year: '',
-        semester: '',
-        fatherOrHusbandName: '',
-        birthDate: '',
-        aadharCardNo: '',
-        panCardNo: '',
-        bankName: '',
-        bankAccountNo: '',
-        ifscCode: '',
-        email: '',
-        qualification: '',
-        passOutYear: '',
-        dateOfEntryIntoService: '',
-        address: '',
-        designation: '',
-        leftDate: '',
-        enrollmentScheme: '',
-        otherSchemeText: '',
+        name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], year: '', semester: '',
+        fatherOrHusbandName: '', birthDate: '', aadharCardNo: '', panCardNo: '', bankName: '', bankAccountNo: '',
+        ifscCode: '', email: '', qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '',
+        designation: '', leftDate: '', enrollmentScheme: '', otherSchemeText: '',
     });
     
+    const [submittedData, setSubmittedData] = useState<Participant | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
     const { toast } = useToast();
@@ -72,6 +148,16 @@ export default function ApplyPage() {
         fetchData();
     }, []);
 
+    const resetForm = useCallback(() => {
+        setFormData({
+            name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], year: '', semester: '',
+            fatherOrHusbandName: '', birthDate: '', aadharCardNo: '', panCardNo: '', bankName: '', bankAccountNo: '',
+            ifscCode: '', email: '', qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '',
+            designation: '', leftDate: '', enrollmentScheme: '', otherSchemeText: '',
+        });
+        setExistingParticipantId(null);
+        setSubmittedData(null);
+    }, []);
 
     const handleSave = async () => {
         if (!formData.name?.trim() || !formData.iitpNo?.trim()) {
@@ -96,6 +182,8 @@ export default function ApplyPage() {
             ? { ...dataToSave, id: existingParticipantId } 
             : dataToSave;
             
+        // The `addParticipant` action doesn't return the full created object
+        // So we construct what we need for the print preview from the form data.
         const result = await action(payload as any);
 
         if (result.success) {
@@ -103,15 +191,9 @@ export default function ApplyPage() {
                 title: `Application ${existingParticipantId ? 'Updated' : 'Submitted'}!`,
                 description: `Thank you, ${formData.name}. Your application has been received.`
             });
-            // Reset form or redirect
-             setFormData({
-                name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [],
-                year: '', semester: '', fatherOrHusbandName: '', birthDate: '', aadharCardNo: '',
-                panCardNo: '', bankName: '', bankAccountNo: '', ifscCode: '', email: '',
-                qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '', designation: '',
-                leftDate: '', enrollmentScheme: '', otherSchemeText: ''
-            });
-            setExistingParticipantId(null);
+            // Construct the object for the print preview
+            const finalData = { ...payload, id: 'preview-id', createdAt: new Date().toISOString() };
+            setSubmittedData(finalData as Participant);
         } else {
             toast({
                 variant: "destructive",
@@ -172,32 +254,19 @@ export default function ApplyPage() {
             }
 
             setFormData({
-                name: participant.name || '',
-                iitpNo: participant.iitpNo || '',
-                mobile: participant.mobile || '',
-                organization: participant.organization || '',
-                enrolledCourses: participant.enrolledCourses || [],
-                year: participant.year || '',
-                semester: participant.semester || '',
-                enrollmentSeason: participant.enrollmentSeason,
+                name: participant.name || '', iitpNo: participant.iitpNo || '', mobile: participant.mobile || '',
+                organization: participant.organization || '', enrolledCourses: participant.enrolledCourses || [],
+                year: participant.year || '', semester: participant.semester || '', enrollmentSeason: participant.enrollmentSeason,
                 fatherOrHusbandName: participant.fatherOrHusbandName || '',
                 birthDate: participant.birthDate ? new Date(participant.birthDate).toISOString().split('T')[0] : '',
-                aadharCardNo: participant.aadharCardNo || '',
-                panCardNo: participant.panCardNo || '',
-                bankName: participant.bankName || '',
-                bankAccountNo: participant.bankAccountNo || '',
-                ifscCode: participant.ifscCode || '',
-                email: participant.email || '',
-                sex: participant.sex,
-                qualification: participant.qualification || '',
+                aadharCardNo: participant.aadharCardNo || '', panCardNo: participant.panCardNo || '',
+                bankName: participant.bankName || '', bankAccountNo: participant.bankAccountNo || '', ifscCode: participant.ifscCode || '',
+                email: participant.email || '', sex: participant.sex, qualification: participant.qualification || '',
                 passOutYear: participant.passOutYear || '',
                 dateOfEntryIntoService: participant.dateOfEntryIntoService ? new Date(participant.dateOfEntryIntoService).toISOString().split('T')[0] : '',
-                address: participant.address || '',
-                designation: participant.designation || '',
-                stipend: participant.stipend,
+                address: participant.address || '', designation: participant.designation || '', stipend: participant.stipend,
                 leftDate: participant.leftDate ? new Date(participant.leftDate).toISOString().split('T')[0] : '',
-                enrollmentScheme: scheme,
-                otherSchemeText: otherText,
+                enrollmentScheme: scheme, otherSchemeText: otherText,
             });
             setExistingParticipantId(participant.id);
         } else {
@@ -213,9 +282,27 @@ export default function ApplyPage() {
         )
     }
 
+    if (submittedData) {
+        return (
+            <main className="container mx-auto p-4 md:p-8 bg-muted">
+                <div className="max-w-4xl mx-auto space-y-6">
+                    <div className="text-center">
+                        <h1 className="text-3xl font-bold">Application Submitted</h1>
+                        <p className="text-muted-foreground">Please print this summary for your records.</p>
+                    </div>
+                    <PrintPreview data={submittedData} />
+                    <div className="flex justify-end gap-2 no-print">
+                        <Button variant="outline" onClick={resetForm}>Submit Another Application</Button>
+                        <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print</Button>
+                    </div>
+                </div>
+            </main>
+        )
+    }
+
     return (
         <main className="container mx-auto p-4 md:p-8">
-            <div className="mb-8">
+            <div className="mb-8 no-print">
                 <Button asChild variant="outline">
                     <Link href={`/`}>
                         <ChevronLeft className="mr-2 h-4 w-4" />
@@ -223,7 +310,7 @@ export default function ApplyPage() {
                     </Link>
                 </Button>
             </div>
-            <Card className="max-w-4xl mx-auto">
+            <Card className="max-w-4xl mx-auto no-print">
                 <CardHeader>
                     <CardTitle>New Admission Form</CardTitle>
                     <CardDescription>Enter your details to apply for our training programs. If you have applied before, enter your IITP No. and we'll fetch your details.</CardDescription>
@@ -404,7 +491,5 @@ export default function ApplyPage() {
         </main>
     )
 }
-
-    
 
     
