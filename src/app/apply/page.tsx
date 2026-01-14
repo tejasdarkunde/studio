@@ -66,19 +66,28 @@ const PrintPreview = ({ data }: { data: Participant }) => {
                     <InfoItem label="IITP No." value={data.iitpNo} />
                     <InfoItem label="Father/Husband Name" value={data.fatherOrHusbandName} />
                 </div>
-                <div className="grid grid-cols-3 gap-6">
-                    <InfoItem label="Email" value={data.email} />
-                    <InfoItem label="Mobile No." value={data.mobile} />
+                 <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Mother's Name" value={data.motherName} />
                     <InfoItem label="Date of Birth" value={data.birthDate ? new Date(data.birthDate).toLocaleDateString() : ''} />
+                    <InfoItem label="Gender" value={data.sex} />
+                </div>
+                 <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Mother Tongue" value={data.motherTongue} />
+                    <InfoItem label="Religion" value={data.religion} />
+                    <InfoItem label="Category" value={data.category} />
+                </div>
+                 <div className="grid grid-cols-3 gap-6">
+                    <InfoItem label="Annual Family Income" value={data.annualFamilyIncome} />
+                    <InfoItem label="Aadhar Card No." value={data.aadharCardNo} />
+                    <InfoItem label="Mobile No." value={data.mobile} />
                 </div>
                 <div className="grid grid-cols-3 gap-6">
-                    <InfoItem label="Sex" value={data.sex} />
+                    <InfoItem label="Email" value={data.email} />
                     <InfoItem label="Organization" value={data.organization} />
                      <InfoItem label="Address" value={data.address} />
                 </div>
                  <Separator />
                 <div className="grid grid-cols-3 gap-6">
-                    <InfoItem label="Aadhar Card No." value={data.aadharCardNo} />
                     <InfoItem label="PAN Card No." value={data.panCardNo} />
                 </div>
                 <div className="grid grid-cols-3 gap-6">
@@ -125,9 +134,10 @@ export default function ApplyPage() {
 
     const [formData, setFormData] = useState<Partial<Omit<Participant, 'id' | 'createdAt'>> & { otherSchemeText?: string }>({
         name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], year: '', semester: '',
-        fatherOrHusbandName: '', birthDate: '', aadharCardNo: '', panCardNo: '', bankName: '', bankAccountNo: '',
+        fatherOrHusbandName: '', motherName: '', birthDate: '', aadharCardNo: '', panCardNo: '', bankName: '', bankAccountNo: '',
         ifscCode: '', email: '', qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '',
         designation: '', leftDate: '', enrollmentScheme: '', otherSchemeText: '',
+        motherTongue: '', religion: '', category: '', annualFamilyIncome: ''
     });
     
     const [submittedData, setSubmittedData] = useState<Participant | null>(null);
@@ -151,9 +161,10 @@ export default function ApplyPage() {
     const resetForm = useCallback(() => {
         setFormData({
             name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [], year: '', semester: '',
-            fatherOrHusbandName: '', birthDate: '', aadharCardNo: '', panCardNo: '', bankName: '', bankAccountNo: '',
+            fatherOrHusbandName: '', motherName: '', birthDate: '', aadharCardNo: '', panCardNo: '', bankName: '', bankAccountNo: '',
             ifscCode: '', email: '', qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '',
             designation: '', leftDate: '', enrollmentScheme: '', otherSchemeText: '',
+            motherTongue: '', religion: '', category: '', annualFamilyIncome: ''
         });
         setExistingParticipantId(null);
         setSubmittedData(null);
@@ -258,6 +269,7 @@ export default function ApplyPage() {
                 organization: participant.organization || '', enrolledCourses: participant.enrolledCourses || [],
                 year: participant.year || '', semester: participant.semester || '', enrollmentSeason: participant.enrollmentSeason,
                 fatherOrHusbandName: participant.fatherOrHusbandName || '',
+                motherName: participant.motherName || '',
                 birthDate: participant.birthDate ? new Date(participant.birthDate).toISOString().split('T')[0] : '',
                 aadharCardNo: participant.aadharCardNo || '', panCardNo: participant.panCardNo || '',
                 bankName: participant.bankName || '', bankAccountNo: participant.bankAccountNo || '', ifscCode: participant.ifscCode || '',
@@ -267,6 +279,10 @@ export default function ApplyPage() {
                 address: participant.address || '', designation: participant.designation || '', stipend: participant.stipend,
                 leftDate: participant.leftDate ? new Date(participant.leftDate).toISOString().split('T')[0] : '',
                 enrollmentScheme: scheme, otherSchemeText: otherText,
+                motherTongue: participant.motherTongue || '',
+                religion: participant.religion || '',
+                category: participant.category || '',
+                annualFamilyIncome: participant.annualFamilyIncome || ''
             });
             setExistingParticipantId(participant.id);
         } else {
@@ -325,35 +341,59 @@ export default function ApplyPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Name *</Label>
+                            <Label htmlFor="name">Name of Candidate (As per SSC Marksheet) *</Label>
                             <Input id="name" value={formData.name} onChange={handleInputChange} />
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="fatherOrHusbandName">Father/Husband Name</Label>
+                            <Label htmlFor="fatherOrHusbandName">Father&apos;s Name</Label>
                             <Input id="fatherOrHusbandName" value={formData.fatherOrHusbandName} onChange={handleInputChange} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" value={formData.email} onChange={handleInputChange} />
+                            <Label htmlFor="motherName">Mother&apos;s Name</Label>
+                            <Input id="motherName" value={formData.motherName} onChange={handleInputChange} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="mobile">Mobile No</Label>
-                            <Input id="mobile" value={formData.mobile} onChange={handleInputChange} />
-                        </div>
-                         <div className="space-y-2">
                             <Label htmlFor="birthDate">Date of Birth</Label>
                             <Input id="birthDate" type="date" value={formData.birthDate} onChange={handleInputChange} />
                         </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="sex">Sex</Label>
+                        <div className="space-y-2">
+                            <Label htmlFor="sex">Gender</Label>
                              <Select onValueChange={(value) => handleSelectChange('sex', value)} value={formData.sex}>
-                                <SelectTrigger><SelectValue placeholder="Select sex" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Male">Male</SelectItem>
                                     <SelectItem value="Female">Female</SelectItem>
                                     <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="motherTongue">Mother Tongue</Label>
+                            <Input id="motherTongue" value={formData.motherTongue} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="annualFamilyIncome">Annual Family Income</Label>
+                            <Input id="annualFamilyIncome" value={formData.annualFamilyIncome} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="religion">Religion</Label>
+                            <Input id="religion" value={formData.religion} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="category">Category</Label>
+                            <Input id="category" value={formData.category} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="aadharCardNo">Aadhar Number</Label>
+                            <Input id="aadharCardNo" value={formData.aadharCardNo} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="mobile">Mobile Number</Label>
+                            <Input id="mobile" value={formData.mobile} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email ID</Label>
+                            <Input id="email" type="email" value={formData.email} onChange={handleInputChange} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="organization">Organization *</Label>
@@ -371,10 +411,6 @@ export default function ApplyPage() {
                         <Textarea id="address" value={formData.address} onChange={handleInputChange} />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div className="space-y-2">
-                            <Label htmlFor="aadharCardNo">Aadhar Card No</Label>
-                            <Input id="aadharCardNo" value={formData.aadharCardNo} onChange={handleInputChange} />
-                        </div>
                         <div className="space-y-2">
                             <Label htmlFor="panCardNo">PAN Card No</Label>
                             <Input id="panCardNo" value={formData.panCardNo} onChange={handleInputChange} />
@@ -491,5 +527,3 @@ export default function ApplyPage() {
         </main>
     )
 }
-
-    

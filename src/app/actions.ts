@@ -559,6 +559,7 @@ const participantSchema = z.object({
   semester: z.string().optional(),
   enrollmentSeason: z.enum(['Summer', 'Winter']).optional(),
   fatherOrHusbandName: z.string().optional(),
+  motherName: z.string().optional(),
   birthDate: z.string().optional(),
   aadharCardNo: z.string().optional(),
   panCardNo: z.string().optional(),
@@ -576,6 +577,10 @@ const participantSchema = z.object({
   leftDate: z.string().optional(),
   leftRemark: z.string().optional(),
   enrollmentScheme: z.string().optional(),
+  motherTongue: z.string().optional(),
+  religion: z.string().optional(),
+  category: z.string().optional(),
+  annualFamilyIncome: z.string().optional(),
 });
 
 
@@ -2705,6 +2710,7 @@ export async function generateAppointmentLetter(participantId: string): Promise<
 
 
     
+
 
 
 

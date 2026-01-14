@@ -173,9 +173,13 @@ export default function AdminEditTraineePage() {
                             <Label htmlFor="name">Name *</Label>
                             <Input id="name" value={formData.name} onChange={handleInputChange} />
                         </div>
-                         <div className="space-y-2">
+                        <div className="space-y-2">
                             <Label htmlFor="fatherOrHusbandName">Father/Husband Name</Label>
                             <Input id="fatherOrHusbandName" value={formData.fatherOrHusbandName} onChange={handleInputChange} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="motherName">Mother&apos;s Name</Label>
+                            <Input id="motherName" value={formData.motherName} onChange={handleInputChange} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
@@ -199,6 +203,22 @@ export default function AdminEditTraineePage() {
                                     <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="motherTongue">Mother Tongue</Label>
+                            <Input id="motherTongue" value={formData.motherTongue} onChange={handleInputChange} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="annualFamilyIncome">Annual Family Income</Label>
+                            <Input id="annualFamilyIncome" value={formData.annualFamilyIncome} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="religion">Religion</Label>
+                            <Input id="religion" value={formData.religion} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="category">Category</Label>
+                            <Input id="category" value={formData.category} onChange={handleInputChange} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="organization">Organization *</Label>

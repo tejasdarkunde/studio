@@ -37,6 +37,7 @@ export default function NewAdmissionPage() {
         year: '',
         semester: '',
         fatherOrHusbandName: '',
+        motherName: '',
         birthDate: '',
         aadharCardNo: '',
         panCardNo: '',
@@ -52,6 +53,10 @@ export default function NewAdmissionPage() {
         leftDate: '',
         enrollmentScheme: '',
         otherSchemeText: '',
+        motherTongue: '',
+        religion: '',
+        category: '',
+        annualFamilyIncome: ''
     });
     
     const [isSaving, setIsSaving] = useState(false);
@@ -111,10 +116,11 @@ export default function NewAdmissionPage() {
             // Reset form
              setFormData({
                 name: '', iitpNo: '', mobile: '', organization: '', enrolledCourses: [],
-                year: '', semester: '', fatherOrHusbandName: '', birthDate: '', aadharCardNo: '',
+                year: '', semester: '', fatherOrHusbandName: '', motherName: '', birthDate: '', aadharCardNo: '',
                 panCardNo: '', bankName: '', bankAccountNo: '', ifscCode: '', email: '',
                 qualification: '', passOutYear: '', dateOfEntryIntoService: '', address: '', designation: '',
-                leftDate: '', enrollmentScheme: '', otherSchemeText: ''
+                leftDate: '', enrollmentScheme: '', otherSchemeText: '',
+                motherTongue: '', religion: '', category: '', annualFamilyIncome: ''
             });
             setExistingParticipantId(null);
         } else {
@@ -191,6 +197,7 @@ export default function NewAdmissionPage() {
                 semester: participant.semester || '',
                 enrollmentSeason: participant.enrollmentSeason,
                 fatherOrHusbandName: participant.fatherOrHusbandName || '',
+                motherName: participant.motherName || '',
                 birthDate: participant.birthDate ? new Date(participant.birthDate).toISOString().split('T')[0] : '',
                 aadharCardNo: participant.aadharCardNo || '',
                 panCardNo: participant.panCardNo || '',
@@ -208,6 +215,10 @@ export default function NewAdmissionPage() {
                 leftDate: participant.leftDate ? new Date(participant.leftDate).toISOString().split('T')[0] : '',
                 enrollmentScheme: scheme,
                 otherSchemeText: otherText,
+                motherTongue: participant.motherTongue || '',
+                religion: participant.religion || '',
+                category: participant.category || '',
+                annualFamilyIncome: participant.annualFamilyIncome || ''
             });
             setExistingParticipantId(participant.id);
         } else {
@@ -240,35 +251,59 @@ export default function NewAdmissionPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Name *</Label>
+                            <Label htmlFor="name">Name of Candidate (As per SSC Marksheet) *</Label>
                             <Input id="name" value={formData.name} onChange={handleInputChange} />
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="fatherOrHusbandName">Father/Husband Name</Label>
+                            <Label htmlFor="fatherOrHusbandName">Father&apos;s Name</Label>
                             <Input id="fatherOrHusbandName" value={formData.fatherOrHusbandName} onChange={handleInputChange} />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" value={formData.email} onChange={handleInputChange} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="mobile">Mobile No</Label>
-                            <Input id="mobile" value={formData.mobile} onChange={handleInputChange} />
-                        </div>
                          <div className="space-y-2">
+                            <Label htmlFor="motherName">Mother&apos;s Name</Label>
+                            <Input id="motherName" value={formData.motherName} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
                             <Label htmlFor="birthDate">Date of Birth</Label>
                             <Input id="birthDate" type="date" value={formData.birthDate} onChange={handleInputChange} />
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="sex">Sex</Label>
+                            <Label htmlFor="sex">Gender</Label>
                              <Select onValueChange={(value) => handleSelectChange('sex', value)} value={formData.sex}>
-                                <SelectTrigger><SelectValue placeholder="Select sex" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Male">Male</SelectItem>
                                     <SelectItem value="Female">Female</SelectItem>
                                     <SelectItem value="Other">Other</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="motherTongue">Mother Tongue</Label>
+                            <Input id="motherTongue" value={formData.motherTongue} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="annualFamilyIncome">Annual Family Income</Label>
+                            <Input id="annualFamilyIncome" value={formData.annualFamilyIncome} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="religion">Religion</Label>
+                            <Input id="religion" value={formData.religion} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="category">Category</Label>
+                            <Input id="category" value={formData.category} onChange={handleInputChange} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="aadharCardNo">Aadhar Number</Label>
+                            <Input id="aadharCardNo" value={formData.aadharCardNo} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="mobile">Mobile Number</Label>
+                            <Input id="mobile" value={formData.mobile} onChange={handleInputChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email ID</Label>
+                            <Input id="email" type="email" value={formData.email} onChange={handleInputChange} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="organization">Organization *</Label>
@@ -286,10 +321,6 @@ export default function NewAdmissionPage() {
                         <Textarea id="address" value={formData.address} onChange={handleInputChange} />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div className="space-y-2">
-                            <Label htmlFor="aadharCardNo">Aadhar Card No</Label>
-                            <Input id="aadharCardNo" value={formData.aadharCardNo} onChange={handleInputChange} />
-                        </div>
                         <div className="space-y-2">
                             <Label htmlFor="panCardNo">PAN Card No</Label>
                             <Input id="panCardNo" value={formData.panCardNo} onChange={handleInputChange} />

@@ -98,6 +98,7 @@ export type Participant = {
 
     // New fields
     fatherOrHusbandName?: string;
+    motherName?: string;
     birthDate?: string; // Storing as string, can be parsed to Date
     aadharCardNo?: string;
     panCardNo?: string;
@@ -115,6 +116,10 @@ export type Participant = {
     leftDate?: string;
     leftRemark?: string;
     enrollmentScheme?: string;
+    motherTongue?: string;
+    religion?: string;
+    category?: string;
+    annualFamilyIncome?: string;
 };
 
 export type Lesson = {
