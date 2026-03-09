@@ -150,13 +150,13 @@ export default function AdminPage() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Content Management</CardTitle>
-                            <CardDescription>Manage courses, subjects, lessons, and exams.</CardDescription>
+                            <CardTitle>LMS Management</CardTitle>
+                            <CardDescription>Manage LMS courses, curriculum, and exams.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <Button asChild className="flex-1">
-                                    <Link href="/admin/content">
+                                    <Link href="/admin/lms-courses">
                                         <Book className="mr-2 h-4 w-4" /> Manage Courses
                                     </Link>
                                 </Button>
