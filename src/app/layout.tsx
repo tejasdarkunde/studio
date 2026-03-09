@@ -79,7 +79,9 @@ export default function RootLayout({
           </main>
            <footer className="bg-background border-t">
               <div className="container mx-auto px-4 md:px-8 h-14 flex items-center justify-between text-sm text-muted-foreground">
-                  <p>&copy; {new Date().getFullYear()} BSA Edutech India Pvt. Ltd.. All rights reserved.</p>
+                  <div>
+                    <p>&copy; {new Date().getFullYear()} BSA Edutech India Pvt. Ltd.. All rights reserved.</p>
+                  </div>
                   <div className="flex items-center gap-4">
                     <Link href="/form-portal/login" className="hover:text-primary transition-colors">Form Portal</Link>
                     <p>Version {version}</p>
