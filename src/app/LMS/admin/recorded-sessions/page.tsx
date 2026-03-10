@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ChevronLeft, Video, PlusCircle, Loader2, Pencil, Trash, Calendar as CalendarIcon, BookOpen, Link as LinkIcon } from 'lucide-react';
+import { ChevronLeft, Video, PlusCircle, Loader2, Pencil, Trash, Calendar as CalendarIcon, BookOpen, Link as LinkIcon, Users, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,11 +16,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import type { RecordedSession, Course, Subject, Unit } from '@/lib/types';
-import { getRecordedSessions, addRecordedSession, updateRecordedSession, deleteRecordedSession, getCourses } from '@/app/actions';
+import type { RecordedSession, Course, Subject, Unit, Participant } from '@/lib/types';
+import { getRecordedSessions, addRecordedSession, updateRecordedSession, deleteRecordedSession, getCourses, getParticipants } from '@/app/actions';
 import { ConfirmDialog } from '@/components/features/confirm-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// The dialog component
+// The dialog component for editing/adding sessions
 const ManageSessionDialog = ({
     isOpen,
     onClose,
@@ -180,23 +182,95 @@ const ManageSessionDialog = ({
     );
 };
 
+const ViewAttendanceDialog = ({
+    isOpen,
+    onClose,
+    session,
+    viewers
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    session: RecordedSession | null;
+    viewers: Participant[];
+}) => {
+    const { toast } = useToast();
+    if (!session) return null;
+
+    const handleExport = () => {
+        const headers = "Name,IITP No\n";
+        const csvRows = viewers.map(v => `"${v.name}","${v.iitpNo}"`).join('\n');
+        const csv = headers + csvRows;
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${session.title}_attendance.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: 'Export Started', description: `Attendance for ${session.title} is downloading.`});
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Attendance for: {session.title}</DialogTitle>
+                    <DialogDescription>{viewers.length} participant(s) have viewed this session.</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-96">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>IITP No.</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {viewers.length > 0 ? viewers.map(viewer => (
+                                <TableRow key={viewer.id}>
+                                    <TableCell>{viewer.name}</TableCell>
+                                    <TableCell>{viewer.iitpNo}</TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="text-center h-24">No views yet for this session.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Close</Button>
+                    <Button onClick={handleExport} disabled={viewers.length === 0}>
+                        <Download className="mr-2 h-4 w-4" /> Download CSV
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 // The main page component
 export default function RecordedSessionsPage() {
     const [sessions, setSessions] = useState<RecordedSession[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
+    const [participants, setParticipants] = useState<Participant[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogState, setDialogState] = useState<{isOpen: boolean, session?: RecordedSession | null}>({isOpen: false});
     const [deletingSession, setDeletingSession] = useState<RecordedSession | null>(null);
+    const [viewingAttendanceFor, setViewingAttendanceFor] = useState<RecordedSession | null>(null);
     const { toast } = useToast();
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const [fetchedSessions, fetchedCourses] = await Promise.all([
+        const [fetchedSessions, fetchedCourses, fetchedParticipants] = await Promise.all([
             getRecordedSessions(),
             getCourses(),
+            getParticipants(),
         ]);
         setSessions(fetchedSessions);
         setCourses(fetchedCourses);
+        setParticipants(fetchedParticipants);
         setLoading(false);
     }, []);
 
@@ -234,6 +308,11 @@ export default function RecordedSessionsPage() {
         navigator.clipboard.writeText(url);
         toast({ title: "Link Copied!", description: "The shareable session link has been copied."});
     };
+    
+    const viewersForSelectedSession = useMemo(() => {
+        if (!viewingAttendanceFor) return [];
+        return participants.filter(p => p.completedLessons?.includes(viewingAttendanceFor.id));
+    }, [viewingAttendanceFor, participants]);
 
     return (
     <>
@@ -250,6 +329,12 @@ export default function RecordedSessionsPage() {
             onConfirm={handleDeleteSession}
             title="Delete Recorded Session?"
             description={`This will permanently delete the session "${deletingSession?.title}". This cannot be undone.`}
+        />
+        <ViewAttendanceDialog
+            isOpen={!!viewingAttendanceFor}
+            onClose={() => setViewingAttendanceFor(null)}
+            session={viewingAttendanceFor}
+            viewers={viewersForSelectedSession}
         />
         <div>
         <div className="mb-8">
@@ -283,6 +368,8 @@ export default function RecordedSessionsPage() {
                     const course = courses.find(c => c.id === session.courseId);
                     const subject = course?.subjects.find(s => s.id === session.subjectId);
                     const unit = subject?.units.find(u => u.id === session.unitId);
+                    const viewCount = participants.filter(p => p.completedLessons?.includes(session.id)).length;
+
                     return (
                         <Card key={session.id} className="flex flex-col">
                             <CardHeader>
@@ -302,8 +389,11 @@ export default function RecordedSessionsPage() {
                                 )}
                                 <p className="text-sm text-muted-foreground line-clamp-3">{session.description || 'No description provided.'}</p>
                             </CardContent>
-                            <CardFooter className="flex justify-between">
-                                <Button variant="ghost" size="sm" onClick={() => window.open(session.videoUrl, '_blank')}><Video className="mr-2 h-4 w-4" /> Watch</Button>
+                            <CardFooter className="flex justify-between items-center">
+                                <div className="flex items-center">
+                                    <Button variant="ghost" size="sm" onClick={() => window.open(session.videoUrl, '_blank')}><Video className="mr-2 h-4 w-4" /> Watch</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => setViewingAttendanceFor(session)}><Users className="mr-2 h-4 w-4" /> {viewCount} Views</Button>
+                                </div>
                                 <div className="flex gap-1">
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopyLink(session.id)} title="Copy shareable link">
                                         <LinkIcon className="h-4 w-4" />
@@ -328,3 +418,4 @@ export default function RecordedSessionsPage() {
     </>
   );
 }
+
