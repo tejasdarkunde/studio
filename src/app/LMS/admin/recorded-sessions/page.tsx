@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ChevronLeft, Video, PlusCircle, Loader2, Pencil, Trash, Calendar as CalendarIcon, BookOpen, Link as LinkIcon, Users, Download } from 'lucide-react';
+import { ChevronLeft, Video, PlusCircle, Loader2, Pencil, Trash, Calendar as CalendarIcon, BookOpen, Link as LinkIcon, Users, Download, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, formatDistance } from 'date-fns';
 import type { RecordedSession, Course, Subject, Unit, Participant } from '@/lib/types';
 import { getRecordedSessions, addRecordedSession, updateRecordedSession, deleteRecordedSession, getCourses, getParticipants } from '@/app/actions';
 import { ConfirmDialog } from '@/components/features/confirm-dialog';
@@ -197,8 +197,18 @@ const ViewAttendanceDialog = ({
     if (!session) return null;
 
     const handleExport = () => {
-        const headers = "Name,IITP No,Organization\n";
-        const csvRows = viewers.map(v => `"${v.name}","${v.iitpNo}","${v.organization || ''}"`).join('\n');
+        const headers = "Name,IITP No,Organization,Started At,Completed At,Duration (Minutes)\n";
+        const csvRows = viewers.map(v => {
+            const progress = v.lessonProgress?.[session.id];
+            const startedAt = progress?.startedAt ? format(new Date(progress.startedAt), 'Pp') : 'N/A';
+            const completedAt = progress?.completedAt ? format(new Date(progress.completedAt), 'Pp') : 'N/A';
+            let duration = 'N/A';
+            if (progress?.startedAt && progress?.completedAt) {
+                 duration = formatDistance(new Date(progress.completedAt), new Date(progress.startedAt));
+            }
+
+            return `"${v.name}","${v.iitpNo}","${v.organization || ''}","${startedAt}","${completedAt}","${duration}"`
+        }).join('\n');
         const csv = headers + csvRows;
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
@@ -212,7 +222,7 @@ const ViewAttendanceDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>Attendance for: {session.title}</DialogTitle>
                     <DialogDescription>{viewers.length} participant(s) have viewed this session.</DialogDescription>
@@ -224,18 +234,34 @@ const ViewAttendanceDialog = ({
                                 <TableHead>Name</TableHead>
                                 <TableHead>IITP No.</TableHead>
                                 <TableHead>Organization</TableHead>
+                                <TableHead>Started At</TableHead>
+                                <TableHead>Completed At</TableHead>
+                                <TableHead>Duration</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {viewers.length > 0 ? viewers.map(viewer => (
-                                <TableRow key={viewer.id}>
-                                    <TableCell>{viewer.name}</TableCell>
-                                    <TableCell>{viewer.iitpNo}</TableCell>
-                                    <TableCell>{viewer.organization || 'N/A'}</TableCell>
-                                </TableRow>
-                            )) : (
+                            {viewers.length > 0 ? viewers.map(viewer => {
+                                const progress = viewer.lessonProgress?.[session.id];
+                                let duration = 'Incomplete';
+                                if(progress?.startedAt && progress.completedAt) {
+                                    duration = formatDistance(new Date(progress.completedAt), new Date(progress.startedAt), { addSuffix: false });
+                                } else if (progress?.startedAt) {
+                                    duration = 'In progress';
+                                }
+
+                                return (
+                                    <TableRow key={viewer.id}>
+                                        <TableCell>{viewer.name}</TableCell>
+                                        <TableCell>{viewer.iitpNo}</TableCell>
+                                        <TableCell>{viewer.organization || 'N/A'}</TableCell>
+                                        <TableCell>{progress?.startedAt ? format(new Date(progress.startedAt), 'Pp') : 'N/A'}</TableCell>
+                                        <TableCell>{progress?.completedAt ? format(new Date(progress.completedAt), 'Pp') : 'N/A'}</TableCell>
+                                        <TableCell>{duration}</TableCell>
+                                    </TableRow>
+                                )
+                            }) : (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="text-center h-24">No views yet for this session.</TableCell>
+                                    <TableCell colSpan={6} className="text-center h-24">No views yet for this session.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -313,7 +339,7 @@ export default function RecordedSessionsPage() {
     
     const viewersForSelectedSession = useMemo(() => {
         if (!viewingAttendanceFor) return [];
-        return participants.filter(p => p.completedLessons?.includes(viewingAttendanceFor.id));
+        return participants.filter(p => !!p.lessonProgress?.[viewingAttendanceFor.id]?.completedAt);
     }, [viewingAttendanceFor, participants]);
 
     return (
@@ -370,7 +396,7 @@ export default function RecordedSessionsPage() {
                     const course = courses.find(c => c.id === session.courseId);
                     const subject = course?.subjects.find(s => s.id === session.subjectId);
                     const unit = subject?.units.find(u => u.id === session.unitId);
-                    const viewCount = participants.filter(p => p.completedLessons?.includes(session.id)).length;
+                    const viewCount = participants.filter(p => !!p.lessonProgress?.[session.id]?.completedAt).length;
 
                     return (
                         <Card key={session.id} className="flex flex-col">

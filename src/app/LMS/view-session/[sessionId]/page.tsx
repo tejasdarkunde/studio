@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { notFound, useParams } from 'next/navigation';
-import { getRecordedSessionById, markLessonAsComplete, getParticipantByIitpNo } from '@/app/actions';
+import { getRecordedSessionById, markLessonAsComplete, getParticipantByIitpNo, startLesson } from '@/app/actions';
 import type { RecordedSession, Participant } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2, Video } from 'lucide-react';
@@ -49,6 +49,7 @@ export default function ViewRecordedSessionPage() {
         }
 
         // Mark attendance/viewership by treating the session ID as a lesson ID
+        await startLesson({ participantId: participantData.id, lessonId: sessionId });
         await markLessonAsComplete({ participantId: participantData.id, lessonId: sessionId });
         
         setParticipant(participantData);
@@ -101,7 +102,7 @@ export default function ViewRecordedSessionPage() {
                     <Card className="max-w-md mx-auto">
                         <CardHeader>
                             <CardTitle>Verify to Watch</CardTitle>
-                            <CardDescription>Enter your IITP No. and passkey to view this recording. Your attendance will be marked.</CardDescription>
+                            <CardDescription>Enter your IITP No. to view this recording. Your attendance will be marked.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <TraineeLoginForm onSuccess={handleLoginSuccess} />

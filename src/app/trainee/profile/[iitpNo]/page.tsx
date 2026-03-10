@@ -79,7 +79,7 @@ export default function TraineeProfilePage() {
     const enrolledCourses = courses.filter(c => participant.enrolledCourses?.includes(c.name));
 
      const viewedSessions = recordedSessions.filter(session =>
-        participant.completedLessons?.includes(session.id)
+        !!participant.lessonProgress?.[session.id]?.completedAt
     );
 
     return (
@@ -147,7 +147,7 @@ export default function TraineeProfilePage() {
                            {enrolledCourses.length > 0 ? enrolledCourses.map(course => {
                                 const allLessonIds = course.subjects.flatMap(s => s.units.flatMap(u => u.lessons.map(l => l.id)));
                                 const totalLessons = allLessonIds.length;
-                                const completedCount = allLessonIds.filter(id => participant.completedLessons?.includes(id)).length;
+                                const completedCount = allLessonIds.filter(id => !!participant.lessonProgress?.[id]?.completedAt).length;
                                 const percentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
                                 return (

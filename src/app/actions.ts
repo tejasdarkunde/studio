@@ -466,7 +466,6 @@ const processParticipantDoc = (doc: any): Participant => {
     const data = doc.data();
     const createdAt = data.createdAt as Timestamp;
 
-    // This is the fix: convert nested timestamps inside examProgress
     const examProgress = data.examProgress || {};
     for(const examId in examProgress) {
         const attempt = examProgress[examId];
@@ -477,12 +476,24 @@ const processParticipantDoc = (doc: any): Participant => {
             attempt.startedAt = attempt.startedAt.toDate().toISOString();
         }
     }
+    
+    const lessonProgress = data.lessonProgress || {};
+    for(const lessonId in lessonProgress) {
+        const progress = lessonProgress[lessonId];
+        if(progress.startedAt && progress.startedAt instanceof Timestamp) {
+            progress.startedAt = progress.startedAt.toDate().toISOString();
+        }
+        if(progress.completedAt && progress.completedAt instanceof Timestamp) {
+            progress.completedAt = progress.completedAt.toDate().toISOString();
+        }
+    }
 
     return {
         id: doc.id,
         ...data,
         createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
         examProgress: examProgress,
+        lessonProgress: lessonProgress,
     } as Participant;
 }
 
@@ -553,7 +564,7 @@ const participantSchema = z.object({
   mobile: z.string().optional(),
   organization: z.string().optional(),
   enrolledCourses: z.array(z.string()).optional(),
-  completedLessons: z.array(z.string()).optional(),
+  lessonProgress: z.record(z.any()).optional(),
   deniedCourses: z.array(z.string()).optional(),
   examProgress: z.record(z.any()).optional(),
   year: z.string().optional(),
@@ -606,7 +617,7 @@ export async function addParticipant(data: z.infer<typeof participantSchema>): P
         await addDoc(participantsCollection, {
             ...validatedFields.data,
             createdAt: serverTimestamp(),
-            completedLessons: [], // Initialize empty
+            lessonProgress: {}, // Initialize empty
             deniedCourses: [], // Initialize empty
             examProgress: {}, // Initialize empty
         });
@@ -676,7 +687,7 @@ export async function updateSelectedParticipants(data: z.infer<typeof updateSele
 }
 
 
-export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>[]): Promise<{ success: boolean; error?: string, skippedCount?: number }> {
+export async function addParticipantsInBulk(participants: Omit<Participant, 'id' | 'createdAt' | 'deniedCourses' | 'lessonProgress'>[]): Promise<{ success: boolean; error?: string, skippedCount?: number }> {
     const participantsCollection = collection(db, "participants");
     
     try {
@@ -707,7 +718,7 @@ export async function addParticipantsInBulk(participants: Omit<Participant, 'id'
             batch.set(newDocRef, {
                 ...validatedFields.data,
                 createdAt: serverTimestamp(),
-                completedLessons: [], // Initialize empty
+                lessonProgress: {}, // Initialize empty
                 deniedCourses: [], // Initialize empty
                 examProgress: {}, // Initialize empty
             });
@@ -1875,21 +1886,57 @@ export async function traineeLogin(data: z.infer<typeof traineeLoginSchema>): Pr
 
 
 // PROGRESS TRACKING
-const markLessonCompleteSchema = z.object({
+const lessonProgressSchema = z.object({
     participantId: z.string().min(1),
     lessonId: z.string().min(1),
 });
 
-export async function markLessonAsComplete(data: z.infer<typeof markLessonCompleteSchema>): Promise<{ success: boolean; error?: string }> {
-    const validated = markLessonCompleteSchema.safeParse(data);
+export async function startLesson(data: z.infer<typeof lessonProgressSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = lessonProgressSchema.safeParse(data);
     if (!validated.success) return { success: false, error: "Invalid data provided." };
 
     try {
         const { participantId, lessonId } = validated.data;
         const participantDocRef = doc(db, 'participants', participantId);
-        
+        const participantDoc = await getDoc(participantDocRef);
+        if (!participantDoc.exists()) return { success: false, error: 'Participant not found' };
+
+        const progressData = participantDoc.data()?.lessonProgress?.[lessonId] || {};
+
+        if (!progressData.startedAt) {
+            const fieldToUpdate = `lessonProgress.${lessonId}`;
+            await updateDoc(participantDocRef, {
+                [fieldToUpdate]: {
+                    ...progressData,
+                    startedAt: serverTimestamp(),
+                }
+            });
+        }
+        return { success: true };
+    } catch(error) {
+        console.error("Error starting lesson:", error);
+        return { success: false, error: "Could not update your progress." };
+    }
+}
+
+export async function markLessonAsComplete(data: z.infer<typeof lessonProgressSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = lessonProgressSchema.safeParse(data);
+    if (!validated.success) return { success: false, error: "Invalid data provided." };
+
+    try {
+        const { participantId, lessonId } = validated.data;
+        const participantDocRef = doc(db, 'participants', participantId);
+        const participantDoc = await getDoc(participantDocRef);
+        if (!participantDoc.exists()) return { success: false, error: 'Participant not found' };
+
+        const progressData = participantDoc.data()?.lessonProgress?.[lessonId] || {};
+
+        const fieldToUpdate = `lessonProgress.${lessonId}`;
         await updateDoc(participantDocRef, {
-            completedLessons: arrayUnion(lessonId)
+            [fieldToUpdate]: {
+                ...progressData,
+                completedAt: serverTimestamp(),
+            }
         });
 
         return { success: true };
@@ -2818,6 +2865,7 @@ export async function deleteRecordedSession(id: string): Promise<{ success: bool
 
 
     
+
 
 
 

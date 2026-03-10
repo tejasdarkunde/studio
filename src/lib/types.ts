@@ -79,6 +79,11 @@ export type ExamAttempt = {
   startedAt?: string; // ISO 8601 string
 };
 
+export type LessonProgress = {
+    startedAt?: string; // ISO 8601 string
+    completedAt?: string; // ISO 8601 string
+};
+
 export type Participant = {
     id: string;
     name: string;
@@ -87,7 +92,9 @@ export type Participant = {
     organization: string;
     createdAt: string; // ISO 8601 string format
     enrolledCourses?: string[];
-    completedLessons?: string[];
+    lessonProgress?: {
+        [lessonId: string]: LessonProgress;
+    };
     deniedCourses?: string[]; // Array of course IDs
     examProgress?: {
         [examId: string]: ExamAttempt;

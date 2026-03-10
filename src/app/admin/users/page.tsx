@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -494,8 +495,8 @@ export default function AdminUsersPage() {
             });
         });
     });
-
-    const completedLessons = fetchedParticipant.completedLessons?.length || 0;
+    
+    const completedLessons = Object.values(fetchedParticipant.lessonProgress || {}).filter(p => p.completedAt).length;
     const percentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
     const submittedExams = Object.values(fetchedParticipant.examProgress || {}).filter(attempt => attempt.isSubmitted).length;
 
@@ -509,7 +510,7 @@ export default function AdminUsersPage() {
   }, [fetchedParticipant, courses]);
 
 
-  const handleAddParticipant = async (details: Omit<Participant, 'id' | 'createdAt' | 'completedLessons' | 'deniedCourses'>) => {
+  const handleAddParticipant = async (details: Omit<Participant, 'id' | 'createdAt' | 'deniedCourses' | 'lessonProgress'>) => {
     const result = await addParticipant(details);
     if(result.success) {
         toast({
@@ -563,7 +564,7 @@ export default function AdminUsersPage() {
       ...editFormData,
       enrolledCourses: Array.isArray(editFormData.enrolledCourses) ? editFormData.enrolledCourses : String(editFormData.enrolledCourses).split(',').map(c => c.trim()).filter(Boolean),
       id: fetchedParticipant?.id || '',
-      completedLessons: fetchedParticipant?.completedLessons || [],
+      lessonProgress: fetchedParticipant?.lessonProgress || {},
       deniedCourses: editFormData.deniedCourses || [],
     } as Participant);
     
@@ -600,7 +601,7 @@ export default function AdminUsersPage() {
     document.body.removeChild(link);
   };
 
-  const handleImportSave = async (importedParticipants: Omit<Participant, 'id'|'createdAt'|'completedLessons'|'deniedCourses'>[]) => {
+  const handleImportSave = async (importedParticipants: Omit<Participant, 'id'|'createdAt'|'deniedCourses' | 'lessonProgress'>[]) => {
     if (importedParticipants.length === 0) {
       toast({
         variant: 'destructive',
@@ -1338,6 +1339,7 @@ export default function AdminUsersPage() {
     
 
     
+
 
 
 
