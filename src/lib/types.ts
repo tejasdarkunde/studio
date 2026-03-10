@@ -187,6 +187,16 @@ export type ExamResult = {
     submittedAt: string;
 }
 
+export type RecordedSession = {
+  id: string;
+  title: string;
+  videoUrl: string;
+  description?: string;
+  courseId?: string;
+  recordedDate: string; // ISO string for the date it was recorded
+  createdAt: string; // ISO string for when the db entry was created
+};
+
 export type FormQuestion = {
     id: string;
     text: string;

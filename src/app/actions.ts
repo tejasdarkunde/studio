@@ -1,10 +1,11 @@
 
+
 "use server";
 
 import { z } from "zod";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, doc, serverTimestamp, writeBatch, Timestamp, getDoc, setDoc, addDoc, orderBy, deleteDoc, updateDoc, where, arrayUnion, arrayRemove, limit } from "firebase/firestore";
-import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, Supervisor, Exam, Question, ExamAttempt, ExamResult, FormAdmin, Form as FormType } from "@/lib/types";
+import type { Registration, Batch, MeetingLinks, Participant, Trainer, Course, Subject, Unit, Lesson, SuperAdmin, Organization, Supervisor, Exam, Question, ExamAttempt, ExamResult, FormAdmin, Form as FormType, RecordedSession } from "@/lib/types";
 import { google } from 'googleapis';
 
 // GENERAL LOGIN
@@ -421,7 +422,7 @@ export async function getRedirectLink(batchId: string): Promise<{link: string | 
             // If there's a trainer ID, get the link from the trainer document
             if (batchData.trainerId) {
                 const trainerDocRef = doc(db, 'trainers', batchData.trainerId);
-                const trainerDoc = await getDoc(trainerDocRef);
+                const trainerDoc = await getDoc(trainerDoc);
                 if (trainerDoc.exists()) {
                     return { link: trainerDoc.data().meetingLink || null };
                 }
@@ -2694,6 +2695,89 @@ export async function generateAppointmentLetter(participantId: string): Promise<
     }
 }
       
+// RECORDED SESSION ACTIONS
+const recordedSessionSchema = z.object({
+    title: z.string().min(1, "Title is required."),
+    videoUrl: z.string().url("A valid video URL is required."),
+    recordedDate: z.date({ required_error: "Recorded date is required."}),
+    courseId: z.string().optional(),
+    description: z.string().optional(),
+});
+
+export async function addRecordedSession(data: z.infer<typeof recordedSessionSchema>): Promise<{ success: boolean; error?: string }> {
+    const validated = recordedSessionSchema.safeParse(data);
+    if (!validated.success) {
+        console.error(validated.error.flatten().fieldErrors);
+        return { success: false, error: "Invalid data provided." };
+    }
+    try {
+        const { recordedDate, ...rest } = validated.data;
+        await addDoc(collection(db, 'recordedSessions'), {
+            ...rest,
+            recordedDate: Timestamp.fromDate(recordedDate),
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch(error) {
+        console.error("Error adding recorded session:", error);
+        return { success: false, error: "Could not save the session." };
+    }
+}
+
+export async function getRecordedSessions(): Promise<RecordedSession[]> {
+    try {
+        const snapshot = await getDocs(query(collection(db, 'recordedSessions'), orderBy('recordedDate', 'desc')));
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const recordedDate = data.recordedDate as Timestamp;
+            const createdAt = data.createdAt as Timestamp;
+            return {
+                id: doc.id,
+                title: data.title,
+                videoUrl: data.videoUrl,
+                description: data.description,
+                courseId: data.courseId,
+                recordedDate: recordedDate?.toDate().toISOString() || new Date().toISOString(),
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            } as RecordedSession
+        });
+    } catch (error) {
+        console.error("Error fetching recorded sessions:", error);
+        return [];
+    }
+}
+
+const updateRecordedSessionSchema = recordedSessionSchema.extend({ id: z.string().min(1) });
+
+export async function updateRecordedSession(data: z.infer<typeof updateRecordedSessionSchema>): Promise<{ success: boolean; error?: string }> {
+     const validated = updateRecordedSessionSchema.safeParse(data);
+    if (!validated.success) {
+        console.error(validated.error.flatten().fieldErrors);
+        return { success: false, error: "Invalid data provided." };
+    }
+    try {
+        const { id, recordedDate, ...rest } = validated.data;
+        const docRef = doc(db, 'recordedSessions', id);
+        await updateDoc(docRef, {
+             ...rest,
+            recordedDate: Timestamp.fromDate(recordedDate),
+        });
+        return { success: true };
+    } catch(error) {
+        console.error("Error updating recorded session:", error);
+        return { success: false, error: "Could not update the session." };
+    }
+}
+
+export async function deleteRecordedSession(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        await deleteDoc(doc(db, 'recordedSessions', id));
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting recorded session:", error);
+        return { success: false, error: "Could not delete the session." };
+    }
+}
     
 
     
@@ -2710,6 +2794,7 @@ export async function generateAppointmentLetter(participantId: string): Promise<
 
 
     
+
 
 
 
