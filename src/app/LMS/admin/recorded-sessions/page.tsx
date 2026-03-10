@@ -197,8 +197,8 @@ const ViewAttendanceDialog = ({
     if (!session) return null;
 
     const handleExport = () => {
-        const headers = "Name,IITP No\n";
-        const csvRows = viewers.map(v => `"${v.name}","${v.iitpNo}"`).join('\n');
+        const headers = "Name,IITP No,Organization\n";
+        const csvRows = viewers.map(v => `"${v.name}","${v.iitpNo}","${v.organization || ''}"`).join('\n');
         const csv = headers + csvRows;
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
@@ -223,6 +223,7 @@ const ViewAttendanceDialog = ({
                             <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>IITP No.</TableHead>
+                                <TableHead>Organization</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -230,10 +231,11 @@ const ViewAttendanceDialog = ({
                                 <TableRow key={viewer.id}>
                                     <TableCell>{viewer.name}</TableCell>
                                     <TableCell>{viewer.iitpNo}</TableCell>
+                                    <TableCell>{viewer.organization || 'N/A'}</TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>
-                                    <TableCell colSpan={2} className="text-center h-24">No views yet for this session.</TableCell>
+                                    <TableCell colSpan={3} className="text-center h-24">No views yet for this session.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -418,4 +420,3 @@ export default function RecordedSessionsPage() {
     </>
   );
 }
-
