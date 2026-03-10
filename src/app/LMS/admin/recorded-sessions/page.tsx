@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ChevronLeft, Video, PlusCircle, Loader2, Pencil, Trash, Calendar as CalendarIcon, BookOpen } from 'lucide-react';
+import { ChevronLeft, Video, PlusCircle, Loader2, Pencil, Trash, Calendar as CalendarIcon, BookOpen, Link as LinkIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -229,6 +229,12 @@ export default function RecordedSessionsPage() {
         setDeletingSession(null);
     };
 
+    const handleCopyLink = (sessionId: string) => {
+        const url = `${window.location.origin}/LMS/view-session/${sessionId}`;
+        navigator.clipboard.writeText(url);
+        toast({ title: "Link Copied!", description: "The shareable session link has been copied."});
+    };
+
     return (
     <>
         <ManageSessionDialog 
@@ -299,6 +305,9 @@ export default function RecordedSessionsPage() {
                             <CardFooter className="flex justify-between">
                                 <Button variant="ghost" size="sm" onClick={() => window.open(session.videoUrl, '_blank')}><Video className="mr-2 h-4 w-4" /> Watch</Button>
                                 <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopyLink(session.id)} title="Copy shareable link">
+                                        <LinkIcon className="h-4 w-4" />
+                                    </Button>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDialogState({isOpen: true, session})}><Pencil className="h-4 w-4" /></Button>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingSession(session)}><Trash className="h-4 w-4" /></Button>
                                 </div>

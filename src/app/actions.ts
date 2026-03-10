@@ -2748,6 +2748,34 @@ export async function getRecordedSessions(): Promise<RecordedSession[]> {
     }
 }
 
+export async function getRecordedSessionById(id: string): Promise<RecordedSession | null> {
+    try {
+        const docRef = doc(db, 'recordedSessions', id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const recordedDate = data.recordedDate as Timestamp;
+            const createdAt = data.createdAt as Timestamp;
+            return {
+                id: docSnap.id,
+                title: data.title,
+                videoUrl: data.videoUrl,
+                description: data.description,
+                courseId: data.courseId,
+                subjectId: data.subjectId,
+                unitId: data.unitId,
+                recordedDate: recordedDate?.toDate().toISOString() || new Date().toISOString(),
+                createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
+            } as RecordedSession;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error fetching recorded session by ID:", error);
+        return null;
+    }
+}
+
 const updateRecordedSessionSchema = recordedSessionSchema.extend({ id: z.string().min(1) });
 
 export async function updateRecordedSession(data: z.infer<typeof updateRecordedSessionSchema>): Promise<{ success: boolean; error?: string }> {
@@ -2795,6 +2823,7 @@ export async function deleteRecordedSession(id: string): Promise<{ success: bool
 
 
     
+
 
 
 
