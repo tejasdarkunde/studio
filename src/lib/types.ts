@@ -192,6 +192,8 @@ export type RecordedSession = {
   videoUrl: string;
   description?: string;
   courseId?: string;
+  subjectId?: string;
+  unitId?: string;
   recordedDate: string; // ISO string for the date it was recorded
   createdAt: string; // ISO string for when the db entry was created
 };

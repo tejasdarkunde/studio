@@ -2698,6 +2698,8 @@ const recordedSessionSchema = z.object({
     videoUrl: z.string().url("A valid video URL is required."),
     recordedDate: z.date({ required_error: "Recorded date is required."}),
     courseId: z.string().optional(),
+    subjectId: z.string().optional(),
+    unitId: z.string().optional(),
     description: z.string().optional(),
 });
 
@@ -2734,6 +2736,8 @@ export async function getRecordedSessions(): Promise<RecordedSession[]> {
                 videoUrl: data.videoUrl,
                 description: data.description,
                 courseId: data.courseId,
+                subjectId: data.subjectId,
+                unitId: data.unitId,
                 recordedDate: recordedDate?.toDate().toISOString() || new Date().toISOString(),
                 createdAt: createdAt?.toDate().toISOString() || new Date().toISOString(),
             } as RecordedSession
@@ -2791,6 +2795,7 @@ export async function deleteRecordedSession(id: string): Promise<{ success: bool
 
 
     
+
 
 
 

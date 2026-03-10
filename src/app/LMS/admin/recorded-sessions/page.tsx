@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import type { RecordedSession, Course } from '@/lib/types';
+import type { RecordedSession, Course, Subject, Unit } from '@/lib/types';
 import { getRecordedSessions, addRecordedSession, updateRecordedSession, deleteRecordedSession, getCourses } from '@/app/actions';
 import { ConfirmDialog } from '@/components/features/confirm-dialog';
 
@@ -38,9 +38,23 @@ const ManageSessionDialog = ({
     const [videoUrl, setVideoUrl] = useState('');
     const [recordedDate, setRecordedDate] = useState<Date | undefined>();
     const [courseId, setCourseId] = useState('');
+    const [subjectId, setSubjectId] = useState('');
+    const [unitId, setUnitId] = useState('');
     const [description, setDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
+
+    const subjectsForSelectedCourse = useMemo(() => {
+        if (!courseId || courseId === '--none--') return [];
+        const course = courses.find(c => c.id === courseId);
+        return course?.subjects || [];
+    }, [courseId, courses]);
+
+    const unitsForSelectedSubject = useMemo(() => {
+        if (!subjectId || subjectId === '--none--') return [];
+        const subject = subjectsForSelectedCourse.find(s => s.id === subjectId);
+        return subject?.units || [];
+    }, [subjectId, subjectsForSelectedCourse]);
 
     useEffect(() => {
         if (isOpen) {
@@ -48,10 +62,23 @@ const ManageSessionDialog = ({
             setVideoUrl(initialData?.videoUrl || '');
             setRecordedDate(initialData?.recordedDate ? new Date(initialData.recordedDate) : new Date());
             setCourseId(initialData?.courseId || '');
+            setSubjectId(initialData?.subjectId || '');
+            setUnitId(initialData?.unitId || '');
             setDescription(initialData?.description || '');
             setIsSaving(false);
         }
     }, [isOpen, initialData]);
+
+    const handleCourseChange = (newCourseId: string) => {
+        setCourseId(newCourseId);
+        setSubjectId('');
+        setUnitId('');
+    };
+    
+    const handleSubjectChange = (newSubjectId: string) => {
+        setSubjectId(newSubjectId);
+        setUnitId('');
+    };
 
     const handleSave = async () => {
         if (!title.trim() || !videoUrl.trim() || !recordedDate) {
@@ -64,6 +91,8 @@ const ManageSessionDialog = ({
             videoUrl,
             recordedDate,
             courseId: (courseId && courseId !== '--none--') ? courseId : undefined,
+            subjectId: (subjectId && subjectId !== '--none--') ? subjectId : undefined,
+            unitId: (unitId && unitId !== '--none--') ? unitId : undefined,
             description
         };
         if(initialData) {
@@ -107,11 +136,31 @@ const ManageSessionDialog = ({
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="session-course">Associated Course (Optional)</Label>
-                        <Select value={courseId} onValueChange={setCourseId}>
+                        <Select value={courseId} onValueChange={handleCourseChange}>
                             <SelectTrigger id="session-course"><SelectValue placeholder="Select a course" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="--none--">None</SelectItem>
                                 {courses.map(course => <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="session-subject">Associated Subject (Optional)</Label>
+                        <Select value={subjectId} onValueChange={handleSubjectChange} disabled={!courseId || courseId === '--none--'}>
+                            <SelectTrigger id="session-subject"><SelectValue placeholder="Select a subject" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="--none--">None</SelectItem>
+                                {subjectsForSelectedCourse.map(subject => <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="session-unit">Associated Unit (Optional)</Label>
+                        <Select value={unitId} onValueChange={setUnitId} disabled={!subjectId || subjectId === '--none--'}>
+                            <SelectTrigger id="session-unit"><SelectValue placeholder="Select a unit" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="--none--">None</SelectItem>
+                                {unitsForSelectedSubject.map(unit => <SelectItem key={unit.id} value={unit.id}>{unit.title}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
@@ -226,6 +275,8 @@ export default function RecordedSessionsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {sessions.map(session => {
                     const course = courses.find(c => c.id === session.courseId);
+                    const subject = course?.subjects.find(s => s.id === session.subjectId);
+                    const unit = subject?.units.find(u => u.id === session.unitId);
                     return (
                         <Card key={session.id} className="flex flex-col">
                             <CardHeader>
@@ -233,7 +284,16 @@ export default function RecordedSessionsPage() {
                                 <CardDescription>Recorded on: {format(new Date(session.recordedDate), 'PPP')}</CardDescription>
                             </CardHeader>
                             <CardContent className="flex-grow space-y-2">
-                                {course && <div className="flex items-center gap-2 text-sm text-muted-foreground"><BookOpen className="h-4 w-4" /><span>{course.name}</span></div>}
+                                {course && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <BookOpen className="h-4 w-4 flex-shrink-0" />
+                                        <span>
+                                            {course.name}
+                                            {subject && ` / ${subject.name}`}
+                                            {unit && ` / ${unit.title}`}
+                                        </span>
+                                    </div>
+                                )}
                                 <p className="text-sm text-muted-foreground line-clamp-3">{session.description || 'No description provided.'}</p>
                             </CardContent>
                             <CardFooter className="flex justify-between">
