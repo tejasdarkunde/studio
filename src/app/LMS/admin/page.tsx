@@ -4,8 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Book } from 'lucide-react';
-import { GraduationCap } from 'lucide-react';
+import { Book, GraduationCap, Video } from 'lucide-react';
 
 export default function LMSAdminDashboard() {
   return (
@@ -39,6 +38,19 @@ export default function LMSAdminDashboard() {
                     <Button asChild className="w-full" variant="secondary">
                         <Link href="/admin/exams">
                             <GraduationCap className="mr-2 h-4 w-4" /> Manage Exams
+                        </Link>
+                    </Button>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Recorded Training Sessions</CardTitle>
+                    <CardDescription>Upload and manage recorded training videos.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button asChild className="w-full" variant="secondary">
+                        <Link href="/LMS/admin/recorded-sessions">
+                            <Video className="mr-2 h-4 w-4" /> Manage Recordings
                         </Link>
                     </Button>
                 </CardContent>
