@@ -1843,7 +1843,6 @@ export async function deleteQuestion(data: z.infer<typeof deleteQuestionSchema>)
 // TRAINEE LOGIN
 const traineeLoginSchema = z.object({
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
-  passkey: z.string().min(1, { message: "Passkey is required." }),
 });
 
 export async function traineeLogin(data: z.infer<typeof traineeLoginSchema>): Promise<{ success: boolean; iitpNo?: string; error?: string }> {
@@ -1853,24 +1852,20 @@ export async function traineeLogin(data: z.infer<typeof traineeLoginSchema>): Pr
     }
 
     try {
-        const { iitpNo, passkey } = validatedFields.data;
+        const { iitpNo } = validatedFields.data;
         const participantsCollection = collection(db, "participants");
         const q = query(participantsCollection, where("iitpNo", "==", iitpNo));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-            return { success: false, error: "Invalid IITP No. or Passkey." };
+            return { success: false, error: "Invalid IITP No." };
         }
 
         const participantDoc = querySnapshot.docs[0];
         const participant = participantDoc.data() as Participant;
 
-        // Passkey is the registered mobile number
-        if (participant.mobile === passkey) {
-            return { success: true, iitpNo: participant.iitpNo };
-        } else {
-            return { success: false, error: "Invalid IITP No. or Passkey." };
-        }
+        // Login is now based on IITP No. only
+        return { success: true, iitpNo: participant.iitpNo };
 
     } catch (error) {
         console.error("Error during trainee login:", error);
@@ -2823,6 +2818,7 @@ export async function deleteRecordedSession(id: string): Promise<{ success: bool
 
 
     
+
 
 
 

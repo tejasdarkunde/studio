@@ -1,11 +1,10 @@
-
 "use client";
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Library, Lock, Loader2, LogIn } from "lucide-react";
+import { Library, Loader2, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +21,6 @@ import { traineeLogin } from "@/app/actions";
 
 const formSchema = z.object({
   iitpNo: z.string().min(1, { message: "IITP No. is required." }),
-  passkey: z.string().min(1, { message: "Passkey is required." }),
 });
 
 type TraineeLoginFormProps = {
@@ -37,7 +35,6 @@ export function TraineeLoginForm({ onSuccess }: TraineeLoginFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       iitpNo: "",
-      passkey: "",
     },
   });
 
@@ -76,21 +73,6 @@ export function TraineeLoginForm({ onSuccess }: TraineeLoginFormProps) {
               </FormLabel>
               <FormControl>
                 <Input placeholder="Enter your unique ID" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-         <FormField
-          control={form.control}
-          name="passkey"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                <Lock className="h-4 w-4" /> Passkey (Registered Mobile No.)
-              </FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="Enter your passkey" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
