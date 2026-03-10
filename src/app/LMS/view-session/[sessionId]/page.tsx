@@ -6,7 +6,7 @@ import { notFound, useParams } from 'next/navigation';
 import { getRecordedSessionById, markLessonAsComplete, getParticipantByIitpNo, startLesson } from '@/app/actions';
 import type { RecordedSession, Participant } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, Video } from 'lucide-react';
+import { Loader2, Video, CheckCircle2 } from 'lucide-react';
 import { TraineeLoginForm } from '@/components/features/trainee-login-form';
 import { VideoPlayer } from '@/components/features/video-player';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ export default function ViewRecordedSessionPage() {
     const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [participant, setParticipant] = useState<Participant | null>(null);
+    const [isCompleting, setIsCompleting] = useState(false);
 
     const { toast } = useToast();
 
@@ -48,9 +49,10 @@ export default function ViewRecordedSessionPage() {
             return;
         }
 
-        // Mark attendance/viewership by treating the session ID as a lesson ID
-        await startLesson({ participantId: participantData.id, lessonId: sessionId });
-        await markLessonAsComplete({ participantId: participantData.id, lessonId: sessionId });
+        // Mark that the lesson has been started if it hasn't been already
+        if (!participantData.lessonProgress?.[sessionId]?.startedAt) {
+            await startLesson({ participantId: participantData.id, lessonId: sessionId });
+        }
         
         setParticipant(participantData);
         setIsAuthenticated(true);
@@ -58,6 +60,21 @@ export default function ViewRecordedSessionPage() {
             title: 'Access Granted',
             description: `Welcome, ${participantData.name}. You can now view the session.`
         });
+    };
+
+    const handleMarkComplete = async () => {
+        if (!participant) return;
+        setIsCompleting(true);
+        const result = await markLessonAsComplete({ participantId: participant.id, lessonId: sessionId });
+        if (result.success) {
+            toast({ title: "Session Completed!", description: "Your progress has been saved." });
+            // Re-fetch participant data to update the UI
+            const updatedParticipant = await getParticipantByIitpNo(participant.iitpNo);
+            setParticipant(updatedParticipant);
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save your progress.' });
+        }
+        setIsCompleting(false);
     };
 
     if (loading) {
@@ -71,6 +88,8 @@ export default function ViewRecordedSessionPage() {
     if (!session) {
         notFound();
     }
+
+    const isCompleted = !!participant?.lessonProgress?.[sessionId]?.completedAt;
 
     return (
         <main className="container mx-auto p-4 md:p-8 flex flex-col items-center justify-center min-h-screen">
@@ -89,13 +108,26 @@ export default function ViewRecordedSessionPage() {
                     )}
                 </div>
                 
-                {isAuthenticated ? (
+                {isAuthenticated && participant ? (
                     <Card>
                         <CardContent className="p-0 overflow-hidden">
                              <VideoPlayer url={session.videoUrl} />
                         </CardContent>
-                        <CardFooter className="p-4 bg-secondary">
-                             <p className="text-sm text-muted-foreground">Your view for this session has been recorded.</p>
+                        <CardFooter className="p-4 bg-secondary flex justify-between items-center">
+                             {isCompleted ? (
+                                <div className="flex items-center gap-2 text-green-600 font-semibold">
+                                    <CheckCircle2 className="h-5 w-5" />
+                                    <span>Completed on: {new Date(participant.lessonProgress![sessionId]!.completedAt!).toLocaleDateString()}</span>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">Click the button to mark this session as complete.</p>
+                            )}
+                             <Button onClick={handleMarkComplete} disabled={isCompleted || isCompleting}>
+                                {isCompleting 
+                                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</>
+                                    : (isCompleted ? 'Completed' : 'Mark as Complete')
+                                }
+                             </Button>
                         </CardFooter>
                     </Card>
                 ) : (
