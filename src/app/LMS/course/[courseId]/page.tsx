@@ -1,49 +1,19 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import type { Course, RecordedSession, Subject } from '@/lib/types';
 import { getCourseById, getRecordedSessions } from '@/app/actions';
-import { Loader2, BookOpen, ChevronLeft } from 'lucide-react';
+import { Loader2, BookOpen, ChevronLeft, Video, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { Video } from 'lucide-react';
-import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const SessionCard = ({ session }: { session: RecordedSession }) => {
-    const imageUrl = `https://picsum.photos/seed/${session.id.replace(/-/g, '')}/600/400`;
-    return (
-        <Card className="flex flex-col overflow-hidden">
-             <div className="relative h-40 w-full">
-                <Image
-                    src={imageUrl}
-                    alt={session.title}
-                    fill
-                    className="object-cover"
-                    data-ai-hint="technology abstract"
-                />
-            </div>
-            <CardHeader>
-                <CardTitle className="line-clamp-2">{session.title}</CardTitle>
-                <CardDescription>Recorded on: {format(new Date(session.recordedDate), 'PPP')}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground line-clamp-3">{session.description || 'No description provided.'}</p>
-            </CardContent>
-            <CardFooter>
-                 <Button asChild className="w-full">
-                    <Link href={`/LMS/view-session/${session.id}`}>
-                        <Video className="mr-2 h-4 w-4"/> Watch Session
-                    </Link>
-                </Button>
-            </CardFooter>
-        </Card>
-    )
-}
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
 
 export default function CoursePage() {
     const { courseId } = useParams() as { courseId: string };
@@ -71,12 +41,21 @@ export default function CoursePage() {
         fetchData();
     }, [courseId]);
 
+    const subjectsToDisplay = useMemo(() => {
+        if (!course) return [];
+        if (selectedSubject === 'all') {
+            return course.subjects;
+        }
+        return course.subjects.filter(s => s.id === selectedSubject);
+    }, [course, selectedSubject]);
+
     const filteredSessions = useMemo(() => {
         if (selectedSubject === 'all') {
             return sessions;
         }
         return sessions.filter(session => session.subjectId === selectedSubject);
     }, [sessions, selectedSubject]);
+
 
     if (loading) {
         return (
@@ -90,19 +69,11 @@ export default function CoursePage() {
                      </div>
                  </div>
                  <Skeleton className="h-10 w-full mb-6" />
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(3)].map((_, i) => (
-                        <Card key={i}>
-                            <Skeleton className="h-40 w-full" />
-                            <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
-                            <CardContent className="space-y-2">
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-full" />
-                            </CardContent>
-                            <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
-                        </Card>
-                    ))}
-                 </div>
+                 <div className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                </div>
             </div>
         )
     }
@@ -142,10 +113,52 @@ export default function CoursePage() {
                 
                  <div className="mt-6">
                     {filteredSessions.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredSessions.sort((a, b) => new Date(b.recordedDate).getTime() - new Date(a.recordedDate).getTime()).map(session => (
-                                <SessionCard key={session.id} session={session} />
-                            ))}
+                        <div className="space-y-8">
+                            {subjectsToDisplay.map(subject => {
+                                const unitsWithSessions = subject.units.filter(u => sessions.some(s => s.unitId === u.id && s.subjectId === subject.id));
+                                if (unitsWithSessions.length === 0) return null;
+
+                                return (
+                                    <div key={subject.id}>
+                                        {selectedSubject === 'all' && (
+                                            <>
+                                                <h2 className="text-2xl font-bold mb-4">{subject.name}</h2>
+                                                <Separator className="mb-4" />
+                                            </>
+                                        )}
+                                        <Accordion type="multiple" defaultValue={unitsWithSessions.map(u => u.id)} className="w-full space-y-4">
+                                            {unitsWithSessions.map(unit => {
+                                                const unitSessions = sessions.filter(s => s.unitId === unit.id);
+                                                return (
+                                                    <AccordionItem value={unit.id} key={unit.id} className="border rounded-lg">
+                                                        <AccordionTrigger className="text-xl font-semibold px-6">{unit.title}</AccordionTrigger>
+                                                        <AccordionContent className="p-4">
+                                                            <div className="space-y-2">
+                                                                {unitSessions.sort((a, b) => new Date(b.recordedDate).getTime() - new Date(a.recordedDate).getTime()).map(session => (
+                                                                    <div key={session.id} className="flex justify-between items-center p-3 hover:bg-muted/50 rounded-md">
+                                                                        <div className="space-y-1">
+                                                                            <p className="font-medium">{session.title}</p>
+                                                                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                                                <CalendarIcon className="h-4 w-4" />
+                                                                                Recorded on: {format(new Date(session.recordedDate), 'PPP')}
+                                                                            </p>
+                                                                        </div>
+                                                                        <Button asChild variant="secondary">
+                                                                            <Link href={`/LMS/view-session/${session.id}`}>
+                                                                                <Video className="mr-2 h-4 w-4"/> Watch
+                                                                            </Link>
+                                                                        </Button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                )
+                                            })}
+                                        </Accordion>
+                                    </div>
+                                )
+                            })}
                         </div>
                     ) : (
                          <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
