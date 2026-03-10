@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, PlusCircle, Trash, Loader2, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, BookCopy, ChevronLeft, Circle, CircleDot, CircleSlash, Book } from 'lucide-react';
+import { Pencil, PlusCircle, Trash, Loader2, Save, XCircle, ChevronRight, FolderPlus, FileVideo, Video, Clock, Ban, RotateCcw, BookCopy, ChevronLeft, Circle, CircleDot, CircleSlash, Book, Calendar as CalendarIcon } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { addCourse, getCourses, updateCourseName, addSubject, updateSubject, deleteSubject, addUnit, updateUnit, deleteUnit, addLesson, updateLesson, deleteLesson, updateCourseStatus, deleteCourse } from '@/app/actions';
@@ -18,8 +18,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/features/confirm-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
-const ManageLessonDialog = ({
+const ManageRecordingDialog = ({
     isOpen,
     onClose,
     onSave,
@@ -32,26 +36,23 @@ const ManageLessonDialog = ({
 }) => {
     const [title, setTitle] = useState('');
     const [videoUrl, setVideoUrl] = useState('');
-    const [duration, setDuration] = useState('');
     const [description, setDescription] = useState('');
-    const [documentUrl, setDocumentUrl] = useState('');
+    const [recordedDate, setRecordedDate] = useState<Date | undefined>();
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if(isOpen) {
             setTitle(initialData?.title || '');
             setVideoUrl(initialData?.videoUrl || '');
-            setDuration(initialData?.duration?.toString() || '');
             setDescription(initialData?.description || '');
-            setDocumentUrl(initialData?.documentUrl || '');
+            setRecordedDate(initialData?.recordedDate ? new Date(initialData.recordedDate) : undefined);
             setIsSaving(false);
         }
     }, [isOpen, initialData])
 
     const handleSave = async () => {
         setIsSaving(true);
-        const durationNumber = duration ? parseInt(duration, 10) : undefined;
-        await onSave({ title, videoUrl, duration: durationNumber, description, documentUrl });
+        await onSave({ title, videoUrl, description, recordedDate });
         setIsSaving(false);
     }
 
@@ -59,35 +60,43 @@ const ManageLessonDialog = ({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[520px]">
                 <DialogHeader>
-                    <DialogTitle>{initialData ? 'Edit Lesson' : 'Add New Lesson'}</DialogTitle>
-                    <DialogDescription>Fill in the details for this lesson.</DialogDescription>
+                    <DialogTitle>{initialData ? 'Edit Recording' : 'Add New Recording'}</DialogTitle>
+                    <DialogDescription>Fill in the details for this recording.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                     <div className="space-y-2">
-                        <Label htmlFor="lesson-title">Lesson Title *</Label>
-                        <Input id="lesson-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                        <Label htmlFor="recording-title">Recording Title *</Label>
+                        <Input id="recording-title" value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="lesson-url">Video URL * (YouTube, Vimeo, etc.)</Label>
-                        <Input id="lesson-url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
+                        <Label htmlFor="recording-url">Video URL * (YouTube, Vimeo, etc.)</Label>
+                        <Input id="recording-url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="lesson-duration">Duration (minutes)</Label>
-                        <Input id="lesson-duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g., 45" />
+                        <Label>Recorded Date (Optional)</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                variant={"outline"}
+                                className={cn("w-full justify-start text-left font-normal",!recordedDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {recordedDate ? format(recordedDate, "PPP") : <span>Pick a date</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar mode="single" selected={recordedDate} onSelect={setRecordedDate} initialFocus />
+                            </PopoverContent>
+                        </Popover>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="lesson-desc">Description</Label>
-                        <Textarea id="lesson-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short description, key points, or reference links..." />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="lesson-doc-url">Document URL (Optional)</Label>
-                        <Input id="lesson-doc-url" value={documentUrl} onChange={(e) => setDocumentUrl(e.target.value)} placeholder="e.g., link to a Google Drive PPT" />
+                        <Label htmlFor="recording-desc">Description</Label>
+                        <Textarea id="recording-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short description, key points, or reference links..." />
                     </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
                     <Button onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Lesson'}
+                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Recording'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -115,9 +124,9 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     const [editingUnitValue, setEditingUnitValue] = useState('');
     const [deletingUnit, setDeletingUnit] = useState<{unit: Unit, subjectId: string} | null>(null);
     
-    // Lesson states
-    const [lessonDialogState, setLessonDialogState] = useState<{isOpen: boolean, initialData?: Lesson, unit?: Unit, subjectId?: string}>({isOpen: false});
-    const [deletingLesson, setDeletingLesson] = useState<{lesson: Lesson, unitId: string, subjectId: string} | null>(null);
+    // Recording states
+    const [recordingDialogState, setRecordingDialogState] = useState<{isOpen: boolean, initialData?: Lesson, unit?: Unit, subjectId?: string}>({isOpen: false});
+    const [deletingRecording, setDeletingRecording] = useState<{lesson: Lesson, unitId: string, subjectId: string} | null>(null);
 
     const { toast } = useToast();
 
@@ -242,36 +251,36 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
         setDeletingUnit(null);
     }
 
-    // Lesson Handlers
-    const handleSaveLesson = async (data: Omit<Lesson, 'id'>) => {
-        if (!lessonDialogState.subjectId || !lessonDialogState.unit) return;
+    // Recording Handlers
+    const handleSaveRecording = async (data: Omit<Lesson, 'id'>) => {
+        if (!recordingDialogState.subjectId || !recordingDialogState.unit) return;
 
-        const action = lessonDialogState.initialData ? updateLesson : addLesson;
-        const payload = lessonDialogState.initialData
-            ? { ...data, lessonId: lessonDialogState.initialData.id, unitId: lessonDialogState.unit.id, subjectId: lessonDialogState.subjectId, courseId: course.id, lessonTitle: data.title }
-            : { ...data, unitId: lessonDialogState.unit.id, subjectId: lessonDialogState.subjectId, courseId: course.id, lessonTitle: data.title };
+        const action = recordingDialogState.initialData ? updateLesson : addLesson;
+        const payload = recordingDialogState.initialData
+            ? { ...data, lessonId: recordingDialogState.initialData.id, unitId: recordingDialogState.unit.id, subjectId: recordingDialogState.subjectId, courseId: course.id, lessonTitle: data.title }
+            : { ...data, unitId: recordingDialogState.unit.id, subjectId: recordingDialogState.subjectId, courseId: course.id, lessonTitle: data.title };
         
         const result = await action(payload as any);
         if (result.success) {
-            toast({ title: `Lesson ${lessonDialogState.initialData ? 'Updated' : 'Added'}` });
+            toast({ title: `Recording ${recordingDialogState.initialData ? 'Updated' : 'Added'}` });
             onContentUpdated();
-            setLessonDialogState({ isOpen: false });
+            setRecordingDialogState({ isOpen: false });
         } else {
             toast({ variant: 'destructive', title: "Error", description: result.error });
         }
     }
     
-    const handleDeleteLesson = async () => {
-        if (!deletingLesson) return;
-        const { lesson, unitId, subjectId } = deletingLesson;
+    const handleDeleteRecording = async () => {
+        if (!deletingRecording) return;
+        const { lesson, unitId, subjectId } = deletingRecording;
         const result = await deleteLesson({ courseId: course.id, subjectId, unitId, lessonId: lesson.id });
         if (result.success) {
-            toast({ title: "Lesson Deleted" });
+            toast({ title: "Recording Deleted" });
             onContentUpdated();
         } else {
             toast({ variant: 'destructive', title: "Error", description: result.error });
         }
-        setDeletingLesson(null);
+        setDeletingRecording(null);
     }
 
     const courseStatus = course.status || 'active';
@@ -291,14 +300,14 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
     return (
         <>
             <ConfirmDialog isOpen={!!deletingCourse} onClose={() => setDeletingCourse(null)} onConfirm={handleDeleteCourse} title="Delete Course?" description={`Permanently delete "${deletingCourse?.name}". This action cannot be undone.`} />
-            <ConfirmDialog isOpen={!!deletingSubject} onClose={() => setDeletingSubject(null)} onConfirm={handleDeleteSubject} title="Delete Subject?" description={`Permanently delete "${deletingSubject?.name}". All units and lessons inside will also be deleted.`} />
-            <ConfirmDialog isOpen={!!deletingUnit} onClose={() => setDeletingUnit(null)} onConfirm={handleDeleteUnit} title="Delete Unit?" description={`Permanently delete "${deletingUnit?.unit.title}". All lessons inside will also be deleted.`} />
-            <ConfirmDialog isOpen={!!deletingLesson} onClose={() => setDeletingLesson(null)} onConfirm={handleDeleteLesson} title="Delete Lesson?" description={`Permanently delete the lesson "${deletingLesson?.lesson.title}".`} />
-            <ManageLessonDialog 
-                isOpen={lessonDialogState.isOpen}
-                onClose={() => setLessonDialogState({isOpen: false})}
-                onSave={handleSaveLesson}
-                initialData={lessonDialogState.initialData}
+            <ConfirmDialog isOpen={!!deletingSubject} onClose={() => setDeletingSubject(null)} onConfirm={handleDeleteSubject} title="Delete Subject?" description={`Permanently delete "${deletingSubject?.name}". All units and recordings inside will also be deleted.`} />
+            <ConfirmDialog isOpen={!!deletingUnit} onClose={() => setDeletingUnit(null)} onConfirm={handleDeleteUnit} title="Delete Unit?" description={`Permanently delete "${deletingUnit?.unit.title}". All recordings inside will also be deleted.`} />
+            <ConfirmDialog isOpen={!!deletingRecording} onClose={() => setDeletingRecording(null)} onConfirm={handleDeleteRecording} title="Delete Recording?" description={`Permanently delete the recording "${deletingRecording?.lesson.title}".`} />
+            <ManageRecordingDialog 
+                isOpen={recordingDialogState.isOpen}
+                onClose={() => setRecordingDialogState({isOpen: false})}
+                onSave={handleSaveRecording}
+                initialData={recordingDialogState.initialData}
             />
 
             <Card>
@@ -410,8 +419,8 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                                                             <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={(e) => {e.stopPropagation(); setDeletingUnit({unit, subjectId: subject.id});}}><Trash className="h-4 w-4 mr-1" />Delete Unit</Button>
                                                         </div>
                                                         <Separator className="mb-4" />
-                                                        <Button className="w-full mb-4" variant="outline" size="sm" onClick={() => setLessonDialogState({ isOpen: true, unit: unit, subjectId: subject.id })}>
-                                                            <FileVideo className="mr-2 h-4 w-4" /> Add New Lesson to this Unit
+                                                        <Button className="w-full mb-4" variant="outline" size="sm" onClick={() => setRecordingDialogState({ isOpen: true, unit: unit, subjectId: subject.id })}>
+                                                            <FileVideo className="mr-2 h-4 w-4" /> Add New Recording to this Unit
                                                         </Button>
                                                         <ul className="space-y-2">
                                                             {unit.lessons.map(lesson => (
@@ -420,18 +429,18 @@ const CourseContentManager = ({ course, onContentUpdated }: { course: Course; on
                                                                         <Video className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                                                                         <div className="flex-grow overflow-hidden">
                                                                             <p className="text-sm truncate font-medium">{lesson.title}</p>
-                                                                            {lesson.duration && (
-                                                                                <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{lesson.duration} min</p>
+                                                                            {lesson.recordedDate && (
+                                                                                <p className="text-xs text-muted-foreground flex items-center gap-1"><CalendarIcon className="h-3 w-3" />{format(new Date(lesson.recordedDate), 'PPP')}</p>
                                                                             )}
                                                                         </div>
                                                                     </div>
                                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setLessonDialogState({ isOpen: true, initialData: lesson, unit: unit, subjectId: subject.id })}><Pencil className="h-4 w-4" /></Button>
-                                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeletingLesson({lesson, unitId: unit.id, subjectId: subject.id})}><Trash className="h-4 w-4" /></Button>
+                                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setRecordingDialogState({ isOpen: true, initialData: lesson, unit: unit, subjectId: subject.id })}><Pencil className="h-4 w-4" /></Button>
+                                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeletingRecording({lesson, unitId: unit.id, subjectId: subject.id})}><Trash className="h-4 w-4" /></Button>
                                                                     </div>
                                                                 </li>
                                                             ))}
-                                                             {unit.lessons.length === 0 && <p className="text-center text-xs text-muted-foreground py-2">No lessons in this unit yet.</p>}
+                                                             {unit.lessons.length === 0 && <p className="text-center text-xs text-muted-foreground py-2">No recordings in this unit yet.</p>}
                                                         </ul>
                                                     </AccordionContent>
                                                  </AccordionItem>

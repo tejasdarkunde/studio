@@ -127,8 +127,7 @@ export type Lesson = {
   title: string;
   videoUrl: string;
   description?: string;
-  documentUrl?: string;
-  duration?: number; // Duration in minutes
+  recordedDate?: string; // ISO String for date
 }
 
 export type Unit = {

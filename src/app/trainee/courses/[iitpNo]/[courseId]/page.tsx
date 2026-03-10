@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText, PlayCircle, ChevronRight, FileQuestion } from 'lucide-react';
+import { Video, BookOpen, ChevronLeft, CheckCircle2, Clock, Download, FileText, PlayCircle, ChevronRight, FileQuestion, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Course, Lesson, Participant, Subject } from '@/lib/types';
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { format } from 'date-fns';
 
 
 const CourseContentPageClient = () => {
@@ -161,7 +162,7 @@ const CourseContentPageClient = () => {
             if (result.success) {
                 toast({
                     title: "Progress Saved!",
-                    description: "Lesson marked as complete."
+                    description: "Recording marked as complete."
                 });
                 // Re-fetch participant data to update UI
                 await fetchParticipantData();
@@ -220,8 +221,8 @@ const CourseContentPageClient = () => {
                 <DialogContent className="max-w-6xl w-full h-full md:h-auto md:max-h-[90vh] flex flex-col p-0">
                     <DialogHeader className="p-4 md:p-6 pb-2">
                         <DialogTitle className="text-lg md:text-2xl">{selectedLesson?.title}</DialogTitle>
-                         {selectedLesson?.duration && (
-                            <DialogDescription className="flex items-center gap-1"><Clock className="h-4 w-4" /> {selectedLesson.duration} min</DialogDescription>
+                         {selectedLesson?.recordedDate && (
+                            <DialogDescription className="flex items-center gap-1"><CalendarIcon className="h-4 w-4" /> {format(new Date(selectedLesson.recordedDate), 'PPP')}</DialogDescription>
                         )}
                     </DialogHeader>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 px-4 md:px-6 flex-grow min-h-0">
@@ -231,10 +232,10 @@ const CourseContentPageClient = () => {
                         )}
                         </div>
                         <div className="flex flex-col gap-4 h-full lg:max-h-[60vh]">
-                            <h3 className="text-base md:text-lg font-semibold">Lesson Details</h3>
+                            <h3 className="text-base md:text-lg font-semibold">Recording Details</h3>
                             <Separator />
                             <ScrollArea className="flex-grow pr-4 -mr-4">
-                                {(selectedLesson?.description || selectedLesson?.documentUrl) ? (
+                                {selectedLesson?.description ? (
                                     <div className="space-y-4">
                                         {selectedLesson.description && (
                                             <div>
@@ -242,26 +243,16 @@ const CourseContentPageClient = () => {
                                                 <p className="text-sm whitespace-pre-wrap text-muted-foreground">{selectedLesson.description}</p>
                                             </div>
                                         )}
-                                        {selectedLesson.documentUrl && (
-                                            <div>
-                                                <h4 className="font-semibold mb-2 flex items-center gap-2"><Download className="h-4 w-4"/> Attachments</h4>
-                                                <Button asChild variant="secondary" size="sm">
-                                                    <Link href={selectedLesson.documentUrl} target="_blank" download>
-                                                        Download Document
-                                                    </Link>
-                                                </Button>
-                                            </div>
-                                        )}
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">No description or attachments for this lesson.</p>
+                                    <p className="text-sm text-muted-foreground">No description for this recording.</p>
                                 )}
                             </ScrollArea>
                              <div className="mt-auto pt-4">
                             {isLessonCompleted ? (
                                  <div className="flex items-center justify-center gap-2 text-green-600 font-semibold p-3 bg-green-50 rounded-md">
                                     <CheckCircle2 className="h-5 w-5" />
-                                    <span>Lesson Completed</span>
+                                    <span>Recording Completed</span>
                                 </div>
                             ) : (
                                  <Button onClick={() => selectedLesson && handleMarkAsComplete(selectedLesson.id)} disabled={isPending} className="w-full">
@@ -295,7 +286,7 @@ const CourseContentPageClient = () => {
                 <div className="mb-8">
                     <p className="text-lg text-primary font-semibold">{course.name}</p>
                     <h1 className="text-4xl font-bold tracking-tight">Course Content</h1>
-                    <p className="text-muted-foreground mt-2 text-lg">Browse the subjects, units, and lessons for this course.</p>
+                    <p className="text-muted-foreground mt-2 text-lg">Browse the subjects, units, and recordings for this course.</p>
                 </div>
 
                 <div className="space-y-6 mb-12">
@@ -304,7 +295,7 @@ const CourseContentPageClient = () => {
                             <div>
                                 <div className="flex justify-between items-center mb-2 text-sm">
                                     <p className="font-medium">Your Progress</p>
-                                    <p className="text-muted-foreground">{progress.completedLessons} of {progress.totalLessons} lessons</p>
+                                    <p className="text-muted-foreground">{progress.completedLessons} of {progress.totalLessons} recordings</p>
                                 </div>
                                 <Progress value={progress.percentage} />
                                 <p className="text-right text-sm font-bold text-primary mt-1">{progress.percentage}% Complete</p>
@@ -313,7 +304,7 @@ const CourseContentPageClient = () => {
                                 <PlayCircle className="mr-2 h-4 w-4" />
                                 {progress.percentage === 100
                                     ? 'Review Course'
-                                    : `Continue Lesson: ${nextLesson?.title}`
+                                    : `Continue: ${nextLesson?.title}`
                                 }
                             </Button>
                             <Separator />
@@ -397,8 +388,8 @@ const CourseContentPageClient = () => {
                                                                                 <Video className="h-5 w-5 text-muted-foreground" />
                                                                                 <div className="flex flex-col items-start">
                                                                                     <span className="text-base font-medium">{lesson.title}</span>
-                                                                                    {lesson.duration && (
-                                                                                        <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration} min</span>
+                                                                                    {lesson.recordedDate && (
+                                                                                        <span className="text-xs text-muted-foreground flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(lesson.recordedDate), 'PPP')}</span>
                                                                                     )}
                                                                                 </div>
                                                                             </div>
@@ -410,7 +401,7 @@ const CourseContentPageClient = () => {
                                                                         </button>
                                                                     </li>
                                                                 ))}
-                                                                {unit.lessons.length === 0 && <p className="text-muted-foreground text-sm p-3">No lessons in this unit yet.</p>}
+                                                                {unit.lessons.length === 0 && <p className="text-muted-foreground text-sm p-3">No recordings in this unit yet.</p>}
                                                             </ul>
                                                         </AccordionContent>
                                                     </AccordionItem>

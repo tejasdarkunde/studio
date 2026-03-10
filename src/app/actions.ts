@@ -422,7 +422,7 @@ export async function getRedirectLink(batchId: string): Promise<{link: string | 
             // If there's a trainer ID, get the link from the trainer document
             if (batchData.trainerId) {
                 const trainerDocRef = doc(db, 'trainers', batchData.trainerId);
-                const trainerDoc = await getDoc(trainerDoc);
+                const trainerDoc = await getDoc(trainerDocRef);
                 if (trainerDoc.exists()) {
                     return { link: trainerDoc.data().meetingLink || null };
                 }
@@ -1508,11 +1508,10 @@ const lessonSchema = z.object({
     courseId: z.string().min(1),
     subjectId: z.string().min(1),
     unitId: z.string().min(1),
-    lessonTitle: z.string().min(2, "Lesson title is required."),
+    lessonTitle: z.string().min(2, "Recording title is required."),
     videoUrl: z.string().url("A valid video URL is required."),
     description: z.string().optional(),
-    documentUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
-    duration: z.number().optional(),
+    recordedDate: z.date().optional(),
 });
 
 export async function addLesson(data: z.infer<typeof lessonSchema>): Promise<{ success: boolean; error?: string }> {
@@ -1523,7 +1522,7 @@ export async function addLesson(data: z.infer<typeof lessonSchema>): Promise<{ s
     }
 
     try {
-        const { courseId, subjectId, unitId, lessonTitle, videoUrl, duration, description, documentUrl } = validated.data;
+        const { courseId, subjectId, unitId, lessonTitle, videoUrl, description, recordedDate } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -1539,9 +1538,8 @@ export async function addLesson(data: z.infer<typeof lessonSchema>): Promise<{ s
             id: doc(collection(db, '_')).id,
             title: lessonTitle,
             videoUrl,
-            duration,
             description,
-            documentUrl,
+            recordedDate: recordedDate?.toISOString(),
         };
         
         subjects[subjectIndex].units[unitIndex].lessons.push(newLesson);
@@ -1564,7 +1562,7 @@ export async function updateLesson(data: z.infer<typeof updateLessonSchema>): Pr
     }
 
     try {
-        const { courseId, subjectId, unitId, lessonId, lessonTitle, videoUrl, duration, description, documentUrl } = validated.data;
+        const { courseId, subjectId, unitId, lessonId, lessonTitle, videoUrl, description, recordedDate } = validated.data;
         const courseDocRef = doc(db, `courses/${courseId}`);
         const courseDoc = await getDoc(courseDocRef);
         if (!courseDoc.exists()) return { success: false, error: "Course not found." };
@@ -1583,9 +1581,8 @@ export async function updateLesson(data: z.infer<typeof updateLessonSchema>): Pr
             id: lessonId,
             title: lessonTitle,
             videoUrl,
-            duration,
             description,
-            documentUrl,
+            recordedDate: recordedDate?.toISOString(),
         };
 
         await updateDoc(courseDocRef, { subjects });
@@ -2794,6 +2791,7 @@ export async function deleteRecordedSession(id: string): Promise<{ success: bool
 
 
     
+
 
 
 
