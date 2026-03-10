@@ -63,7 +63,7 @@ const ManageSessionDialog = ({
             title,
             videoUrl,
             recordedDate,
-            courseId: courseId || undefined,
+            courseId: (courseId && courseId !== '--none--') ? courseId : undefined,
             description
         };
         if(initialData) {
@@ -110,7 +110,7 @@ const ManageSessionDialog = ({
                         <Select value={courseId} onValueChange={setCourseId}>
                             <SelectTrigger id="session-course"><SelectValue placeholder="Select a course" /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value="--none--">None</SelectItem>
                                 {courses.map(course => <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
