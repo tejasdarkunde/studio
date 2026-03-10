@@ -3,9 +3,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
-import type { Participant, Course } from '@/lib/types';
-import { getParticipantByIitpNo, getCourses } from '@/app/actions';
-import { Loader2, ChevronLeft, User, Building, Mail, Phone, Calendar, GraduationCap, Briefcase, Banknote, Shield, BookOpen, FileQuestion, LogOut, History, Award, Printer } from 'lucide-react';
+import type { Participant, Course, RecordedSession } from '@/lib/types';
+import { getParticipantByIitpNo, getCourses, getRecordedSessions } from '@/app/actions';
+import { Loader2, ChevronLeft, User, Building, Mail, Phone, Calendar, GraduationCap, Briefcase, Banknote, Shield, BookOpen, FileQuestion, LogOut, History, Award, Printer, CheckCircle2, Video } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -32,15 +32,17 @@ export default function AdminTraineeProfilePage() {
     
     const [participant, setParticipant] = useState<Participant | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
+    const [recordedSessions, setRecordedSessions] = useState<RecordedSession[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [participantData, coursesData] = await Promise.all([
+                const [participantData, coursesData, sessionsData] = await Promise.all([
                     getParticipantByIitpNo(iitpNo, undefined),
-                    getCourses()
+                    getCourses(),
+                    getRecordedSessions(),
                 ]);
                 
                 if (!participantData) {
@@ -49,6 +51,7 @@ export default function AdminTraineeProfilePage() {
                 }
                 setParticipant(participantData);
                 setCourses(coursesData);
+                setRecordedSessions(sessionsData);
             } catch (error) {
                 console.error("Failed to fetch data:", error);
             } finally {
@@ -74,6 +77,10 @@ export default function AdminTraineeProfilePage() {
     }
     
     const enrolledCourses = courses.filter(c => participant.enrolledCourses?.includes(c.name));
+
+    const viewedSessions = recordedSessions.filter(session =>
+        participant.completedLessons?.includes(session.id)
+    );
 
     return (
         <>
@@ -240,6 +247,24 @@ export default function AdminTraineeProfilePage() {
                                 ) : (
                                     <p className="text-muted-foreground">No exam attempts found.</p>
                                 )}
+                            </CardContent>
+                        </Card>
+                        <Card className="print-card">
+                            <CardHeader>
+                                <CardTitle>Viewed Recorded Sessions</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                            {viewedSessions.length > 0 ? viewedSessions.map(session => (
+                                <div key={session.id} className="flex items-center justify-between p-3 rounded-md bg-secondary/50">
+                                    <div className="flex items-center gap-3">
+                                        <Video className="h-4 w-4 text-muted-foreground" />
+                                        <p className="font-medium">{session.title}</p>
+                                    </div>
+                                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                </div>
+                            )) : (
+                                <p className="text-muted-foreground">No recorded sessions have been viewed.</p>
+                            )}
                             </CardContent>
                         </Card>
                         <Card className="print-card">
