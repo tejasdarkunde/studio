@@ -162,6 +162,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
           "absolute bottom-0 left-0 right-0 z-10 p-2 sm:p-4 bg-gradient-to-t from-black/70 to-transparent transition-opacity",
           (showControls || !isPlaying) ? "opacity-100" : "opacity-0"
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 sm:gap-4 text-white">
             <Button variant="ghost" size="icon" onClick={handlePlayPause}>
