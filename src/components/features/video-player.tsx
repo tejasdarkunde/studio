@@ -181,7 +181,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
             <span className="text-xs font-mono">{formatTime(duration)}</span>
 
             <Button variant="ghost" size="icon" onClick={handleFullscreen}>
-                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+                {isFullscreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
             </Button>
         </div>
       </div>
