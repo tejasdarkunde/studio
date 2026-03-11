@@ -65,7 +65,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
         const player = new window.YT.Player(playerElement, {
           videoId: videoId,
           playerVars: {
-            autoplay: 0,
+            autoplay: 1,
             controls: 0,
             rel: 0,
             modestbranding: 1,
