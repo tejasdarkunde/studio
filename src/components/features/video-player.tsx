@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -118,12 +119,26 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
     setProgress(value[0]);
   };
 
-  const handleFullscreen = () => {
+  const handleFullscreen = async () => {
     if (!playerContainerRef.current) return;
     if (!document.fullscreenElement) {
-      playerContainerRef.current.requestFullscreen();
+      try {
+        await playerContainerRef.current.requestFullscreen();
+        if (screen.orientation && typeof screen.orientation.lock === 'function') {
+          await screen.orientation.lock('landscape');
+        }
+      } catch (err) {
+        console.error("Error entering fullscreen or locking orientation:", err);
+      }
     } else {
-      document.exitFullscreen();
+      try {
+        await document.exitFullscreen();
+        if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+          screen.orientation.unlock();
+        }
+      } catch (err) {
+        console.error("Error exiting fullscreen or unlocking orientation:", err);
+      }
     }
   };
 
@@ -152,6 +167,7 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
       className="relative w-full aspect-video bg-black group"
       onPointerMove={handlePointerMove}
       onMouseLeave={() => { if(isPlaying) setShowControls(false) }}
+      onClick={handlePlayPause}
     >
       <div className="yt-player-target w-full h-full" />
       <div 
