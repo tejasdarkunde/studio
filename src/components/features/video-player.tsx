@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -24,15 +25,15 @@ const getYouTubeEmbedUrl = (url: string): string | null => {
     // Already an embed link
     try {
         const urlObj = new URL(url);
-        urlObj.searchParams.set('controls', '0');
+        urlObj.searchParams.set('rel', '0');
         return urlObj.toString();
     } catch (e) {
         // Invalid URL
-        return null;
+        return url;
     }
   }
 
-  return videoId ? `https://www.youtube.com/embed/${videoId}?controls=0` : null;
+  return videoId ? `https://www.youtube.com/embed/${videoId}?rel=0` : null;
 };
 
 // Basic helper for Vimeo, assumes a simple URL structure
