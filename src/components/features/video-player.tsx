@@ -153,9 +153,8 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
       className="relative w-full aspect-video bg-black group"
       onPointerMove={handlePointerMove}
       onMouseLeave={() => { if(isPlaying) setShowControls(false) }}
-      onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="yt-player-target w-full h-full pointer-events-none" />
+      <div className="yt-player-target w-full h-full" />
       <div className="absolute inset-0" onClick={handlePlayPause}></div>
       <div 
         className={cn(
