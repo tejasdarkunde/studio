@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -155,7 +154,6 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
       onMouseLeave={() => { if(isPlaying) setShowControls(false) }}
     >
       <div className="yt-player-target w-full h-full" />
-      <div className="absolute inset-0" onClick={handlePlayPause}></div>
       <div 
         className={cn(
           "absolute bottom-0 left-0 right-0 z-10 p-2 sm:p-4 bg-gradient-to-t from-black/70 to-transparent transition-opacity",
