@@ -10,6 +10,7 @@ type VideoPlayerProps = {
 // Helper function to convert YouTube watch URL to embed URL
 const getYouTubeEmbedUrl = (url: string): string | null => {
   let videoId: string | null = null;
+  const params = 'controls=0&modestbranding=1&rel=0';
   
   if (url.includes("youtube.com/watch")) {
     try {
@@ -22,9 +23,11 @@ const getYouTubeEmbedUrl = (url: string): string | null => {
   } else if (url.includes("youtu.be/")) {
     videoId = url.split("youtu.be/")[1]?.split("?")[0];
   } else if (url.includes("youtube.com/embed/")) {
-    // Already an embed link
+    // Already an embed link, ensure params are set
     try {
         const urlObj = new URL(url);
+        urlObj.searchParams.set('controls', '0');
+        urlObj.searchParams.set('modestbranding', '1');
         urlObj.searchParams.set('rel', '0');
         return urlObj.toString();
     } catch (e) {
@@ -33,7 +36,7 @@ const getYouTubeEmbedUrl = (url: string): string | null => {
     }
   }
 
-  return videoId ? `https://www.youtube.com/embed/${videoId}?rel=0` : null;
+  return videoId ? `https://www.youtube.com/embed/${videoId}?${params}` : null;
 };
 
 // Basic helper for Vimeo, assumes a simple URL structure
