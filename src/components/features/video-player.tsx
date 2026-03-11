@@ -120,10 +120,9 @@ const YouTubePlayer = ({ videoId }: { videoId: string }) => {
   };
 
   const handleFullscreen = () => {
-    const iFrame = playerContainerRef.current?.querySelector('iframe');
-    if (!iFrame) return;
+    if (!playerContainerRef.current) return;
     if (!document.fullscreenElement) {
-      iFrame.requestFullscreen();
+      playerContainerRef.current.requestFullscreen();
     } else {
       document.exitFullscreen();
     }
